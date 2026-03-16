@@ -19,12 +19,10 @@ st.markdown("""
         font-family: 'Lato', sans-serif;
     }
 
-    /* --- GLOBAL ANIMATIONS --- */
     * { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
 
     h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
-    /* Metrics Top (Glow effect) */
     div[data-testid="stMetricValue"] { 
         font-family: 'Lato', sans-serif;
         font-size: 40px !important; 
@@ -50,13 +48,11 @@ st.markdown("""
         padding: 15px 20px !important;
     }
 
-    /* PROGRESS BARS */
     .stProgress > div > div > div > div { 
         border-radius: 10px;
-        height: 10px !important;
+        height: 14px !important; /* Barre un peu plus épaisse comme demandé */
     }
 
-    /* --- CATEGORY CARD SYSTEM --- */
     .cat-card {
         background: rgba(255,255,255,0.02);
         padding: 14px 20px;
@@ -88,10 +84,9 @@ st.markdown("""
         color: #FFFFFF !important;
         font-size: 16px;
         font-weight: 700;
-        text-shadow: 0 0 12px rgba(255,255,255,0.5); /* White Glow on Prices */
+        text-shadow: 0 0 12px rgba(255,255,255,0.5);
     }
 
-    /* --- RECENT ACTIVITY (TRANSACTION CARDS WITH GLOW) --- */
     .transaction-card {
         background: rgba(15, 23, 42, 0.4); 
         border-radius: 18px; 
@@ -101,13 +96,13 @@ st.markdown("""
         justify-content: space-between; 
         align-items: center;
         border: 1px solid rgba(255,255,255,0.02);
-        box-shadow: 0 0 10px rgba(59, 130, 246, 0.1); /* Subtle Blue Glow */
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
     }
     .transaction-card:hover {
         transform: translateX(10px) scale(1.02);
         background: rgba(30, 41, 59, 0.6);
         border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); /* Intense Glow on Hover */
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
     }
     
     .trans-amount {
@@ -117,7 +112,6 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(255,255,255,0.3);
     }
 
-    /* Form Design */
     div[data-testid="stForm"] { 
         background: rgba(15, 23, 42, 0.3) !important;
         padding: 25px; border-radius: 25px; 
@@ -140,7 +134,6 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    # Logic: Green -> Orange (2/3) -> Red (100%)
     if percent >= 1.0: 
         bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
     elif percent >= 0.66: 
@@ -155,9 +148,9 @@ def get_progress_html(name, reel, prevu):
     <div class="cat-card">
         <div class="cat-container">
             <span class="cat-label">{ui_name}</span>
-            <span class="cat-amount">{reel:.0f} / {prevu:.0f} CHF</span>
+            <span class="cat-amount">{reel:.2f} / {prevu:.0f} CHF</span>
         </div>
-        <div style="background: rgba(0,0,0,0.4); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
+        <div style="background: rgba(0,0,0,0.4); border-radius: 10px; width: 100%; height: 14px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
             <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
         </div>
     </div>
@@ -270,9 +263,10 @@ st.progress(percent)
 
 st.divider()
 
-# --- SOBRE TRACKER (SMART SORT) ---
+# --- CATEGORIES ---
 st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; margin-bottom: 25px;'>📊 Categories</h3>", unsafe_allow_html=True)
 if category_progress:
+    # On trie pour mettre les catégories actives en haut
     sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
     for cat in sorted_categories:
         st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
@@ -293,20 +287,16 @@ with col_form:
         
         if st.form_submit_button("CONFIRM"):
             if lib and amt > 0:
-                col_b = ws.col_values(2)
-                target = 60
-                for r in range(60, 150):
-                    if r > len(col_b) or not str(col_b[r-1]).strip():
-                        target = r
-                        break
-                new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
-                ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
+                # Méthode plus rapide pour ajouter une ligne
+                new_data = [datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]
+                ws.append_row(new_data, value_input_option="USER_ENTERED")
                 st.cache_resource.clear()
                 st.rerun()
 
 with col_hist:
     st.markdown("<h4 style='color: #FFFFFF; font-size: 18px;'>📡 History</h4>", unsafe_allow_html=True)
     if expenses_list:
+        # On affiche les 5 dernières dépenses
         for exp in expenses_list[::-1][:5]:
             st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
 
