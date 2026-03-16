@@ -7,7 +7,7 @@ from google.oauth2.service_account import Credentials
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & AZURE WITH DYNAMIC GLOW (LATO FONT) ---
+# --- STYLE OBSIDIAN & AZURE WITH GLASSMORPHISM (LATO FONT) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
@@ -100,22 +100,21 @@ st.markdown("""
 
     /* --- RECENT ACTIVITY CARDS --- */
     .transaction-card {
-        background: rgba(15, 23, 42, 0.4); 
+        background: rgba(255, 255, 255, 0.02); 
         border-radius: 18px; 
         padding: 15px 20px; 
         margin-bottom: 10px; 
         display: flex; 
         justify-content: space-between; 
         align-items: center;
-        border: 1px solid rgba(255,255,255,0.02);
-        box-shadow: 0 0 10px rgba(59, 130, 246, 0.05);
+        border: 1px solid rgba(255,255,255,0.03);
         cursor: pointer;
     }
     .transaction-card:hover {
         transform: translateX(6px) scale(1.01);
         background: rgba(59, 130, 246, 0.08);
         border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
     }
     
     .trans-amount {
@@ -127,30 +126,33 @@ st.markdown("""
 
     /* --- ENHANCED FORM DESIGN --- */
     div[data-testid="stForm"] { 
-        background: linear-gradient(160deg, rgba(30, 58, 138, 0.25) 0%, rgba(3, 7, 18, 0.8) 100%) !important;
+        background: linear-gradient(160deg, rgba(30, 58, 138, 0.2) 0%, rgba(3, 7, 18, 0.7) 100%) !important;
         padding: 30px !important; 
         border-radius: 24px !important; 
-        border: 1px solid rgba(59, 130, 246, 0.3) !important; 
-        border-top: 2px solid rgba(59, 130, 246, 0.7) !important; /* Ligne lumineuse en haut */
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(59, 130, 246, 0.15) !important;
+        border: 1px solid rgba(59, 130, 246, 0.2) !important; 
+        border-top: 1.5px solid rgba(59, 130, 246, 0.6) !important; 
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(59, 130, 246, 0.1) !important;
         backdrop-filter: blur(10px);
     }
     
-    /* Input Fields styling */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input {
-        background-color: rgba(15, 23, 42, 0.6) !important;
+    /* Pure Glass Input Fields styling (No Gray) */
+    .stTextInput>div>div>input, 
+    .stNumberInput>div>div>input,
+    div[data-baseweb="select"] > div {
+        background-color: rgba(255, 255, 255, 0.03) !important;
         color: #FFFFFF !important;
-        border: 1px solid rgba(59, 130, 246, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-radius: 12px !important;
         font-family: 'Lato', sans-serif !important;
-        padding: 12px 15px !important;
     }
     
-    /* Input Focus effect */
-    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus {
+    /* Input Focus effect (Azure Glow) */
+    .stTextInput>div>div>input:focus, 
+    .stNumberInput>div>div>input:focus,
+    div[data-baseweb="select"] > div:focus-within {
         border-color: #3B82F6 !important;
         box-shadow: 0 0 15px rgba(59, 130, 246, 0.5) !important;
-        background-color: rgba(15, 23, 42, 0.9) !important;
+        background-color: rgba(255, 255, 255, 0.08) !important;
     }
     
     /* Blue Button */
