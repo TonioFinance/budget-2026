@@ -7,7 +7,7 @@ from google.oauth2.service_account import Credentials
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & EMERALD PREMIUM (LATO FONT) ---
+# --- STYLE OBSIDIAN & EMERALD MINIMALIST (LATO FONT) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
@@ -20,117 +20,100 @@ st.markdown("""
     }
 
     /* --- GLOBAL ANIMATIONS --- */
-    * { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+    * { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 
-    h1, h2, h3 { color: #FFFFFF !important; font-weight: 900 !important; letter-spacing: -0.5px; }
+    h1, h2, h3 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
-    /* Metrics Top */
+    /* Metrics Top (Slightly smaller) */
     div[data-testid="stMetricValue"] { 
         font-family: 'Lato', sans-serif;
-        font-size: 52px !important; 
+        font-size: 40px !important; 
         font-weight: 900 !important;
         color: #FFFFFF !important; 
-        text-shadow: 0 0 15px rgba(255,255,255,0.3), 0 0 40px rgba(59, 130, 246, 0.4); 
+        text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 30px rgba(59, 130, 246, 0.3); 
     }
     
     div[data-testid="stMetricLabel"] { 
-        font-family: 'Lato', sans-serif;
         font-weight: 700;
         color: #60A5FA !important; 
         text-transform: uppercase; 
-        letter-spacing: 2px;
-        font-size: 13px;
+        letter-spacing: 1.5px;
+        font-size: 11px;
     }
     
     .stMetric { 
-        background: rgba(15, 23, 42, 0.5) !important; 
-        backdrop-filter: blur(20px);
-        border-radius: 30px; 
+        background: rgba(15, 23, 42, 0.4) !important; 
+        backdrop-filter: blur(15px);
+        border-radius: 20px; 
         border: 1px solid rgba(255, 255, 255, 0.05) !important; 
-        border-top: 2px solid rgba(59, 130, 246, 0.4) !important;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
-    }
-    .stMetric:hover {
-        transform: translateY(-10px) scale(1.02);
-        background: rgba(15, 23, 42, 0.8) !important;
-        box-shadow: 0 25px 50px rgba(0,0,0,0.8), 0 0 30px rgba(59, 130, 246, 0.2);
+        border-top: 1.5px solid rgba(59, 130, 246, 0.4) !important;
+        padding: 15px 20px !important;
     }
 
-    /* PROGRESS BARS: THICK & VIBRANT GREEN */
+    /* PROGRESS BARS: SOBRE & GREEN */
     .stProgress > div > div > div > div { 
-        background: linear-gradient(90deg, #059669, #10B981, #6EE7B7); 
-        box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
-        border-radius: 20px;
-        height: 22px !important;
+        background: linear-gradient(90deg, #059669, #10B981); 
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        border-radius: 10px;
+        height: 10px !important; /* Thinner for sober look */
     }
 
-    /* --- CATEGORY CARD SYSTEM --- */
+    /* --- SOBRE CATEGORY CARD SYSTEM --- */
     .cat-card {
         background: rgba(255,255,255,0.02);
-        padding: 24px;
-        border-radius: 26px;
-        margin-bottom: 22px;
-        border: 1px solid rgba(255,255,255,0.04);
-        backdrop-filter: blur(10px);
+        padding: 14px 20px; /* Reduced padding */
+        border-radius: 16px; /* Sharper corners for sobriety */
+        margin-bottom: 12px; /* Less space between cards */
+        border: 1px solid rgba(255,255,255,0.03);
     }
     .cat-card:hover {
-        background: rgba(255,255,255,0.06);
-        transform: scale(1.015) translateY(-2px);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        background: rgba(255,255,255,0.05);
+        transform: scale(1.01);
+        border: 1px solid rgba(16, 185, 129, 0.2);
     }
 
     .cat-container {
         display: flex;
         justify-content: space-between;
-        align-items: flex-end;
-        margin-bottom: 12px;
+        align-items: center;
+        margin-bottom: 8px;
         width: 100%;
     }
     
     .cat-label {
         color: #FFFFFF !important;
-        font-size: 26px !important;
+        font-size: 18px !important; /* Smaller, sober font */
         font-weight: 700;
-        letter-spacing: -0.5px;
+        letter-spacing: -0.2px;
     }
     
     .cat-amount {
         color: #FFFFFF !important;
-        font-size: 19px;
-        font-weight: 700;
-        text-shadow: 0 0 15px rgba(255,255,255,0.5);
+        font-size: 14px; /* Discrete font size */
+        font-weight: 600;
+        opacity: 0.8;
     }
 
-    /* Form Design */
+    /* Form Design (More compact) */
     div[data-testid="stForm"] { 
         background: rgba(15, 23, 42, 0.3) !important;
-        backdrop-filter: blur(25px);
-        padding: 35px; border-radius: 35px; 
+        padding: 25px; border-radius: 25px; 
         border: 1px solid rgba(255, 255, 255, 0.05) !important; 
     }
 
-    /* Transaction Feed */
+    /* Transaction Feed (Discrete) */
     .transaction-card {
         background: rgba(15, 23, 42, 0.4); 
-        border-radius: 22px; 
-        padding: 20px 28px; 
-        margin-bottom: 15px; 
+        border-radius: 15px; 
+        padding: 12px 18px; 
+        margin-bottom: 8px; 
         display: flex; 
         justify-content: space-between; 
         align-items: center;
-        border: 1px solid rgba(255,255,255,0.03);
-    }
-    .transaction-card:hover {
-        transform: translateX(12px);
-        background: rgba(30, 41, 59, 0.6);
-        border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: -10px 10px 30px rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.02);
     }
     
-    input, select {
-        font-family: 'Lato', sans-serif !important;
-    }
+    input, select { font-family: 'Lato', sans-serif !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -157,8 +140,8 @@ def get_progress_html(name, reel, prevu):
             <span class="cat-label">{ui_name}</span>
             <span class="cat-amount">{reel:.2f} / {prevu:.0f} CHF</span>
         </div>
-        <div style="background: rgba(0,0,0,0.4); border-radius: 20px; width: 100%; height: 22px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 20px;"></div>
+        <div style="background: rgba(0,0,0,0.4); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
+            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px;"></div>
         </div>
     </div>
     """
@@ -169,10 +152,10 @@ def get_transaction_html(date, merchant, amount, category):
     return f"""
     <div class="transaction-card">
         <div>
-            <div style="color: #FFFFFF; font-weight: 700; font-size: 19px;">{merchant}</div>
-            <div style="color: #64748B; font-size: 14px; font-weight: 500;">{date} • {ui_category}</div>
+            <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
+            <div style="color: #64748B; font-size: 12px;">{date} • {ui_category}</div>
         </div>
-        <div style="color: #FFFFFF; font-weight: 800; font-size: 19px; text-shadow: 0 0 10px rgba(255,255,255,0.3);">{amount}</div>
+        <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{amount}</div>
     </div>
     """
 
@@ -255,15 +238,14 @@ with c1: st.metric("Remaining", f"{restant:.2f} CHF", delta=f"{restant:.2f}")
 with c2: st.metric("Budget Plan", f"{prevu_var:.0f} CHF")
 
 st.write("")
-st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 800; font-size: 24px; text-shadow: 0 0 15px rgba(255,255,255,0.4);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
+st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 800; font-size: 20px; text-shadow: 0 0 10px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
 
-# --- SMART TRACKER (SMART SORT & LATO) ---
-st.markdown("<h3 style='color: #FFFFFF; font-size: 30px; margin-bottom: 35px;'>📊 Activity Tracker</h3>", unsafe_allow_html=True)
+# --- SOBRE TRACKER ---
+st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; margin-bottom: 25px;'>📊 Categories</h3>", unsafe_allow_html=True)
 if category_progress:
-    # SORT: First by Activity (Actual > 0), then by Planned Budget volume
     sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
     for cat in sorted_categories:
         st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
@@ -271,18 +253,18 @@ if category_progress:
 st.divider()
 
 # --- FORM & HISTORY ---
-col_form, col_hist = st.columns([1.2, 1])
+col_form, col_hist = st.columns([1.1, 1])
 form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
 
 with col_form:
     with st.form("new_exp", clear_on_submit=True):
-        st.markdown("<h4 style='color: #FFFFFF; font-size: 22px;'>➕ Add Transaction</h4>", unsafe_allow_html=True)
-        lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
+        st.markdown("<h4 style='color: #FFFFFF; font-size: 18px;'>➕ New Entry</h4>", unsafe_allow_html=True)
+        lib = st.text_input("Merchant", placeholder="Apple, Migros...")
         amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
         cat_en = st.selectbox("Category", list(form_cat_map.keys()))
         note = st.text_input("Note")
         
-        if st.form_submit_button("CONFIRM PAYMENT"):
+        if st.form_submit_button("CONFIRM"):
             if lib and amt > 0:
                 col_b = ws.col_values(2)
                 target = 60
@@ -296,9 +278,9 @@ with col_form:
                 st.rerun()
 
 with col_hist:
-    st.markdown("<h4 style='color: #FFFFFF; font-size: 22px;'>📡 Live Feed</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #FFFFFF; font-size: 18px;'>📡 History</h4>", unsafe_allow_html=True)
     if expenses_list:
-        for exp in expenses_list[::-1][:6]:
+        for exp in expenses_list[::-1][:5]:
             st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
 
-st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
+st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
