@@ -139,7 +139,7 @@ st.markdown("""
 
     /* --- AZURE INPUT FIELDS STYLING --- */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, div[data-baseweb="select"] > div {
-        background-color: rgba(15, 23, 42, 0.6) !important; /* Navy profond */
+        background-color: rgba(15, 23, 42, 0.6) !important;
         color: #FFFFFF !important;
         border: 1px solid rgba(59, 130, 246, 0.2) !important;
         border-radius: 12px !important;
@@ -171,7 +171,7 @@ st.markdown("""
         margin: 0 !important;
     }
 
-    /* Donut Chart Glass Container */
+    /* Chart Glass Container */
     .chart-container {
         background: rgba(15, 23, 42, 0.3);
         border: 1px solid rgba(59, 130, 246, 0.15);
@@ -313,7 +313,14 @@ if row_history_start != -1:
         row = all_rows[i]
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
             if "total" in str(row[0]).lower() or "total" in str(row[1]).lower(): continue
-            expenses_list.append({"Date": row[0], "Marchand": row[1], "Montant": format_chf(parse_amount(row[2])) + " CHF", "Catégorie": row[4]})
+            raw_amt = parse_amount(row[2])
+            expenses_list.append({
+                "Date": row[0], 
+                "Marchand": row[1], 
+                "Montant": format_chf(raw_amt) + " CHF", 
+                "Catégorie": row[4],
+                "RawAmount": raw_amt # Used for Trend Chart
+            })
 
 restant = prevu_var - reel_var
 percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
@@ -391,6 +398,46 @@ with col_c2:
         st.info("No recent transactions.")
 
 st.divider()
+
+# --- NEW SECTION: SPENDING TREND (CUMULATIVE LINE CHART) ---
+st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
+
+if expenses_list:
+    # Prepare data for Plotly
+    df_trends = pd.DataFrame(expenses_list)
+    df_trends['Date'] = pd.to_datetime(df_trends['Date'])
+    
+    # Sum by day and sort
+    daily_spend = df_trends.groupby('Date')['RawAmount'].sum().reset_index().sort_values('Date')
+    
+    # Calculate Cumulative Sum
+    daily_spend['Cumulative'] = daily_spend['RawAmount'].cumsum()
+
+    # Create Plotly Figure
+    fig_trend = go.Figure()
+    fig_trend.add_trace(go.Scatter(
+        x=daily_spend['Date'], 
+        y=daily_spend['Cumulative'],
+        mode='lines',
+        fill='tozeroy',
+        line=dict(color='#60A5FA', width=4),
+        fillcolor='rgba(96, 165, 250, 0.1)',
+        hoverinfo='x+y'
+    ))
+
+    fig_trend.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        height=300,
+        margin=dict(t=10, b=10, l=10, r=10),
+        xaxis=dict(showgrid=False, color="#94A3B8", tickformat="%d %b"),
+        yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8", title="CHF (Total)")
+    )
+    st.plotly_chart(fig_trend, use_container_width=True, config={'displayModeBar': False})
+else:
+    st.write("No data to display trends.")
+st.markdown("</div>", unsafe_allow_html=True)
 
 # --- BOTTOM SECTION: DONUT CHART ---
 st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
