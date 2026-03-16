@@ -7,12 +7,11 @@ from google.oauth2.service_account import Credentials
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & EMERALD MOTION DESIGN ---
+# --- STYLE OBSIDIAN & EMERALD PREMIUM (ALIGNED & GLOW) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
 
-    /* Fond principal avec dégradé radial animé */
     .stApp { 
         background-color: #030712;
         background-image: radial-gradient(circle at 50% -20%, #172554 0%, #030712 85%);
@@ -20,100 +19,101 @@ st.markdown("""
         font-family: 'Space Grotesk', sans-serif;
     }
 
-    /* --- ANIMATIONS GLOBALES --- */
+    /* --- ANIMATIONS --- */
     * { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
 
-    h1, h2, h3 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
+    h1, h2, h3 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -1px; }
     
-    /* Metrics Top : Effet de soulèvement et Scale */
+    /* Top Metrics Glow */
     div[data-testid="stMetricValue"] { 
-        font-family: 'Space Grotesk', sans-serif;
-        font-size: 44px; font-weight: 700; color: #FFFFFF !important; 
-        text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 20px rgba(59, 130, 246, 0.4); 
+        font-size: 48px !important; 
+        color: #FFFFFF !important; 
+        text-shadow: 0 0 15px rgba(255,255,255,0.3), 0 0 30px rgba(59, 130, 246, 0.5); 
     }
     
     .stMetric { 
-        background: rgba(15, 23, 42, 0.4) !important; 
-        backdrop-filter: blur(15px);
-        border-radius: 24px; 
+        background: rgba(15, 23, 42, 0.5) !important; 
+        backdrop-filter: blur(20px);
+        border-radius: 28px; 
         border: 1px solid rgba(255, 255, 255, 0.05) !important; 
-        border-top: 2px solid rgba(59, 130, 246, 0.3) !important;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); 
+        border-top: 2px solid rgba(59, 130, 246, 0.4) !important;
     }
-
     .stMetric:hover {
-        transform: translateY(-8px) scale(1.02);
-        border-top: 2px solid rgba(59, 130, 246, 0.8) !important;
-        box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2), 0 0 20px rgba(59, 130, 246, 0.1);
-        background: rgba(15, 23, 42, 0.6) !important;
+        transform: translateY(-10px);
+        background: rgba(15, 23, 42, 0.8) !important;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 20px rgba(59, 130, 246, 0.2);
     }
 
-    /* PROGRESS BARS: THICK, GREEN & GLOWING */
+    /* PROGRESS BARS: THICK & VIBRANT GREEN */
     .stProgress > div > div > div > div { 
-        background: linear-gradient(90deg, #065F46, #10B981, #34D399); 
-        box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
-        border-radius: 12px;
-        height: 18px !important;
+        background: linear-gradient(90deg, #059669, #10B981, #6EE7B7); 
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        border-radius: 20px;
+        height: 22px !important;
     }
 
-    /* Formulaire : Effet Glassmorphism */
+    /* --- CATEGORY LAYOUT (PERFECT ALIGNMENT) --- */
+    .cat-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end; /* Aligne le texte sur la ligne de base */
+        margin-bottom: 10px;
+        width: 100%;
+    }
+    
+    .cat-label {
+        color: #FFFFFF !important;
+        font-size: 24px !important; /* Agrandissement texte catégorie */
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        text-shadow: 0 0 10px rgba(255,255,255,0.2);
+    }
+    
+    .cat-amount {
+        color: #FFFFFF !important;
+        font-size: 18px;
+        font-weight: 600;
+        font-family: 'Space Grotesk', sans-serif;
+        text-shadow: 0 0 15px rgba(255,255,255,0.6); /* White Glow */
+        opacity: 0.9;
+    }
+
+    .cat-card {
+        background: rgba(255,255,255,0.02);
+        padding: 20px;
+        border-radius: 24px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255,255,255,0.03);
+    }
+    .cat-card:hover {
+        background: rgba(255,255,255,0.05);
+        transform: scale(1.01);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    /* Form Design */
     div[data-testid="stForm"] { 
         background: rgba(15, 23, 42, 0.3) !important;
         backdrop-filter: blur(20px);
-        padding: 30px; border-radius: 28px; 
+        padding: 35px; border-radius: 32px; 
         border: 1px solid rgba(255, 255, 255, 0.05) !important; 
-        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9); 
     }
 
-    /* Inputs : Glow on Focus */
-    input {
-        background-color: rgba(3, 7, 18, 0.6) !important;
-        border: 1px solid rgba(59, 130, 246, 0.2) !important;
-    }
-    input:focus {
-        border-color: #3B82F6 !important;
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4) !important;
-        transform: scale(1.01);
-    }
-
-    /* Button : Motion Design */
-    .stButton>button { 
-        background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
-        color: #FFFFFF !important; border-radius: 16px; height: 3.8em; 
-        font-weight: 700; width: 100%; border: none; 
-        box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); 
-        cursor: pointer;
-    }
-    .stButton>button:hover { 
-        transform: scale(1.03);
-        box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
-        background: linear-gradient(90deg, #2563EB 0%, #60A5FA 100%);
-    }
-    .stButton>button:active { transform: scale(0.98); }
-    
-    /* Transaction Card : Slide & Glow */
+    /* Transaction Card */
     .transaction-card {
         background: rgba(15, 23, 42, 0.4); 
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.03); 
         border-radius: 20px; 
-        padding: 18px 24px; 
+        padding: 20px 25px; 
         margin-bottom: 15px; 
         display: flex; 
         justify-content: space-between; 
-        align-items: center; 
-        cursor: default;
+        align-items: center;
+        border: 1px solid rgba(255,255,255,0.03);
     }
     .transaction-card:hover {
-        transform: translateX(10px) scale(1.01);
+        transform: translateX(12px);
         background: rgba(30, 41, 59, 0.6);
         border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: -10px 10px 30px rgba(0,0,0,0.5);
-    }
-    
-    /* Traqueur de catégorie : lueur sur le texte */
-    .cat-label {
-        text-shadow: 0 0 10px rgba(255,255,255,0.1);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -130,24 +130,20 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    # Logic: Green -> Orange -> Red
-    if percent >= 1.0: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
-    elif percent > 0.8: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)"
-    else: bar_color = "linear-gradient(90deg, #065F46, #10B981)" 
-
+    # Logic color
+    bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" if percent >= 1.0 else "linear-gradient(90deg, #059669, #10B981)" 
+    
     cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
     ui_name = cat_ui_map.get(name.strip(), name)
 
     return f"""
-    <div style="margin-bottom: 30px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-            <span class="cat-label" style="color: #F8FAFC; font-size: 16px; font-weight: 600; letter-spacing: 0.5px;">{ui_name}</span>
-            <span style="color: #FFFFFF; font-size: 15px; font-weight: 700; text-shadow: 0 0 12px rgba(255, 255, 255, 0.4);">
-                {reel:.2f} / {prevu:.0f} CHF
-            </span>
+    <div class="cat-card">
+        <div class="cat-container">
+            <span class="cat-label">{ui_name}</span>
+            <span class="cat-amount">{reel:.2f} / {prevu:.0f} CHF</span>
         </div>
-        <div style="background: rgba(15, 23, 42, 0.8); border-radius: 20px; width: 100%; height: 18px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; box-shadow: inset 0 2px 10px rgba(0,0,0,0.7);">
-            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 20px; box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);"></div>
+        <div style="background: rgba(0,0,0,0.4); border-radius: 20px; width: 100%; height: 22px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 20px; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);"></div>
         </div>
     </div>
     """
@@ -158,10 +154,10 @@ def get_transaction_html(date, merchant, amount, category):
     return f"""
     <div class="transaction-card">
         <div>
-            <div style="color: #F8FAFC; font-weight: 600; font-size: 16px; letter-spacing: 0.2px;">{merchant}</div>
-            <div style="color: #64748B; font-size: 13px; font-weight: 500;">{date} • {ui_category}</div>
+            <div style="color: #FFFFFF; font-weight: 700; font-size: 18px; letter-spacing: -0.2px;">{merchant}</div>
+            <div style="color: #64748B; font-size: 14px; font-weight: 500;">{date} • {ui_category}</div>
         </div>
-        <div style="color: #FFFFFF; font-weight: 700; font-size: 17px; text-shadow: 0 0 15px rgba(255,255,255,0.2);">{amount}</div>
+        <div style="color: #FFFFFF; font-weight: 700; font-size: 18px; text-shadow: 0 0 10px rgba(255,255,255,0.3);">{amount}</div>
     </div>
     """
 
@@ -240,19 +236,18 @@ percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 # --- MAIN UI ---
 st.title(f"⚡ {selected_month_en} {now.year}")
 c1, c2 = st.columns(2)
-with c1: st.metric("Remaining", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color="normal" if restant > 0 else "inverse")
-with c2: st.metric("Planned Budget", f"{prevu_var:.1f} CHF")
+with c1: st.metric("Remaining", f"{restant:.2f} CHF", delta=f"{restant:.2f}")
+with c2: st.metric("Budget Plan", f"{prevu_var:.0f} CHF")
 
 st.write("")
-st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 700; font-size: 19px; text-shadow: 0 0 15px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
+st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 700; font-size: 22px; text-shadow: 0 0 15px rgba(255,255,255,0.4);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
 
-# --- CATEGORY TRACKER (SMART SORT) ---
-st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; margin-bottom: 35px;'>📊 Smart Tracker</h3>", unsafe_allow_html=True)
+# --- SMART TRACKER (VERTICAL & GLOW) ---
+st.markdown("<h3 style='color: #FFFFFF; font-size: 28px; margin-bottom: 30px;'>📊 Activity Tracker</h3>", unsafe_allow_html=True)
 if category_progress:
-    # Sorting: Action (Actual > 0) then Planned Volume
     sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
     for cat in sorted_categories:
         st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
@@ -265,29 +260,29 @@ form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport":
 
 with col_form:
     with st.form("new_exp", clear_on_submit=True):
-        st.markdown("<h4 style='color: #FFFFFF; margin-bottom: 15px;'>➕ New Expense</h4>", unsafe_allow_html=True)
-        lib = st.text_input("Merchant", placeholder="e.g. Migros...")
+        st.markdown("<h4 style='color: #FFFFFF; font-size: 20px;'>➕ Add Transaction</h4>", unsafe_allow_html=True)
+        lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
         amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
         cat_en = st.selectbox("Category", list(form_cat_map.keys()))
         note = st.text_input("Note")
         
-        if st.form_submit_button("ADD TRANSACTION") and lib and amt > 0:
-            col_b = ws.col_values(2)
-            target = 60
-            for r in range(60, 150):
-                if r > len(col_b) or not str(col_b[r-1]).strip():
-                    target = r
-                    break
-            new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
-            ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
-            st.cache_resource.clear()
-            st.success(f"✅ Synced to row {target}!")
-            st.rerun()
+        if st.form_submit_button("CONFIRM PAYMENT"):
+            if lib and amt > 0:
+                col_b = ws.col_values(2)
+                target = 60
+                for r in range(60, 150):
+                    if r > len(col_b) or not str(col_b[r-1]).strip():
+                        target = r
+                        break
+                new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
+                ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
+                st.cache_resource.clear()
+                st.rerun()
 
 with col_hist:
-    st.markdown("<h4 style='color: #FFFFFF; margin-bottom: 15px;'>📡 Recent Activity</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #FFFFFF; font-size: 20px;'>📡 Live Feed</h4>", unsafe_allow_html=True)
     if expenses_list:
-        for exp in expenses_list[::-1][:6]: # Show 6 for better balance
+        for exp in expenses_list[::-1][:6]:
             st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
 
-st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
+st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
