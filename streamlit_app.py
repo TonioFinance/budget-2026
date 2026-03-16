@@ -5,78 +5,121 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # --- CONFIGURATION DE LA PAGE ---
-st.set_page_config(
-    page_title="Budget 2026",
-    page_icon="💰",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="Budget 2026", page_icon="🏦", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE PRO & GLOW (DARK BLUE) ---
+# --- STYLE FINTECH PREMIUM (NOIR / BLEU / BLANC) ---
 st.markdown("""
     <style>
-    .stApp { background-color: #0B1120; color: #F8FAFC; }
-    h1, h2, h3, p, label { color: #E2E8F0 !important; }
+    /* Fond principal OLED Black */
+    .stApp { 
+        background-color: #050505; 
+        color: #F9FAFB; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    /* Textes et Titres */
+    h1, h2, h3 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
+    p, label { color: #A1A1AA !important; font-weight: 500; }
+    
+    /* Cartes des Métriques (Reste / Total) */
     div[data-testid="stMetricValue"] { 
-        font-size: 32px; font-weight: 800; color: #38BDF8 !important; text-shadow: 0 0 15px rgba(56, 189, 248, 0.4); 
+        font-size: 38px; 
+        font-weight: 800; 
+        color: #FFFFFF !important; 
+        letter-spacing: -1px;
+    }
+    div[data-testid="stMetricLabel"] {
+        color: #A1A1AA !important;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
     .stMetric { 
-        background-color: #1E293B; padding: 20px; border-radius: 16px; border: 1px solid #334155;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05); 
+        background-color: #121212; 
+        padding: 24px; 
+        border-radius: 20px; 
+        border: 1px solid #27272A; 
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); 
+        transition: transform 0.2s ease;
     }
+    .stMetric:hover { transform: translateY(-2px); }
+
+    /* Barre de progression (Bleu Électrique) */
     .stProgress > div > div > div > div { 
-        background: linear-gradient(90deg, #0EA5E9, #3B82F6); box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+        background: linear-gradient(90deg, #0052D4, #4364F7, #6FB1FC); 
+        border-radius: 10px;
     }
+
+    /* Boîte du Formulaire */
     div[data-testid="stForm"] { 
-        background-color: #162032; padding: 25px; border-radius: 20px; border: 1px solid #1E293B; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); 
+        background-color: #0A0A0A; 
+        padding: 30px; 
+        border-radius: 24px; 
+        border: 1px solid #27272A; 
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); 
     }
+
+    /* Inputs et Selectbox */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input {
+        background-color: #18181B !important;
+        color: #FFFFFF !important;
+        border: 1px solid #3F3F46 !important;
+        border-radius: 10px;
+    }
+    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus {
+        border-color: #007AFF !important;
+        box-shadow: 0 0 0 1px #007AFF !important;
+    }
+
+    /* Bouton d'action "Valider" */
     .stButton>button { 
-        background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; border-radius: 12px; height: 3.5em; 
-        font-weight: 700; letter-spacing: 1px; width: 100%; border: none; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); transition: all 0.3s ease;
+        background-color: #007AFF; 
+        color: #FFFFFF !important; 
+        border-radius: 14px; 
+        height: 3.5em; 
+        font-size: 16px;
+        font-weight: 600; 
+        letter-spacing: 0.5px; 
+        width: 100%; 
+        border: none; 
+        box-shadow: 0 4px 14px rgba(0, 122, 255, 0.3); 
+        transition: all 0.2s ease-in-out; 
     }
-    .stButton>button:hover {
-        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.7); transform: translateY(-2px); background: linear-gradient(135deg, #3B82F6, #2563EB); 
+    .stButton>button:hover { 
+        background-color: #006CE0;
+        box-shadow: 0 6px 20px rgba(0, 122, 255, 0.5); 
+        transform: scale(1.02); 
     }
-    hr { border-color: #334155 !important; }
+    
+    /* Séparateur discret */
+    hr { border-color: #27272A !important; margin-top: 2rem; margin-bottom: 2rem; }
+    
+    /* Tableaux de données (Dataframe) */
+    .stDataFrame { border: 1px solid #27272A; border-radius: 12px; overflow: hidden; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- FONCTION DE NETTOYAGE DES MONTANTS ---
+# --- FONCTION DE NETTOYAGE ---
 def parse_amount(val):
     if not val: return 0.0
-    # Enlève "CHF", les espaces, les apostrophes et remplace la virgule par un point
     cleaned = str(val).upper().replace("CHF", "").replace(" ", "").replace(" ", "").replace("'", "").replace(",", ".").strip()
-    try:
-        return float(cleaned)
-    except ValueError:
-        return 0.0
+    try: return float(cleaned)
+    except ValueError: return 0.0
 
 # --- CONNEXION ---
 @st.cache_resource
 def get_gsheet_client():
-    if "gcp_service_account" not in st.secrets:
-        st.error("❌ Erreur : La clé 'gcp_service_account' est absente des Secrets Streamlit.")
-        return None
-    scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+    if "gcp_service_account" not in st.secrets: return None
     try:
-        creds_dict = dict(st.secrets["gcp_service_account"])
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+        creds = Credentials.from_service_account_info(dict(st.secrets["gcp_service_account"]), scopes=["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"])
         return gspread.authorize(creds)
-    except Exception as e:
-        st.error(f"❌ Erreur d'authentification : {e}")
-        return None
+    except Exception: return None
 
 SHEET_ID = "1HXd22qMTATg__4U1Os0ktUMnhK1vflKlRU9b5yoxFHU"
 client = get_gsheet_client()
-
-if not client: 
-    st.stop()
-
-try:
-    sh = client.open_by_key(SHEET_ID)
-except Exception as e:
-    st.error(f"❌ Accès au Google Sheet refusé : {e}")
-    st.stop()
+if not client: st.stop()
+try: sh = client.open_by_key(SHEET_ID)
+except Exception as e: st.error(f"Accès refusé: {e}"); st.stop()
 
 # --- NAVIGATION ---
 mois_fr = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
@@ -84,97 +127,92 @@ now = datetime.now()
 selected_month = st.sidebar.selectbox("Mois consulté", mois_fr, index=now.month - 1)
 
 try:
-    available_sheets = [s.title for s in sh.worksheets()]
-    target_sheet = next((s for s in available_sheets if selected_month.lower() in s.lower()), None)
-    if not target_sheet:
-        st.error(f"L'onglet {selected_month} n'existe pas dans ce fichier.")
-        st.stop()
-    ws = sh.worksheet(target_sheet)
-except Exception as e:
-    st.error("Erreur de lecture de l'onglet.")
-    st.stop()
+    ws = sh.worksheet(next((s for s in [s.title for s in sh.worksheets()] if selected_month.lower() in s.lower()), None))
+except Exception: st.error("Onglet introuvable"); st.stop()
 
 # --- EXTRACTION DONNÉES ---
 all_rows = ws.get_all_values()
 prevu_var, reel_var = 0.0, 0.0
 expenses_list = []
-in_var_section = False
+debug_info = [] 
+
+# 1. RECHERCHE DYNAMIQUE DU HAUT DU TABLEAU
+col_var = -1
+col_prevu = -1
+col_actuel = -1
+row_var_start = -1
 
 for i, row in enumerate(all_rows):
-    # 1. RÉCUPÉRATION DES TOTAUX (Haut du tableau, avant la ligne 60)
-    if i < 59 and len(row) > 7:
-        col_f_lower = str(row[5]).strip().lower()
-        
-        # On repère le début du bloc "Charges Variables"
-        if "charges variables" in col_f_lower:
-            in_var_section = True
-        
-        # On repère la fin du bloc (début des factures)
-        elif "factures" in col_f_lower:
-            in_var_section = False
-            
-        # Si on est dans le bon bloc et qu'on trouve la ligne "Total"
-        elif in_var_section and "total" in col_f_lower:
-            prevu_var = parse_amount(row[6])
-            reel_var = parse_amount(row[7])
-            in_var_section = False # On arrête de chercher
+    if i >= 59: break
+    for j, cell in enumerate(row):
+        if "charges variables" in str(cell).strip().lower():
+            col_var = j
+            row_var_start = i
+            for k in range(j + 1, len(row)):
+                cell_val = str(row[k]).strip().lower()
+                if "prévu" in cell_val or "prevu" in cell_val: col_prevu = k
+                elif "actuel" in cell_val: col_actuel = k
+            break
+    if col_var != -1: break
 
-    # 2. HISTORIQUE DES DÉPENSES (À partir de la ligne 60)
-    if i >= 59:
-        if len(row) > 4 and str(row[0]).strip() != "":
-            try:
-                amt_clean = parse_amount(row[2])
-                expenses_list.append({
-                    "Date": row[0], 
-                    "Marchand": row[1], 
-                    "Montant": f"{amt_clean:.2f} CHF", 
-                    "Catégorie": row[4]
-                })
-            except IndexError: 
-                pass
+if col_prevu == -1: col_prevu = col_var + 1
+if col_actuel == -1: col_actuel = col_var + 2
+
+if col_var != -1 and row_var_start != -1:
+    for i in range(row_var_start + 1, min(row_var_start + 20, len(all_rows))):
+        row = all_rows[i]
+        if len(row) > max(col_prevu, col_actuel):
+            if "total" in str(row[col_var]).strip().lower():
+                prevu_var = parse_amount(row[col_prevu])
+                reel_var = parse_amount(row[col_actuel])
+                break
+
+# 2. HISTORIQUE DES DÉPENSES (À partir de la ligne 60)
+for i in range(59, len(all_rows)):
+    row = all_rows[i]
+    if len(row) > 4 and str(row[0]).strip() != "":
+        try:
+            amt_clean = parse_amount(row[2])
+            expenses_list.append({"Date": row[0], "Marchand": row[1], "Montant": f"{amt_clean:.2f} CHF", "Catégorie": row[4]})
+        except IndexError: pass
 
 restant = prevu_var - reel_var
 percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
 # --- UI PRINCIPALE ---
 st.title(f"📍 {selected_month} {now.year}")
+st.write("") # Petit espace
 
 c1, c2 = st.columns(2)
-with c1:
-    color = "normal" if restant > 0 else "inverse"
-    st.metric("Reste", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color=color)
-with c2:
-    st.metric("Total Prévu", f"{prevu_var:.1f} CHF")
+with c1: st.metric("Reste", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color="normal" if restant > 0 else "inverse")
+with c2: st.metric("Total Prévu", f"{prevu_var:.1f} CHF")
 
-st.markdown(f"**Budget consommé :** `{reel_var:.2f} CHF`")
+st.write("")
+st.markdown(f"**Budget consommé :** <span style='color: #FFFFFF; font-weight: 600;'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
 
 # --- FORMULAIRE ---
 with st.form("new_exp", clear_on_submit=True):
-    st.subheader("➕ Ajouter un achat")
+    st.markdown("### ➕ Nouvel Achat")
     col_a, col_b = st.columns([2, 1])
-    with col_a:
-        lib = st.text_input("Où ?", placeholder="Migros, Coop, Bar...")
-    with col_b:
-        amt = st.number_input("Combien ?", min_value=0.0, step=0.1, format="%.2f")
-    
+    with col_a: lib = st.text_input("Marchand / Lieu", placeholder="Migros, Apple, Uber...")
+    with col_b: amt = st.number_input("Montant (CHF)", min_value=0.0, step=0.1, format="%.2f")
     cat = st.selectbox("Catégorie", ["Courses", "Sorties/Restos", "Transport", "Loisirs", "Imprévus", "Shopping", "Hygiène"])
-    note = st.text_input("Note (optionnel)")
+    note = st.text_input("Note (optionnel)", placeholder="Ex: Déjeuner collègues...")
     
-    if st.form_submit_button("VALIDER L'ACHAT"):
-        if lib and amt > 0:
-            new_line = [datetime.now().strftime("%Y-%m-%d"), lib, amt, note, cat]
-            ws.append_row(new_line, value_input_option="USER_ENTERED")
-            st.success("✨ Achat enregistré avec succès !")
-            st.cache_resource.clear()
-            st.rerun()
+    st.write("") # Espacement
+    if st.form_submit_button("VALIDER LA DÉPENSE") and lib and amt > 0:
+        ws.append_row([datetime.now().strftime("%Y-%m-%d"), lib, amt, note, cat], value_input_option="USER_ENTERED")
+        st.success("✅ Transaction enregistrée avec succès.")
+        st.cache_resource.clear()
+        st.rerun()
 
 # --- HISTORIQUE ---
 if expenses_list:
-    with st.expander("🕒 Dernières dépenses", expanded=True):
-        recent = pd.DataFrame(expenses_list[::-1]).head(5)
-        st.dataframe(recent, use_container_width=True, hide_index=True)
+    st.write("")
+    with st.expander("🕒 Activité Récente", expanded=True):
+        st.dataframe(pd.DataFrame(expenses_list[::-1]).head(5), use_container_width=True, hide_index=True)
 
-st.sidebar.caption(f"Dernière synchro : {datetime.now().strftime('%H:%M')}")
+st.sidebar.caption(f"Dernière synchronisation : {datetime.now().strftime('%H:%M')}")
