@@ -400,24 +400,55 @@ with col_c1:
         for cat in sorted_categories:
             st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
 
-# --- SPLIT LAYOUT: CATEGORIES (LEFT) & HISTORY (RIGHT) ---
-col_c1, col_c2 = st.columns(2, gap="large")
-
-with col_c1:
-    st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-list-dashes'></i> Category Breakdown</h3>", unsafe_allow_html=True)
-    if category_progress:
-        sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
-        # Ajout du conteneur ici pour aligner le bas de la colonne de gauche
-        with st.container(height=480, border=False): 
-            for cat in sorted_categories:
-                st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
-
 with col_c2:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
     if expenses_list:
-        # Hauteur ajustée à 480 pour correspondre parfaitement à la colonne de gauche
-        with st.container(height=480, border=False): 
+        with st.container(height=450, border=False): 
             for exp in expenses_list[::-1]: 
                 st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
     else:
         st.info("No recent transactions.")
+
+st.divider()
+
+# --- BOTTOM SECTION: 3D STYLIZED DONUT CHART ---
+st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 5px;'><i class='ph ph-chart-donut'></i> Spending Distribution</h3>", unsafe_allow_html=True)
+
+if category_progress:
+    labels = [c["name"] for c in category_progress if c["reel"] > 0]
+    values = [c["reel"] for c in category_progress if c["reel"] > 0]
+    
+    if values:
+        azure_colors = ['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A', '#BFDBFE']
+        
+        fig = go.Figure(data=[go.Pie(
+            labels=labels, 
+            values=values, 
+            hole=.7, 
+            marker=dict(colors=azure_colors, line=dict(color='#030712', width=5)),
+            textinfo='none', 
+            hoverinfo='label+percent+value'
+        )])
+        
+        fig.update_layout(
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color="#94A3B8")),
+            paper_bgcolor='rgba(0,0,0,0)', 
+            plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(t=20, b=20, l=10, r=10),
+            height=450,
+            annotations=[
+                dict(text='TOTAL SPENT', x=0.5, y=0.58, font_size=12, font_color='#93C5FD', showarrow=False),
+                dict(text=f"<b>{format_chf(reel_var)}</b><br><span style='font-size:18px; color:#60A5FA'>CHF</span>", 
+                     x=0.5, y=0.45, font_size=36, font_color='#FFFFFF', showarrow=False)
+            ]
+        )
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    else:
+        st.info("No spending recorded yet.")
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+st.write("")
+st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
