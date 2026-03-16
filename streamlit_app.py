@@ -20,7 +20,7 @@ st.markdown("""
     }
 
     /* --- INSTANT HOVER ANIMATION (0.05s) --- */
-    * { transition: all 0.05s ease-out; }
+    * { transition: all 0.1s ease-out; }
 
     h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
