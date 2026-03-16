@@ -149,10 +149,9 @@ def get_progress_html(name, reel, prevu):
     
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    # Code couleur intelligent
-    if percent >= 1.0: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" # Rouge (Dépassement)
-    elif percent > 0.8: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" # Orange (Attention)
-    else: bar_color = "linear-gradient(90deg, #1D4ED8, #3B82F6)" # Bleu (OK)
+    if percent >= 1.0: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" # Rouge
+    elif percent > 0.8: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" # Orange
+    else: bar_color = "linear-gradient(90deg, #1D4ED8, #3B82F6)" # Bleu
 
     return f"""
     <div style="margin-bottom: 15px;">
@@ -225,7 +224,7 @@ expenses_list = []
 category_progress = []
 debug_info = []
 
-# 1. DOUBLE-SCANNAGE (INFAILLIBLE) POUR CHARGES VARIABLES
+# 1. SCAN INTELLIGENT POUR CHARGES VARIABLES (Ignore le bloc Récapitulatif)
 col_var = -1
 col_prevu = -1
 col_actuel = -1
@@ -235,22 +234,23 @@ for i, row in enumerate(all_rows):
     if i >= 65: break
     for j, cell in enumerate(row):
         if "charges variables" in str(cell).strip().lower():
-            col_var = j
-            row_var_start = i
-            # On cherche sur la ligne EXACTE les mots clés
-            for k in range(j + 1, len(row)):
-                cell_val = str(row[k]).strip().lower()
-                if "prévu" in cell_val or "prevu" in cell_val: col_prevu = k
-                elif "actuel" in cell_val or "réel" in cell_val or "reel" in cell_val: col_actuel = k
-            break
+            row_str = " ".join([str(x).lower() for x in row])
+            # La ligne de sécurité : On s'assure qu'on est sur l'en-tête du vrai tableau, pas le récap
+            if "prévu" in row_str or "prevu" in row_str or "actuel" in row_str or "réel" in row_str or "reel" in row_str:
+                col_var = j
+                row_var_start = i
+                for k in range(j + 1, len(row)):
+                    cell_val = str(row[k]).strip().lower()
+                    if "prévu" in cell_val or "prevu" in cell_val: col_prevu = k
+                    elif "actuel" in cell_val or "réel" in cell_val or "reel" in cell_val: col_actuel = k
+                break
     if col_var != -1: break
 
-# Fallback si jamais
 if col_prevu == -1: col_prevu = col_var + 1
 if col_actuel == -1: col_actuel = col_var + 2
 
 if col_var != -1 and row_var_start != -1:
-    debug_info.append(f"✅ 'Charges Variables' ligne {row_var_start+1}. Prévu (col {col_prevu}), Réel/Actuel (col {col_actuel}).")
+    debug_info.append(f"✅ 'Charges Variables' ligne {row_var_start+1}. Prévu (col {col_prevu}), Actuel (col {col_actuel}).")
     for i in range(row_var_start + 1, min(row_var_start + 20, len(all_rows))):
         row = all_rows[i]
         if len(row) > max(col_prevu, col_actuel):
@@ -265,7 +265,7 @@ if col_var != -1 and row_var_start != -1:
                 if c_prevu > 0 or c_reel > 0:
                     category_progress.append({"name": cat_name, "prevu": c_prevu, "reel": c_reel})
 else:
-    debug_info.append("❌ Section 'Charges Variables' introuvable.")
+    debug_info.append("❌ Section 'Charges Variables' (avec Prévu/Actuel) introuvable.")
 
 # 2. SCANNAGE DYNAMIQUE HISTORIQUE
 row_history_start = -1
@@ -275,14 +275,12 @@ for i in range(min(100, len(all_rows))):
         debug_info.append(f"✅ 'Date' trouvé ligne {row_history_start}")
         break
 
-if row_history_start == -1: row_history_start = 59 # Fallback
+if row_history_start == -1: row_history_start = 59 
 
 for i in range(row_history_start, len(all_rows)):
     row = all_rows[i]
     if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
-        # On ignore la ligne "Total" de l'historique
-        if "total" in str(row[0]).strip().lower() or "total" in str(row[1]).strip().lower():
-            continue
+        if "total" in str(row[0]).strip().lower() or "total" in str(row[1]).strip().lower(): continue
         try:
             amt_clean = parse_amount(row[2])
             if amt_clean > 0:
@@ -312,7 +310,6 @@ if prevu_var == 0:
 st.divider()
 
 # --- TRACKER & FORMULAIRE ---
-# On divise en 2 colonnes pour un vrai look de Dashboard iPad/Web
 st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; margin-bottom: 20px; text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);'>📊 Traqueur par Catégorie</h3>", unsafe_allow_html=True)
 
 if category_progress:
@@ -339,7 +336,7 @@ with col_form:
         
         st.write("")
         if st.form_submit_button("ENREGISTRER LE PAIEMENT") and lib and amt > 0:
-            ws.append_row([datetime.now().strftime("%d/%m/%Y"), lib, amt, note, cat], value_input_option="USER_ENTERED")
+            ws.append_row([datetime.now().strftime("%Y-%m-%d"), lib, amt, note, cat], value_input_option="USER_ENTERED")
             st.success("✅ Transaction confirmée.")
             st.cache_resource.clear()
             st.rerun()
@@ -347,7 +344,6 @@ with col_form:
 with col_hist:
     st.markdown("<h4 style='color: #FFFFFF; margin-bottom: 15px;'>📡 Activité Récente</h4>", unsafe_allow_html=True)
     if expenses_list:
-        # On affiche les 5 dernières transactions avec notre beau design HTML
         for exp in expenses_list[::-1][:5]:
             st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
     else:
