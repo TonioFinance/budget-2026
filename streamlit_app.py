@@ -118,7 +118,6 @@ st.markdown("""
         border-radius: 16px !important;
         height: 3.8rem !important;
         box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255,255,255,0.2) !important;
-        margin-bottom: 30px !important;
         transition: all 0.2s ease-out !important;
     }
     div[data-testid="stButton"] > button p {
@@ -130,20 +129,20 @@ st.markdown("""
         margin: 0 !important;
     }
 
-    /* --- EXPANDER (MENU ADD EXPENSE) --- */
+    /* --- EXPANDER (FULL WIDTH STYLE) --- */
     .stExpander {
         background: rgba(15, 23, 42, 0.2) !important;
         border: 1px solid rgba(59, 130, 246, 0.3) !important;
         border-radius: 16px !important;
-        margin-bottom: 25px !important;
+        margin-bottom: 30px !important;
         overflow: hidden;
     }
     .stExpander details summary {
         background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
         color: white !important;
-        padding: 12px 20px !important;
+        padding: 14px 20px !important;
         font-weight: 900 !important;
-        letter-spacing: 1px !important;
+        letter-spacing: 1.5px !important;
         border-radius: 14px !important;
         display: flex;
         justify-content: center;
@@ -170,6 +169,13 @@ st.markdown("""
         border-radius: 24px;
         padding: 20px;
         margin-top: 20px;
+    }
+
+    /* --- MOBILE RESPONSIVENESS --- */
+    @media (max-width: 768px) {
+        .hero-card { padding: 20px 15px; } 
+        .hero-top-metrics { font-size: 10px; }
+        .hero-main-value { font-size: 38px; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -338,39 +344,35 @@ hero_html = f"""
 </div>"""
 st.markdown(hero_html, unsafe_allow_html=True)
 
+# --- FULL WIDTH ADD EXPENSE MENU ---
+form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
+
+with st.expander("+ ADD NEW EXPENSE", expanded=False):
+    st.markdown("<br>", unsafe_allow_html=True)
+    lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
+    amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
+    cat_en = st.selectbox("Category", list(form_cat_map.keys()))
+    note = st.text_input("Note (Optional)")
+    
+    if st.button("CONFIRM TRANSACTION", use_container_width=True):
+        if lib and amt > 0:
+            target = len(ws.col_values(2)) + 1
+            new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
+            ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
+            st.cache_resource.clear()
+            st.rerun()
+
 # --- SPLIT LAYOUT ---
-col_left, col_right = st.columns(2, gap="large")
+col_c1, col_c2 = st.columns(2, gap="large")
 
-with col_left:
+with col_c1:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-list-dashes'></i> Category Breakdown</h3>", unsafe_allow_html=True)
-    
-    # --- ADD EXPENSE BUTTON (CLASSIC LENGTH) ---
-    form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
-    
-    # On limite la largeur avec une sous-colonne
-    btn_col1, btn_col2 = st.columns([0.8, 0.2])
-    with btn_col1:
-        with st.expander("+ ADD NEW EXPENSE", expanded=False):
-            st.markdown("<br>", unsafe_allow_html=True)
-            lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
-            amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
-            cat_en = st.selectbox("Category", list(form_cat_map.keys()))
-            note = st.text_input("Note (Optional)")
-            
-            if st.button("CONFIRM TRANSACTION", use_container_width=True):
-                if lib and amt > 0:
-                    target = len(ws.col_values(2)) + 1
-                    new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
-                    ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
-                    st.cache_resource.clear()
-                    st.rerun()
-
     if category_progress:
         sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
         for cat in sorted_categories:
             st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
 
-with col_right:
+with col_c2:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
     if expenses_list:
         with st.container(height=500, border=False): 
