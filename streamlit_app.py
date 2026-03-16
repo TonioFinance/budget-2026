@@ -224,7 +224,7 @@ expenses_list = []
 category_progress = []
 debug_info = []
 
-# 1. SCAN INTELLIGENT POUR CHARGES VARIABLES (Ignore le bloc Récapitulatif)
+# 1. SCAN INTELLIGENT POUR CHARGES VARIABLES (Détail)
 col_var = -1
 col_prevu = -1
 col_actuel = -1
@@ -235,7 +235,7 @@ for i, row in enumerate(all_rows):
     for j, cell in enumerate(row):
         if "charges variables" in str(cell).strip().lower():
             row_str = " ".join([str(x).lower() for x in row])
-            # La ligne de sécurité : On s'assure qu'on est sur l'en-tête du vrai tableau, pas le récap
+            # La ligne de sécurité: On cherche absolument Prévu et Actuel sur la même ligne !
             if "prévu" in row_str or "prevu" in row_str or "actuel" in row_str or "réel" in row_str or "reel" in row_str:
                 col_var = j
                 row_var_start = i
@@ -244,13 +244,13 @@ for i, row in enumerate(all_rows):
                     if "prévu" in cell_val or "prevu" in cell_val: col_prevu = k
                     elif "actuel" in cell_val or "réel" in cell_val or "reel" in cell_val: col_actuel = k
                 break
-    if col_var != -1: break
+    if col_var != -1: break # On arrête la recherche si on a trouvé le bon tableau
 
 if col_prevu == -1: col_prevu = col_var + 1
 if col_actuel == -1: col_actuel = col_var + 2
 
 if col_var != -1 and row_var_start != -1:
-    debug_info.append(f"✅ 'Charges Variables' ligne {row_var_start+1}. Prévu (col {col_prevu}), Actuel (col {col_actuel}).")
+    debug_info.append(f"✅ Vrai Tableau 'Charges Variables' à la ligne {row_var_start+1}.")
     for i in range(row_var_start + 1, min(row_var_start + 20, len(all_rows))):
         row = all_rows[i]
         if len(row) > max(col_prevu, col_actuel):
