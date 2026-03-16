@@ -20,11 +20,11 @@ st.markdown("""
     }
 
     /* --- GLOBAL ANIMATIONS --- */
-    * { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    * { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
 
     h1, h2, h3 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
-    /* Metrics Top (Slightly smaller) */
+    /* Metrics Top */
     div[data-testid="stMetricValue"] { 
         font-family: 'Lato', sans-serif;
         font-size: 40px !important; 
@@ -49,27 +49,29 @@ st.markdown("""
         border-top: 1.5px solid rgba(59, 130, 246, 0.4) !important;
         padding: 15px 20px !important;
     }
-
-    /* PROGRESS BARS: SOBRE & GREEN */
-    .stProgress > div > div > div > div { 
-        background: linear-gradient(90deg, #059669, #10B981); 
-        box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
-        border-radius: 10px;
-        height: 10px !important; /* Thinner for sober look */
+    .stMetric:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.5);
     }
 
-    /* --- SOBRE CATEGORY CARD SYSTEM --- */
+    /* BASE PROGRESS BAR STYLE */
+    .stProgress > div > div > div > div { 
+        border-radius: 10px;
+        height: 10px !important;
+    }
+
+    /* --- CATEGORY CARD SYSTEM --- */
     .cat-card {
         background: rgba(255,255,255,0.02);
-        padding: 14px 20px; /* Reduced padding */
-        border-radius: 16px; /* Sharper corners for sobriety */
-        margin-bottom: 12px; /* Less space between cards */
+        padding: 14px 20px;
+        border-radius: 16px;
+        margin-bottom: 12px;
         border: 1px solid rgba(255,255,255,0.03);
     }
     .cat-card:hover {
         background: rgba(255,255,255,0.05);
         transform: scale(1.01);
-        border: 1px solid rgba(16, 185, 129, 0.2);
+        border: 1px solid rgba(255,255,255,0.1);
     }
 
     .cat-container {
@@ -82,26 +84,26 @@ st.markdown("""
     
     .cat-label {
         color: #FFFFFF !important;
-        font-size: 18px !important; /* Smaller, sober font */
+        font-size: 18px !important;
         font-weight: 700;
         letter-spacing: -0.2px;
     }
     
     .cat-amount {
         color: #FFFFFF !important;
-        font-size: 14px; /* Discrete font size */
-        font-weight: 600;
-        opacity: 0.8;
+        font-size: 14px;
+        font-weight: 700;
+        text-shadow: 0 0 10px rgba(255,255,255,0.4);
     }
 
-    /* Form Design (More compact) */
+    /* Form Design */
     div[data-testid="stForm"] { 
         background: rgba(15, 23, 42, 0.3) !important;
         padding: 25px; border-radius: 25px; 
         border: 1px solid rgba(255, 255, 255, 0.05) !important; 
     }
 
-    /* Transaction Feed (Discrete) */
+    /* Transaction Feed */
     .transaction-card {
         background: rgba(15, 23, 42, 0.4); 
         border-radius: 15px; 
@@ -111,6 +113,10 @@ st.markdown("""
         justify-content: space-between; 
         align-items: center;
         border: 1px solid rgba(255,255,255,0.02);
+    }
+    .transaction-card:hover {
+        transform: translateX(8px);
+        background: rgba(255,255,255,0.05);
     }
     
     input, select { font-family: 'Lato', sans-serif !important; }
@@ -129,7 +135,13 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" if percent >= 1.0 else "linear-gradient(90deg, #059669, #10B981)" 
+    # NEW LOGIC: Green -> Orange (at 2/3) -> Red (at 100%)
+    if percent >= 1.0: 
+        bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" # Red
+    elif percent >= 0.66: 
+        bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" # Orange
+    else: 
+        bar_color = "linear-gradient(90deg, #059669, #10B981)" # Green
     
     cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
     ui_name = cat_ui_map.get(name.strip(), name)
@@ -141,7 +153,7 @@ def get_progress_html(name, reel, prevu):
             <span class="cat-amount">{reel:.2f} / {prevu:.0f} CHF</span>
         </div>
         <div style="background: rgba(0,0,0,0.4); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
-            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px;"></div>
+            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
         </div>
     </div>
     """
@@ -155,7 +167,7 @@ def get_transaction_html(date, merchant, amount, category):
             <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
             <div style="color: #64748B; font-size: 12px;">{date} • {ui_category}</div>
         </div>
-        <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{amount}</div>
+        <div style="color: #FFFFFF; font-weight: 700; font-size: 15px; text-shadow: 0 0 10px rgba(255,255,255,0.2);">{amount}</div>
     </div>
     """
 
@@ -239,11 +251,22 @@ with c2: st.metric("Budget Plan", f"{prevu_var:.0f} CHF")
 
 st.write("")
 st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 800; font-size: 20px; text-shadow: 0 0 10px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
+
+# DYNAMIC MAIN PROGRESS BAR COLOR
+main_bar_color = "#059669" # Default Green
+if percent >= 1.0: main_bar_color = "#E11D48" # Red
+elif percent >= 0.66: main_bar_color = "#F59E0B" # Orange
+
+st.markdown(f"""
+    <style>
+    .stProgress > div > div > div > div {{ background: {main_bar_color} !important; box-shadow: 0 0 10px {main_bar_color}44; }}
+    </style>
+""", unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
 
-# --- SOBRE TRACKER ---
+# --- SOBRE TRACKER (SMART SORT) ---
 st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; margin-bottom: 25px;'>📊 Categories</h3>", unsafe_allow_html=True)
 if category_progress:
     sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
