@@ -205,7 +205,7 @@ def get_progress_html(name, reel, prevu):
     pct_str = f"{min(percent*100, 100):.1f}%"
     
     if percent >= 0.80: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
-    elif percent >= 0.50: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" 
+    elif percent >= 0.66: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" 
     else: bar_color = "linear-gradient(90deg, #059669, #10B981)" 
     
     cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
@@ -319,7 +319,7 @@ if row_history_start != -1:
                 "Marchand": row[1], 
                 "Montant": format_chf(raw_amt) + " CHF", 
                 "Catégorie": row[4],
-                "RawAmount": raw_amt # Used for Trend Chart
+                "RawAmount": raw_amt
             })
 
 restant = prevu_var - reel_var
@@ -328,7 +328,7 @@ percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 # --- SMART INSIGHT LOGIC ---
 if percent >= 0.80:
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% of budget consumed</div>"
-elif percent >= 0.50:
+elif percent >= 0.66:
     insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% of budget consumed</div>"
 else:
     insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> Finances are on track</div>"
@@ -343,7 +343,7 @@ st.markdown(f"""
 bar_color = 'linear-gradient(90deg, #059669, #10B981)'
 if percent >= 0.8:
     bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
-elif percent >= 0.5:
+elif percent >= 0.66:
     bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
 
 hero_html = f"""
@@ -399,47 +399,38 @@ with col_c2:
 
 st.divider()
 
-# --- NEW SECTION: SPENDING TREND (CUMULATIVE LINE CHART) ---
+# --- TREND DASHBOARD (LINE CHART) ---
 st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
 st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
 
 if expenses_list:
-    # Prepare data for Plotly
     df_trends = pd.DataFrame(expenses_list)
-    df_trends['Date'] = pd.to_datetime(df_trends['Date'])
+    # CORRECTED: errors='coerce' handle bad dates and we drop them
+    df_trends['Date'] = pd.to_datetime(df_trends['Date'], errors='coerce')
+    df_trends = df_trends.dropna(subset=['Date'])
     
-    # Sum by day and sort
-    daily_spend = df_trends.groupby('Date')['RawAmount'].sum().reset_index().sort_values('Date')
-    
-    # Calculate Cumulative Sum
-    daily_spend['Cumulative'] = daily_spend['RawAmount'].cumsum()
+    if not df_trends.empty:
+        daily_spend = df_trends.groupby('Date')['RawAmount'].sum().reset_index().sort_values('Date')
+        daily_spend['Cumulative'] = daily_spend['RawAmount'].cumsum()
 
-    # Create Plotly Figure
-    fig_trend = go.Figure()
-    fig_trend.add_trace(go.Scatter(
-        x=daily_spend['Date'], 
-        y=daily_spend['Cumulative'],
-        mode='lines',
-        fill='tozeroy',
-        line=dict(color='#60A5FA', width=4),
-        fillcolor='rgba(96, 165, 250, 0.1)',
-        hoverinfo='x+y'
-    ))
-
-    fig_trend.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        height=300,
-        margin=dict(t=10, b=10, l=10, r=10),
-        xaxis=dict(showgrid=False, color="#94A3B8", tickformat="%d %b"),
-        yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8", title="CHF (Total)")
-    )
-    st.plotly_chart(fig_trend, use_container_width=True, config={'displayModeBar': False})
-else:
-    st.write("No data to display trends.")
+        fig_trend = go.Figure()
+        fig_trend.add_trace(go.Scatter(
+            x=daily_spend['Date'], y=daily_spend['Cumulative'],
+            mode='lines', fill='tozeroy',
+            line=dict(color='#60A5FA', width=4),
+            fillcolor='rgba(96, 165, 250, 0.1)',
+            hoverinfo='x+y'
+        ))
+        fig_trend.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+            height=300, margin=dict(t=10, b=10, l=10, r=10),
+            xaxis=dict(showgrid=False, color="#94A3B8", tickformat="%d %b"),
+            yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8")
+        )
+        st.plotly_chart(fig_trend, use_container_width=True, config={'displayModeBar': False})
 st.markdown("</div>", unsafe_allow_html=True)
 
-# --- BOTTOM SECTION: DONUT CHART ---
+# --- DONUT CHART ---
 st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
 st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 5px;'><i class='ph ph-chart-donut'></i> Spending Distribution</h3>", unsafe_allow_html=True)
 
