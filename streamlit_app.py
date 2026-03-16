@@ -111,29 +111,31 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- BEAUTIFUL 3D GLASS BUTTON --- */
-    div.stButton > button {
-        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%) !important;
+    /* --- PURE GLASS BUTTON (TRANSPARENT & WHITE) --- */
+    div[data-testid="stButton"] > button {
+        background: rgba(255, 255, 255, 0.05) !important; /* Verre transparent */
         color: #FFFFFF !important;
-        border: 1px solid rgba(59, 130, 246, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important; /* Bordure blanche fine */
         border-radius: 16px !important;
         font-weight: 900 !important;
         letter-spacing: 2px !important;
         height: 3.8rem !important;
-        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4), inset 0 1.5px 2px rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.1) !important;
+        backdrop-filter: blur(10px) !important;
         margin-bottom: 30px !important;
-        transition: all 0.2s ease-out !important;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
     }
-    div.stButton > button:hover {
-        background: linear-gradient(135deg, #2563EB 0%, #60A5FA 100%) !important;
-        box-shadow: 0 12px 35px rgba(59, 130, 246, 0.6), inset 0 1.5px 2px rgba(255, 255, 255, 0.4) !important;
+    div[data-testid="stButton"] > button:hover {
+        background: rgba(255, 255, 255, 0.15) !important; /* S'éclaire en blanc au survol */
+        border-color: rgba(255, 255, 255, 0.5) !important;
+        box-shadow: 0 12px 35px rgba(59, 130, 246, 0.2), inset 0 1px 5px rgba(255, 255, 255, 0.3) !important;
         transform: translateY(-2px) scale(1.01) !important;
-        border-color: rgba(96, 165, 250, 0.8) !important;
     }
-    div.stButton > button:active {
+    div[data-testid="stButton"] > button:active {
         transform: translateY(2px) scale(0.98) !important;
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4), inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+        background: rgba(255, 255, 255, 0.02) !important;
+    }
+    div[data-testid="stButton"] > button * {
+        color: #FFFFFF !important; /* Force le texte en blanc absolu */
     }
     
     /* Pop-up Glassmorphism */
@@ -358,7 +360,8 @@ def add_transaction_modal():
     cat_en = st.selectbox("Category", list(form_cat_map.keys()))
     note = st.text_input("Note (Optional)")
     
-    if st.button("CONFIRM EXPENSE", use_container_width=True, type="primary"):
+    # REMARQUE : Plus de type="primary", c'est ça qui bloquait le CSS !
+    if st.button("CONFIRM EXPENSE", use_container_width=True):
         if lib and amt > 0:
             col_b = ws.col_values(2)
             target = 60
@@ -371,8 +374,8 @@ def add_transaction_modal():
             st.cache_resource.clear()
             st.rerun()
 
-# Floating Action Button trigger
-if st.button("➕ ADD NEW EXPENSE", use_container_width=True, type="primary"):
+# Floating Action Button trigger (Plus de type="primary" ici non plus)
+if st.button("➕ ADD NEW EXPENSE", use_container_width=True):
     add_transaction_modal()
 
 
@@ -389,7 +392,6 @@ with col_c1:
 with col_c2:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
     if expenses_list:
-        # Conteneur scrollable si l'historique est long, pour rester aligné avec les catégories
         with st.container(height=450, border=False): 
             for exp in expenses_list[::-1]: 
                 st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
@@ -407,20 +409,17 @@ if category_progress:
     values = [c["reel"] for c in category_progress if c["reel"] > 0]
     
     if values:
-        # Palette de couleurs Premium Azure
         azure_colors = ['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A', '#BFDBFE']
         
-        # Création du Donut avec effet Pseudo-3D (Bordures noires épaisses)
         fig = go.Figure(data=[go.Pie(
             labels=labels, 
             values=values, 
-            hole=.7, # Anneau très fin pour plus d'élégance
-            marker=dict(colors=azure_colors, line=dict(color='#030712', width=5)), # Lignes de séparation simulant la profondeur
-            textinfo='none', # On cache le texte sur les parts pour faire plus propre
+            hole=.7, 
+            marker=dict(colors=azure_colors, line=dict(color='#030712', width=5)),
+            textinfo='none', 
             hoverinfo='label+percent+value'
         )])
         
-        # Stylisation du texte central (Le Total + CHF)
         fig.update_layout(
             showlegend=True,
             legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color="#94A3B8")),
@@ -438,7 +437,7 @@ if category_progress:
     else:
         st.info("No spending recorded yet.")
 
-st.markdown("</div>", unsafe_allow_html=True) # Fin du chart-container
+st.markdown("</div>", unsafe_allow_html=True)
 
 st.write("")
 st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
