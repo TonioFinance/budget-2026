@@ -25,76 +25,96 @@ st.markdown("""
 # --- CONNEXION À GOOGLE SHEETS ---
 @st.cache_resource
 def get_gsheet_client():
-    # Définit les droits d'accès
     scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-    # Récupère les credentials depuis les secrets Streamlit
-    creds_info = st.secrets["gcp_service_account"]
-    creds = Credentials.from_service_account_info(creds_info, scopes=scope)
-    return gspread.authorize(creds)
+    try:
+        creds_info = st.secrets["gcp_service_account"]
+        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
+        return gspread.authorize(creds)
+    except Exception as e:
+        st.error(f"❌ Erreur de configuration des Secrets : {e}")
+        return None
 
-# ID du tableur extrait de ton lien
+# ID du tableur
 SHEET_ID = "1HXd22qMTATg__4U1Os0ktUMnhK1vflKlRU9b5yoxFHU"
 
-try:
-    client = get_gsheet_client()
-    sh = client.open_by_key(SHEET_ID)
-except Exception as e:
-    st.error("❌ Erreur de connexion au Google Sheet. Vérifie tes Secrets Streamlit et le partage du fichier.")
+client = get_gsheet_client()
+if client:
+    try:
+        sh = client.open_by_key(SHEET_ID)
+    except Exception as e:
+        st.error("❌ Impossible d'accéder au fichier. Vérifie l'ID et le partage avec l'email du compte de service.")
+        st.stop()
+else:
     st.stop()
 
-# --- DÉTERMINATION DU MOIS ---
-mois_fr = {
-    1: "Janvier", 2: "Février", 3: "Mars", 4: "Avril", 
-    5: "Mai", 6: "Juin", 7: "Juillet", 8: "Août", 
-    9: "Septembre", 10: "Octobre", 11: "Novembre", 12: "Décembre"
-}
+# --- GESTION DU MOIS ---
+mois_fr = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
 now = datetime.now()
-current_month = mois_fr[now.month]
+default_month = mois_fr[now.month - 1]
+
+# Sidebar pour sélection manuelle si besoin
+with st.sidebar:
+    st.header("Paramètres")
+    selected_month = st.selectbox("Choisir le mois", mois_fr, index=now.month - 1)
+    if st.button("Rafraîchir les données"):
+        st.cache_resource.clear()
+        st.rerun()
 
 try:
-    ws = sh.worksheet(current_month)
-except Exception:
-    st.error(f"La feuille '{current_month}' est introuvable dans ton tableur.")
+    # On essaie de trouver la feuille (insensible à la casse et aux espaces)
+    available_sheets = [s.title for s in sh.worksheets()]
+    target_sheet = None
+    
+    for s_name in available_sheets:
+        if selected_month.lower() in s_name.lower():
+            target_sheet = s_name
+            break
+            
+    if target_sheet:
+        ws = sh.worksheet(target_sheet)
+    else:
+        st.error(f"⚠️ Onglet '{selected_month}' introuvable.")
+        st.info(f"Onglets disponibles : {', '.join(available_sheets)}")
+        st.stop()
+except Exception as e:
+    st.error(f"Erreur lors de l'accès à l'onglet : {e}")
     st.stop()
 
 # --- LECTURE DU BUDGET ---
-# On récupère toutes les valeurs pour analyser la structure
 data = ws.get_all_values()
-
 prevu_var = 0.0
 reel_var = 0.0
 
-# Recherche de la ligne "Charges Variables" dans le récapitulatif
-# Basé sur tes fichiers : Label en Col F (index 5), Prévu en G (index 6), Réel en H (index 7)
+# Recherche flexible de "Charges Variables"
 for row in data:
-    if len(row) > 7 and "Charges Variables" in row[5]:
+    # On cherche dans toute la ligne au cas où les colonnes ont bougé
+    row_str = " ".join([str(cell) for cell in row])
+    if "Charges Variables" in row_str:
         try:
-            # Nettoyage des nombres (remplace virgules et apostrophes)
-            p_raw = row[6].replace("'", "").replace(",", "").strip()
-            r_raw = row[7].replace("'", "").replace(",", "").strip()
-            prevu_var = float(p_raw) if p_raw else 0.0
-            reel_var = float(r_raw) if r_raw else 0.0
-        except ValueError:
-            pass
-        break
+            # On cherche les colonnes G (index 6) et H (index 7)
+            if len(row) > 7:
+                p_raw = row[6].replace("'", "").replace(",", "").replace("CHF", "").strip()
+                r_raw = row[7].replace("'", "").replace(",", "").replace("CHF", "").strip()
+                prevu_var = float(p_raw) if p_raw else 0.0
+                reel_var = float(r_raw) if r_raw else 0.0
+                break
+        except (ValueError, IndexError):
+            continue
 
 restant = prevu_var - reel_var
 percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
 # --- INTERFACE ---
-st.title(f"📊 Budget {current_month}")
+st.title(f"📊 Budget {selected_month}")
 
-# Métriques principales
 c1, c2 = st.columns(2)
 with c1:
     delta_color = "normal" if restant > 0 else "inverse"
-    st.metric("Reste à dépenser", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color=delta_color)
+    st.metric("Reste", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color=delta_color)
 with c2:
     st.metric("Total Prévu", f"{prevu_var:.2f} CHF")
 
-# Barre de progression
-st.write(f"**Consommation du budget :** {reel_var:.2f} / {prevu_var:.2f} CHF")
-bar_color = "green" if percent < 0.8 else "orange" if percent < 1 else "red"
+st.write(f"**Consommation :** {reel_var:.2f} / {prevu_var:.2f} CHF")
 st.progress(percent)
 
 st.divider()
@@ -103,31 +123,29 @@ st.divider()
 st.subheader("➕ Ajouter une dépense")
 with st.form("form_depense", clear_on_submit=True):
     date_d = st.date_input("Date", now)
-    nom_d = st.text_input("Marchand / Libellé", placeholder="Ex: Migros, Shell, Bar...")
+    nom_d = st.text_input("Marchand", placeholder="Ex: Migros, Shell, Bar...")
     montant_d = st.number_input("Montant (CHF)", min_value=0.0, step=0.05, format="%.2f")
-    
-    # Liste des catégories basée sur ton tableur
     cat_d = st.selectbox("Catégorie", ["Courses", "Sorties/Restos", "Transport", "Loisirs", "Imprévus", "Shopping", "Hygiène/Entretien"])
-    note_d = st.text_input("Note (Description)", placeholder="Optionnel")
+    note_d = st.text_input("Note", placeholder="Optionnel")
     
     submit = st.form_submit_button("Enregistrer la dépense")
 
 if submit:
     if nom_d and montant_d > 0:
-        # Préparation de la ligne : Date, Marchand, Montant, Description, Catégorie
-        # On l'ajoute à la fin de la feuille (append_row)
+        # Format de ligne : Date, Marchand, Montant, Note, Catégorie
         nouvelle_ligne = [date_d.strftime("%Y-%m-%d"), nom_d, montant_d, note_d, cat_d]
         
-        with st.spinner("Enregistrement dans Google Sheets..."):
-            ws.append_row(nouvelle_ligne, value_input_option="USER_ENTERED")
-        
-        st.success(f"✅ {montant_d} CHF ajoutés avec succès !")
-        st.balloons()
-        # On force le rafraîchissement pour voir les nouvelles métriques
-        st.cache_resource.clear()
-        st.rerun()
+        with st.spinner("Envoi vers Google Sheets..."):
+            try:
+                ws.append_row(nouvelle_ligne, value_input_option="USER_ENTERED")
+                st.success(f"✅ {montant_d} CHF ajoutés chez {nom_d}")
+                st.balloons()
+                st.cache_resource.clear()
+                st.rerun()
+            except Exception as e:
+                st.error(f"Erreur lors de l'écriture : {e}")
     else:
-        st.warning("Merci de remplir au moins le marchand et le montant.")
+        st.warning("Remplis le marchand et le montant !")
 
 st.divider()
-st.caption(f"Connecté au tableur : {sh.title} | {now.strftime('%H:%M:%S')}")
+st.caption(f"Connecté : {sh.title} | {now.strftime('%H:%M:%S')}")
