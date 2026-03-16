@@ -7,7 +7,7 @@ from google.oauth2.service_account import Credentials
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & AZURE WITH GLASSMORPHISM (LATO FONT) ---
+# --- STYLE OBSIDIAN & AZURE WITH DYNAMIC GLOW (LATO FONT) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
@@ -135,7 +135,7 @@ st.markdown("""
         backdrop-filter: blur(10px);
     }
     
-    /* Pure Glass Input Fields styling (No Gray) */
+    /* Pure Glass Input Fields styling */
     .stTextInput>div>div>input, 
     .stNumberInput>div>div>input,
     div[data-baseweb="select"] > div {
@@ -274,7 +274,9 @@ if col_var != -1:
             prevu_var, reel_var = parse_amount(row[col_prevu]), parse_amount(row[col_actuel])
             break
         elif cat and cat.lower() not in ["", "nan"]:
-            category_progress.append({"name": cat, "prevu": parse_amount(row[col_prevu]), "reel": parse_amount(row[col_actuel])})
+            # On ignore volontairement la catégorie "vacance(s)"
+            if "vacance" not in cat.lower():
+                category_progress.append({"name": cat, "prevu": parse_amount(row[col_prevu]), "reel": parse_amount(row[col_actuel])})
 
 row_history_start = -1
 for i, row in enumerate(all_rows):
