@@ -19,8 +19,8 @@ st.markdown("""
         font-family: 'Lato', sans-serif;
     }
 
-    /* --- ULTRA-FAST HOVER ANIMATION (0.15s) --- */
-    * { transition: all 0.15s ease-out; }
+    /* --- INSTANT HOVER ANIMATION (0.05s) --- */
+    * { transition: all 0.05s ease-out; }
 
     h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
@@ -35,7 +35,7 @@ st.markdown("""
     
     div[data-testid="stMetricLabel"] { 
         font-weight: 700;
-        color: #60A5FA !important; /* Azure Label */
+        color: #60A5FA !important; 
         text-transform: uppercase; 
         letter-spacing: 1.5px;
         font-size: 11px;
@@ -57,10 +57,9 @@ st.markdown("""
         box-shadow: 0 10px 30px rgba(59, 130, 246, 0.15);
     }
 
-    /* PROGRESS BARS */
     .stProgress > div > div > div > div { 
         border-radius: 10px;
-        height: 14px !important;
+        height: 14px !important; 
     }
 
     /* --- CATEGORY CARD SYSTEM --- */
@@ -99,7 +98,7 @@ st.markdown("""
         text-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
     }
 
-    /* --- RECENT ACTIVITY (TRANSACTION CARDS WITH BLUE GLOW) --- */
+    /* --- RECENT ACTIVITY CARDS --- */
     .transaction-card {
         background: rgba(15, 23, 42, 0.4); 
         border-radius: 18px; 
@@ -115,8 +114,8 @@ st.markdown("""
     .transaction-card:hover {
         transform: translateX(6px) scale(1.01);
         background: rgba(59, 130, 246, 0.08);
-        border: 1px solid rgba(59, 130, 246, 0.4);
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
     }
     
     .trans-amount {
@@ -126,7 +125,6 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(255,255,255,0.3);
     }
 
-    /* Form Design */
     div[data-testid="stForm"] { 
         background: rgba(15, 23, 42, 0.3) !important;
         padding: 25px; border-radius: 25px; 
@@ -163,7 +161,7 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    # Logic: Blue -> Orange (66%) -> Red (100%)
+    # Bleu -> Orange -> Rouge
     if percent >= 1.0: 
         bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
     elif percent >= 0.66: 
@@ -178,9 +176,9 @@ def get_progress_html(name, reel, prevu):
     <div class="cat-card">
         <div class="cat-container">
             <span class="cat-label">{ui_name}</span>
-            <span class="cat-amount">{reel:.0f} / {prevu:.0f} CHF</span>
+            <span class="cat-amount">{reel:.2f} / {prevu:.0f} CHF</span>
         </div>
-        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 14px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
+        <div style="background: rgba(0,0,0,0.4); border-radius: 10px; width: 100%; height: 14px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
             <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
         </div>
     </div>
@@ -286,14 +284,14 @@ elif percent >= 0.66: main_bar_color = "#F59E0B"
 
 st.markdown(f"""
     <style>
-    .stProgress > div > div > div > div {{ background: {main_bar_color} !important; box-shadow: 0 0 10px {main_bar_color}66; }}
+    .stProgress > div > div > div > div {{ background: {main_bar_color} !important; box-shadow: 0 0 10px {main_bar_color}44; }}
     </style>
 """, unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
 
-# --- CATEGORIES TRACKER ---
+# --- SOBRE TRACKER (SMART SORT) ---
 st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; margin-bottom: 25px;'>📊 Categories</h3>", unsafe_allow_html=True)
 if category_progress:
     sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
