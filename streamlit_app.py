@@ -162,10 +162,10 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    # Règle des Tiers (Vert < 33%, Orange < 66%, Rouge > 66%)
-    if percent >= 0.666: 
+    # Vert (0-50%), Orange (50-80%), Rouge (80-100%+)
+    if percent >= 0.80: 
         bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" # Rouge
-    elif percent >= 0.333: 
+    elif percent >= 0.50: 
         bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" # Orange
     else: 
         bar_color = "linear-gradient(90deg, #059669, #10B981)" # Vert
@@ -279,10 +279,10 @@ with c2: st.metric("Budget Plan", f"{prevu_var:.0f} CHF")
 st.write("")
 st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 800; font-size: 20px; text-shadow: 0 0 10px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 
-# Règle des Tiers pour la grande jauge globale
-main_bar_color = "#10B981" # Vert par défaut
-if percent >= 0.666: main_bar_color = "#E11D48" # Rouge
-elif percent >= 0.333: main_bar_color = "#F59E0B" # Orange
+# Vert (0-50%), Orange (50-80%), Rouge (80-100%+) pour la barre globale
+main_bar_color = "#10B981" # Vert
+if percent >= 0.80: main_bar_color = "#E11D48" # Rouge
+elif percent >= 0.50: main_bar_color = "#F59E0B" # Orange
 
 st.markdown(f"""
     <style>
