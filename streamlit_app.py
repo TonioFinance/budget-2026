@@ -111,14 +111,17 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- BLUE GLOW BUTTON (REFINED) --- */
+    /* --- BLUE GLOW BUTTON & EXPANDER --- */
+    div[data-testid="stButton"] > button, .stExpander {
+        border-radius: 16px !important;
+        border: 1px solid rgba(59, 130, 246, 0.5) !important;
+    }
+
     div[data-testid="stButton"] > button {
         background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
-        border: 1px solid rgba(59, 130, 246, 0.5) !important;
-        border-radius: 16px !important;
         height: 3.8rem !important;
         box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255,255,255,0.2) !important;
-        margin-bottom: 30px !important;
+        margin-bottom: 10px !important;
         transition: all 0.2s ease-out !important;
     }
     div[data-testid="stButton"] > button p {
@@ -135,18 +138,27 @@ st.markdown("""
         box-shadow: 0 0 12px rgba(96, 165, 250, 0.4), 0 8px 20px rgba(37, 99, 235, 0.3) !important;
         transform: translateY(-2px) scale(1.01) !important;
     }
-    
-    /* --- THE ONGLET MODAL & LIGHT BLUR (CORRECTED) --- */
-    div[data-baseweb="modal"] {
-        background-color: transparent !important; /* AUCUN FOND COLORÉ */
-        backdrop-filter: blur(6px) !important;     /* UNIQUEMENT LE FLOU */
+
+    /* --- EXPANDER STYLING (MENU DÉROULANT) --- */
+    .stExpander {
+        background: rgba(15, 23, 42, 0.2) !important;
+        border: 1px solid rgba(59, 130, 246, 0.3) !important;
+        margin-bottom: 30px !important;
     }
-    div[data-testid="stDialog"] > div {
-        background: linear-gradient(160deg, rgba(15, 23, 42, 0.95) 0%, rgba(3, 7, 18, 1) 100%) !important;
-        border: 1px solid rgba(59, 130, 246, 0.4) !important;
-        border-top: 4px solid #3B82F6 !important;
-        border-radius: 28px !important;
-        box-shadow: 0 50px 100px rgba(0,0,0,0.9) !important;
+    .stExpander details summary {
+        background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
+        color: white !important;
+        padding: 12px 20px !important;
+        font-weight: 900 !important;
+        letter-spacing: 1.2px !important;
+        border-radius: 14px !important;
+    }
+    .stExpander details summary:hover {
+        background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important;
+    }
+    .stExpander details[open] summary {
+        border-radius: 14px 14px 0 0 !important;
+        border-bottom: 1px solid rgba(59, 130, 246, 0.3) !important;
     }
     
     /* Pure Glass Input Fields styling */
@@ -358,12 +370,11 @@ hero_html = f"""
 </div>"""
 st.markdown(hero_html, unsafe_allow_html=True)
 
-# --- POP-UP DIALOG (MODAL) ---
+# --- EXPANDER FORM (MENU DÉROULANT) ---
 form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
 
-@st.dialog("Add New Transaction")
-def add_transaction_modal():
-    st.markdown("<h2 style='text-align:center; color:#60A5FA; margin-bottom:20px;'>New Expense</h2>", unsafe_allow_html=True)
+with st.expander("✨ ADD NEW EXPENSE", expanded=False):
+    st.markdown("<h4 style='color:#60A5FA; margin-bottom:15px; text-align:center;'>Enter Transaction Details</h4>", unsafe_allow_html=True)
     lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
     amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
     cat_en = st.selectbox("Category", list(form_cat_map.keys()))
@@ -376,10 +387,6 @@ def add_transaction_modal():
             ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
             st.cache_resource.clear()
             st.rerun()
-
-if st.button("+ ADD NEW EXPENSE", use_container_width=True):
-    add_transaction_modal()
-
 
 # --- SPLIT LAYOUT: CATEGORIES (FIXED) & HISTORY (SCROLLABLE) ---
 col_c1, col_c2 = st.columns(2, gap="large")
