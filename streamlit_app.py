@@ -333,7 +333,12 @@ else:
     insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> Finances are on track</div>"
 
 # --- MAIN UI: CENTERED TITLE & HERO DASHBOARD ---
-st.markdown(f"<h1 style='text-align: center; color: #FFFFFF; font-weight: 900; margin-bottom: 30px; letter-spacing: -1px;'>Dashboard • {selected_month_en}</h1>", unsafe_allow_html=True)
+st.markdown(f"""
+<div style="text-align: center; margin-bottom: 30px;">
+    <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">Dashboard</div>
+    <div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div>
+</div>
+""", unsafe_allow_html=True)
 
 bar_color = 'linear-gradient(90deg, #059669, #10B981)'
 if percent >= 0.8:
