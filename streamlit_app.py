@@ -7,7 +7,7 @@ from google.oauth2.service_account import Credentials
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & EMERALD MINIMALIST (LATO FONT) ---
+# --- STYLE OBSIDIAN & EMERALD WITH DYNAMIC GLOW (LATO FONT) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
@@ -22,9 +22,9 @@ st.markdown("""
     /* --- GLOBAL ANIMATIONS --- */
     * { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
 
-    h1, h2, h3 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
+    h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
-    /* Metrics Top */
+    /* Metrics Top (Glow effect) */
     div[data-testid="stMetricValue"] { 
         font-family: 'Lato', sans-serif;
         font-size: 40px !important; 
@@ -50,7 +50,7 @@ st.markdown("""
         padding: 15px 20px !important;
     }
 
-    /* BASE PROGRESS BAR STYLE */
+    /* PROGRESS BARS */
     .stProgress > div > div > div > div { 
         border-radius: 10px;
         height: 10px !important;
@@ -59,8 +59,8 @@ st.markdown("""
     /* --- CATEGORY CARD SYSTEM --- */
     .cat-card {
         background: rgba(255,255,255,0.02);
-        padding: 16px 22px;
-        border-radius: 18px;
+        padding: 14px 20px;
+        border-radius: 16px;
         margin-bottom: 12px;
         border: 1px solid rgba(255,255,255,0.03);
     }
@@ -74,22 +74,47 @@ st.markdown("""
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
         width: 100%;
     }
     
     .cat-label {
         color: #FFFFFF !important;
-        font-size: 19px !important;
+        font-size: 18px !important;
         font-weight: 700;
-        letter-spacing: -0.2px;
     }
     
     .cat-amount {
         color: #FFFFFF !important;
-        font-size: 18px !important; /* Agrandissement du prix */
+        font-size: 16px;
         font-weight: 700;
-        text-shadow: 0 0 15px rgba(255,255,255,0.5); /* White Glow renforcé */
+        text-shadow: 0 0 12px rgba(255,255,255,0.5); /* White Glow on Prices */
+    }
+
+    /* --- RECENT ACTIVITY (TRANSACTION CARDS WITH GLOW) --- */
+    .transaction-card {
+        background: rgba(15, 23, 42, 0.4); 
+        border-radius: 18px; 
+        padding: 15px 20px; 
+        margin-bottom: 10px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        border: 1px solid rgba(255,255,255,0.02);
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.1); /* Subtle Blue Glow */
+    }
+    .transaction-card:hover {
+        transform: translateX(10px) scale(1.02);
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); /* Intense Glow on Hover */
+    }
+    
+    .trans-amount {
+        color: #FFFFFF !important;
+        font-weight: 800;
+        font-size: 16px;
+        text-shadow: 0 0 10px rgba(255,255,255,0.3);
     }
 
     /* Form Design */
@@ -97,18 +122,6 @@ st.markdown("""
         background: rgba(15, 23, 42, 0.3) !important;
         padding: 25px; border-radius: 25px; 
         border: 1px solid rgba(255, 255, 255, 0.05) !important; 
-    }
-
-    /* Transaction Feed */
-    .transaction-card {
-        background: rgba(15, 23, 42, 0.4); 
-        border-radius: 15px; 
-        padding: 12px 18px; 
-        margin-bottom: 8px; 
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center;
-        border: 1px solid rgba(255,255,255,0.02);
     }
     
     input, select { font-family: 'Lato', sans-serif !important; }
@@ -129,11 +142,11 @@ def get_progress_html(name, reel, prevu):
     
     # Logic: Green -> Orange (2/3) -> Red (100%)
     if percent >= 1.0: 
-        bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" # Red
+        bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
     elif percent >= 0.66: 
-        bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" # Orange
+        bar_color = "linear-gradient(90deg, #B45309, #F59E0B)"
     else: 
-        bar_color = "linear-gradient(90deg, #059669, #10B981)" # Green
+        bar_color = "linear-gradient(90deg, #059669, #10B981)" 
     
     cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
     ui_name = cat_ui_map.get(name.strip(), name)
@@ -159,7 +172,7 @@ def get_transaction_html(date, merchant, amount, category):
             <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
             <div style="color: #64748B; font-size: 12px;">{date} • {ui_category}</div>
         </div>
-        <div style="color: #FFFFFF; font-weight: 700; font-size: 15px; text-shadow: 0 0 10px rgba(255,255,255,0.2);">{amount}</div>
+        <div class="trans-amount">{amount}</div>
     </div>
     """
 
@@ -244,10 +257,9 @@ with c2: st.metric("Budget Plan", f"{prevu_var:.0f} CHF")
 st.write("")
 st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 800; font-size: 20px; text-shadow: 0 0 10px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 
-# DYNAMIC MAIN PROGRESS BAR COLOR
-main_bar_color = "#059669" # Default Green
-if percent >= 1.0: main_bar_color = "#E11D48" # Red
-elif percent >= 0.66: main_bar_color = "#F59E0B" # Orange
+main_bar_color = "#059669"
+if percent >= 1.0: main_bar_color = "#E11D48"
+elif percent >= 0.66: main_bar_color = "#F59E0B"
 
 st.markdown(f"""
     <style>
