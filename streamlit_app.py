@@ -321,7 +321,7 @@ else:
 # --- MAIN UI ---
 st.markdown(f"""
 <div style="text-align: center; margin-bottom: 30px;">
-    <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">Dashboard</div>
+    <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">DASHBOARD</div>
     <div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div>
 </div>""", unsafe_allow_html=True)
 
