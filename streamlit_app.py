@@ -5,97 +5,106 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # --- CONFIGURATION DE LA PAGE ---
-st.set_page_config(page_title="Budget 2026", page_icon="🏦", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Budget 2026", page_icon="💠", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE FINTECH PREMIUM (NOIR / BLEU / BLANC) ---
+# --- STYLE ULTRA-PRO / GLOW BLEU ---
 st.markdown("""
     <style>
-    /* Fond principal OLED Black */
+    /* Fond principal : Dégradé radial bleu abysse vers noir */
     .stApp { 
-        background-color: #050505; 
-        color: #F9FAFB; 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: radial-gradient(circle at top, #0A192F 0%, #020C1B 100%);
+        color: #E2E8F0; 
+        font-family: 'Inter', -apple-system, sans-serif;
     }
     
     /* Textes et Titres */
-    h1, h2, h3 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
-    p, label { color: #A1A1AA !important; font-weight: 500; }
+    h1, h2, h3 { color: #FFFFFF !important; font-weight: 800 !important; text-shadow: 0 0 20px rgba(0, 198, 255, 0.3); }
+    p, label { color: #94A3B8 !important; font-weight: 500; }
     
-    /* Cartes des Métriques (Reste / Total) */
+    /* Cartes des Métriques (Reste / Total) - Effet Verre & Néon */
     div[data-testid="stMetricValue"] { 
-        font-size: 38px; 
-        font-weight: 800; 
-        color: #FFFFFF !important; 
+        font-size: 42px; 
+        font-weight: 900; 
+        color: #00F0FF !important; /* Bleu Cyan Néon */
+        text-shadow: 0 0 15px rgba(0, 240, 255, 0.6), 0 0 30px rgba(0, 240, 255, 0.2); 
         letter-spacing: -1px;
     }
     div[data-testid="stMetricLabel"] {
-        color: #A1A1AA !important;
-        font-size: 14px;
+        color: #60A5FA !important;
+        font-size: 15px;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 2px;
     }
     .stMetric { 
-        background-color: #121212; 
-        padding: 24px; 
-        border-radius: 20px; 
-        border: 1px solid #27272A; 
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); 
-        transition: transform 0.2s ease;
+        background: rgba(13, 25, 48, 0.6);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 25px; 
+        border-radius: 24px; 
+        border: 1px solid rgba(0, 240, 255, 0.15); 
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 122, 255, 0.1); 
+        transition: all 0.3s ease;
     }
-    .stMetric:hover { transform: translateY(-2px); }
+    .stMetric:hover { 
+        transform: translateY(-5px); 
+        box-shadow: 0 15px 40px rgba(0, 122, 255, 0.3), inset 0 0 25px rgba(0, 240, 255, 0.2); 
+        border: 1px solid rgba(0, 240, 255, 0.4);
+    }
 
-    /* Barre de progression (Bleu Électrique) */
+    /* Barre de progression (Luminescence Bleue) */
     .stProgress > div > div > div > div { 
-        background: linear-gradient(90deg, #0052D4, #4364F7, #6FB1FC); 
+        background: linear-gradient(90deg, #0072FF, #00F0FF); 
+        box-shadow: 0 0 20px rgba(0, 240, 255, 0.7);
         border-radius: 10px;
     }
 
     /* Boîte du Formulaire */
     div[data-testid="stForm"] { 
-        background-color: #0A0A0A; 
-        padding: 30px; 
+        background: linear-gradient(145deg, #0B1930, #040D21);
+        padding: 35px; 
         border-radius: 24px; 
-        border: 1px solid #27272A; 
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8); 
+        border: 1px solid #1E3A5F; 
+        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6); 
     }
 
     /* Inputs et Selectbox */
     .stTextInput>div>div>input, .stNumberInput>div>div>input {
-        background-color: #18181B !important;
-        color: #FFFFFF !important;
-        border: 1px solid #3F3F46 !important;
-        border-radius: 10px;
+        background-color: rgba(2, 12, 27, 0.8) !important;
+        color: #00F0FF !important;
+        border: 1px solid #1E3A5F !important;
+        border-radius: 12px;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
     }
     .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus {
-        border-color: #007AFF !important;
-        box-shadow: 0 0 0 1px #007AFF !important;
+        border-color: #00F0FF !important;
+        box-shadow: 0 0 15px rgba(0, 240, 255, 0.4) !important;
     }
 
-    /* Bouton d'action "Valider" */
+    /* Bouton d'action "Valider" - Glowing Button */
     .stButton>button { 
-        background-color: #007AFF; 
+        background: linear-gradient(90deg, #0072FF 0%, #00C6FF 100%);
         color: #FFFFFF !important; 
-        border-radius: 14px; 
-        height: 3.5em; 
+        border-radius: 16px; 
+        height: 3.8em; 
         font-size: 16px;
-        font-weight: 600; 
-        letter-spacing: 0.5px; 
+        font-weight: 800; 
+        text-transform: uppercase;
+        letter-spacing: 1.5px; 
         width: 100%; 
         border: none; 
-        box-shadow: 0 4px 14px rgba(0, 122, 255, 0.3); 
-        transition: all 0.2s ease-in-out; 
+        box-shadow: 0 8px 25px rgba(0, 198, 255, 0.4); 
+        transition: all 0.3s ease-in-out; 
     }
     .stButton>button:hover { 
-        background-color: #006CE0;
-        box-shadow: 0 6px 20px rgba(0, 122, 255, 0.5); 
-        transform: scale(1.02); 
+        box-shadow: 0 12px 35px rgba(0, 240, 255, 0.7); 
+        transform: scale(1.03); 
     }
     
     /* Séparateur discret */
-    hr { border-color: #27272A !important; margin-top: 2rem; margin-bottom: 2rem; }
+    hr { border-color: rgba(30, 58, 95, 0.5) !important; margin-top: 2.5rem; margin-bottom: 2.5rem; }
     
     /* Tableaux de données (Dataframe) */
-    .stDataFrame { border: 1px solid #27272A; border-radius: 12px; overflow: hidden; }
+    .stDataFrame { border: 1px solid #1E3A5F; border-radius: 14px; overflow: hidden; background: rgba(13, 25, 48, 0.4); }
     </style>
     """, unsafe_allow_html=True)
 
@@ -134,9 +143,7 @@ except Exception: st.error("Onglet introuvable"); st.stop()
 all_rows = ws.get_all_values()
 prevu_var, reel_var = 0.0, 0.0
 expenses_list = []
-debug_info = [] 
 
-# 1. RECHERCHE DYNAMIQUE DU HAUT DU TABLEAU
 col_var = -1
 col_prevu = -1
 col_actuel = -1
@@ -167,7 +174,6 @@ if col_var != -1 and row_var_start != -1:
                 reel_var = parse_amount(row[col_actuel])
                 break
 
-# 2. HISTORIQUE DES DÉPENSES (À partir de la ligne 60)
 for i in range(59, len(all_rows)):
     row = all_rows[i]
     if len(row) > 4 and str(row[0]).strip() != "":
@@ -180,39 +186,40 @@ restant = prevu_var - reel_var
 percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
 # --- UI PRINCIPALE ---
-st.title(f"📍 {selected_month} {now.year}")
-st.write("") # Petit espace
+st.title(f"💠 {selected_month} {now.year}")
+st.write("") 
 
 c1, c2 = st.columns(2)
-with c1: st.metric("Reste", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color="normal" if restant > 0 else "inverse")
-with c2: st.metric("Total Prévu", f"{prevu_var:.1f} CHF")
+with c1: st.metric("Restant", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color="normal" if restant > 0 else "inverse")
+with c2: st.metric("Budget Fixé", f"{prevu_var:.1f} CHF")
 
 st.write("")
-st.markdown(f"**Budget consommé :** <span style='color: #FFFFFF; font-weight: 600;'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
+st.markdown(f"**Conso actuelle :** <span style='color: #00F0FF; font-weight: 700; text-shadow: 0 0 10px rgba(0,240,255,0.5);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
 
 # --- FORMULAIRE ---
 with st.form("new_exp", clear_on_submit=True):
-    st.markdown("### ➕ Nouvel Achat")
+    st.markdown("<h3 style='color: #00F0FF !important; text-shadow: 0 0 15px rgba(0, 240, 255, 0.5);'>⚡ Nouvelle Transaction</h3>", unsafe_allow_html=True)
+    st.write("")
     col_a, col_b = st.columns([2, 1])
-    with col_a: lib = st.text_input("Marchand / Lieu", placeholder="Migros, Apple, Uber...")
+    with col_a: lib = st.text_input("Bénéficiaire / Lieu", placeholder="Ex: Migros, Apple, Uber...")
     with col_b: amt = st.number_input("Montant (CHF)", min_value=0.0, step=0.1, format="%.2f")
     cat = st.selectbox("Catégorie", ["Courses", "Sorties/Restos", "Transport", "Loisirs", "Imprévus", "Shopping", "Hygiène"])
-    note = st.text_input("Note (optionnel)", placeholder="Ex: Déjeuner collègues...")
+    note = st.text_input("Note (optionnel)")
     
-    st.write("") # Espacement
-    if st.form_submit_button("VALIDER LA DÉPENSE") and lib and amt > 0:
+    st.write("")
+    if st.form_submit_button("VALIDER LE PAIEMENT") and lib and amt > 0:
         ws.append_row([datetime.now().strftime("%Y-%m-%d"), lib, amt, note, cat], value_input_option="USER_ENTERED")
-        st.success("✅ Transaction enregistrée avec succès.")
+        st.success("✅ Transaction encryptée et ajoutée.")
         st.cache_resource.clear()
         st.rerun()
 
 # --- HISTORIQUE ---
 if expenses_list:
     st.write("")
-    with st.expander("🕒 Activité Récente", expanded=True):
+    with st.expander("📡 Flux Récents", expanded=True):
         st.dataframe(pd.DataFrame(expenses_list[::-1]).head(5), use_container_width=True, hide_index=True)
 
-st.sidebar.caption(f"Dernière synchronisation : {datetime.now().strftime('%H:%M')}")
+st.sidebar.caption(f"Dernière synchronisation serveur : {datetime.now().strftime('%H:%M')}")
