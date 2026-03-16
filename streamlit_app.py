@@ -12,140 +12,129 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Style personnalisé pour un look "App iPhone"
+# Style iOS Premium
 st.markdown("""
     <style>
-    .main { background-color: #f8f9fa; }
-    .stMetric { background-color: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    .stProgress > div > div > div > div { background-color: #007AFF; }
-    div[data-testid="stForm"] { background-color: white; padding: 20px; border-radius: 15px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .main { background-color: #f2f2f7; }
+    div[data-testid="stMetricValue"] { font-size: 28px; font-weight: 700; }
+    .stMetric { background-color: white; padding: 20px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .stProgress > div > div > div > div { background-color: #34c759; }
+    div[data-testid="stForm"] { background-color: white; padding: 25px; border-radius: 20px; border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .stButton>button { background-color: #007AFF; color: white; border-radius: 12px; height: 3.5em; font-weight: 600; width: 100%; border: none; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- CONNEXION À GOOGLE SHEETS ---
+# --- CONNEXION ---
 @st.cache_resource
 def get_gsheet_client():
+    # Vérification des secrets
+    if "gcp_service_account" not in st.secrets:
+        st.error("❌ Erreur : La clé 'gcp_service_account' est absente des Secrets Streamlit.")
+        st.info("Assurez-vous d'avoir bien collé le bloc [gcp_service_account] dans les paramètres de l'app.")
+        return None
+    
     scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     try:
         creds_info = st.secrets["gcp_service_account"]
-        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
+        # On s'assure que c'est bien un dictionnaire
+        creds_dict = dict(creds_info)
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
         return gspread.authorize(creds)
     except Exception as e:
-        st.error(f"❌ Erreur de configuration des Secrets : {e}")
+        st.error(f"❌ Erreur lors de l'authentification : {e}")
         return None
 
-# ID du tableur
 SHEET_ID = "1HXd22qMTATg__4U1Os0ktUMnhK1vflKlRU9b5yoxFHU"
-
 client = get_gsheet_client()
-if client:
-    try:
-        sh = client.open_by_key(SHEET_ID)
-    except Exception as e:
-        st.error("❌ Impossible d'accéder au fichier. Vérifie l'ID et le partage avec l'email du compte de service.")
-        st.stop()
-else:
+
+if not client: 
+    st.warning("L'application attend la configuration des Secrets pour démarrer.")
     st.stop()
-
-# --- GESTION DU MOIS ---
-mois_fr = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
-now = datetime.now()
-default_month = mois_fr[now.month - 1]
-
-# Sidebar pour sélection manuelle si besoin
-with st.sidebar:
-    st.header("Paramètres")
-    selected_month = st.selectbox("Choisir le mois", mois_fr, index=now.month - 1)
-    if st.button("Rafraîchir les données"):
-        st.cache_resource.clear()
-        st.rerun()
 
 try:
-    # On essaie de trouver la feuille (insensible à la casse et aux espaces)
-    available_sheets = [s.title for s in sh.worksheets()]
-    target_sheet = None
-    
-    for s_name in available_sheets:
-        if selected_month.lower() in s_name.lower():
-            target_sheet = s_name
-            break
-            
-    if target_sheet:
-        ws = sh.worksheet(target_sheet)
-    else:
-        st.error(f"⚠️ Onglet '{selected_month}' introuvable.")
-        st.info(f"Onglets disponibles : {', '.join(available_sheets)}")
-        st.stop()
+    sh = client.open_by_key(SHEET_ID)
 except Exception as e:
-    st.error(f"Erreur lors de l'accès à l'onglet : {e}")
+    st.error(f"❌ Accès au Google Sheet refusé : {e}")
+    st.info("Vérifiez que vous avez partagé le fichier avec l'email du compte de service.")
     st.stop()
 
-# --- LECTURE DU BUDGET ---
-data = ws.get_all_values()
-prevu_var = 0.0
-reel_var = 0.0
+# --- NAVIGATION ---
+mois_fr = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
+now = datetime.now()
+selected_month = st.sidebar.selectbox("Mois consulté", mois_fr, index=now.month - 1)
 
-# Recherche flexible de "Charges Variables"
-for row in data:
-    # On cherche dans toute la ligne au cas où les colonnes ont bougé
-    row_str = " ".join([str(cell) for cell in row])
-    if "Charges Variables" in row_str:
+try:
+    available_sheets = [s.title for s in sh.worksheets()]
+    target_sheet = next((s for s in available_sheets if selected_month.lower() in s.lower()), None)
+    if not target_sheet:
+        st.error(f"L'onglet {selected_month} n'existe pas dans ce fichier.")
+        st.stop()
+    ws = sh.worksheet(target_sheet)
+except:
+    st.error("Erreur de lecture de l'onglet.")
+    st.stop()
+
+# --- EXTRACTION DONNÉES ---
+all_rows = ws.get_all_values()
+prevu_var, reel_var = 0.0, 0.0
+expenses_list = []
+
+for row in all_rows:
+    # Recherche "Charges Variables" (Colonnes F, G, H -> index 5, 6, 7)
+    if len(row) > 7 and "Charges Variables" in row[5]:
         try:
-            # On cherche les colonnes G (index 6) et H (index 7)
-            if len(row) > 7:
-                p_raw = row[6].replace("'", "").replace(",", "").replace("CHF", "").strip()
-                r_raw = row[7].replace("'", "").replace(",", "").replace("CHF", "").strip()
-                prevu_var = float(p_raw) if p_raw else 0.0
-                reel_var = float(r_raw) if r_raw else 0.0
-                break
-        except (ValueError, IndexError):
-            continue
+            prevu_var = float(row[6].replace("'", "").replace(",", "").strip() or 0)
+            reel_var = float(row[7].replace("'", "").replace(",", "").strip() or 0)
+        except: pass
+    
+    # Historique : Colonnes A, B, C (Date, Marchand, Montant)
+    if len(row) > 2 and "-" in row[0] and len(row[0]) >= 8:
+        try:
+            expenses_list.append({"Date": row[0], "Marchand": row[1], "Montant": f"{row[2]} CHF", "Cat": row[4]})
+        except: pass
 
 restant = prevu_var - reel_var
 percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
-# --- INTERFACE ---
-st.title(f"📊 Budget {selected_month}")
+# --- UI PRINCIPALE ---
+st.title(f"📍 {selected_month} 2026")
 
 c1, c2 = st.columns(2)
 with c1:
-    delta_color = "normal" if restant > 0 else "inverse"
-    st.metric("Reste", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color=delta_color)
+    color = "normal" if restant > 0 else "inverse"
+    st.metric("Reste", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color=color)
 with c2:
-    st.metric("Total Prévu", f"{prevu_var:.2f} CHF")
+    st.metric("Total Prévu", f"{prevu_var:.1f} CHF")
 
-st.write(f"**Consommation :** {reel_var:.2f} / {prevu_var:.2f} CHF")
+st.write(f"**Budget consommé :** {reel_var:.2f} CHF")
 st.progress(percent)
 
 st.divider()
 
-# --- FORMULAIRE D'AJOUT ---
-st.subheader("➕ Ajouter une dépense")
-with st.form("form_depense", clear_on_submit=True):
-    date_d = st.date_input("Date", now)
-    nom_d = st.text_input("Marchand", placeholder="Ex: Migros, Shell, Bar...")
-    montant_d = st.number_input("Montant (CHF)", min_value=0.0, step=0.05, format="%.2f")
-    cat_d = st.selectbox("Catégorie", ["Courses", "Sorties/Restos", "Transport", "Loisirs", "Imprévus", "Shopping", "Hygiène/Entretien"])
-    note_d = st.text_input("Note", placeholder="Optionnel")
+# --- FORMULAIRE ---
+with st.form("new_exp", clear_on_submit=True):
+    st.subheader("➕ Ajouter un achat")
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        lib = st.text_input("Où ?", placeholder="Migros, Coop, Bar...")
+    with col_b:
+        amt = st.number_input("Combien ?", min_value=0.0, step=0.1, format="%.2f")
     
-    submit = st.form_submit_button("Enregistrer la dépense")
+    cat = st.selectbox("Catégorie", ["Courses", "Sorties/Restos", "Transport", "Loisirs", "Imprévus", "Shopping", "Hygiène"])
+    note = st.text_input("Note (optionnel)")
+    
+    if st.form_submit_button("VALIDER L'ACHAT"):
+        if lib and amt > 0:
+            new_line = [datetime.now().strftime("%Y-%m-%d"), lib, amt, note, cat]
+            ws.append_row(new_line, value_input_option="USER_ENTERED")
+            st.success("Enregistré !")
+            st.cache_resource.clear()
+            st.rerun()
 
-if submit:
-    if nom_d and montant_d > 0:
-        # Format de ligne : Date, Marchand, Montant, Note, Catégorie
-        nouvelle_ligne = [date_d.strftime("%Y-%m-%d"), nom_d, montant_d, note_d, cat_d]
-        
-        with st.spinner("Envoi vers Google Sheets..."):
-            try:
-                ws.append_row(nouvelle_ligne, value_input_option="USER_ENTERED")
-                st.success(f"✅ {montant_d} CHF ajoutés chez {nom_d}")
-                st.balloons()
-                st.cache_resource.clear()
-                st.rerun()
-            except Exception as e:
-                st.error(f"Erreur lors de l'écriture : {e}")
-    else:
-        st.warning("Remplis le marchand et le montant !")
+# --- HISTORIQUE ---
+if expenses_list:
+    with st.expander("🕒 Dernières dépenses"):
+        recent = pd.DataFrame(expenses_list[::-1]).head(5)
+        st.table(recent)
 
-st.divider()
-st.caption(f"Connecté : {sh.title} | {now.strftime('%H:%M:%S')}")
+st.sidebar.caption(f"Dernière synchro : {datetime.now().strftime('%H:%M')}")
