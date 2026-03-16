@@ -125,6 +125,7 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(255,255,255,0.3);
     }
 
+    /* Form Design */
     div[data-testid="stForm"] { 
         background: rgba(15, 23, 42, 0.3) !important;
         padding: 25px; border-radius: 25px; 
@@ -161,13 +162,13 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    # Bleu -> Orange -> Rouge
-    if percent >= 1.0: 
-        bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
-    elif percent >= 0.66: 
-        bar_color = "linear-gradient(90deg, #B45309, #F59E0B)"
+    # Règle des Tiers (Vert < 33%, Orange < 66%, Rouge > 66%)
+    if percent >= 0.666: 
+        bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" # Rouge
+    elif percent >= 0.333: 
+        bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" # Orange
     else: 
-        bar_color = "linear-gradient(90deg, #1D4ED8, #3B82F6)" 
+        bar_color = "linear-gradient(90deg, #059669, #10B981)" # Vert
     
     cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
     ui_name = cat_ui_map.get(name.strip(), name)
@@ -278,20 +279,21 @@ with c2: st.metric("Budget Plan", f"{prevu_var:.0f} CHF")
 st.write("")
 st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 800; font-size: 20px; text-shadow: 0 0 10px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 
-main_bar_color = "#3B82F6"
-if percent >= 1.0: main_bar_color = "#E11D48"
-elif percent >= 0.66: main_bar_color = "#F59E0B"
+# Règle des Tiers pour la grande jauge globale
+main_bar_color = "#10B981" # Vert par défaut
+if percent >= 0.666: main_bar_color = "#E11D48" # Rouge
+elif percent >= 0.333: main_bar_color = "#F59E0B" # Orange
 
 st.markdown(f"""
     <style>
-    .stProgress > div > div > div > div {{ background: {main_bar_color} !important; box-shadow: 0 0 10px {main_bar_color}44; }}
+    .stProgress > div > div > div > div {{ background: {main_bar_color} !important; box-shadow: 0 0 10px {main_bar_color}66; }}
     </style>
 """, unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
 
-# --- SOBRE TRACKER (SMART SORT) ---
+# --- CATEGORIES TRACKER ---
 st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; margin-bottom: 25px;'>📊 Categories</h3>", unsafe_allow_html=True)
 if category_progress:
     sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
