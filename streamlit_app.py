@@ -112,7 +112,7 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- BLUE GLOW BUTTON (REFINED) --- */
+    /* --- BLUE GLOW BUTTON (REFINED LUEUR) --- */
     div[data-testid="stButton"] > button {
         background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
         border: 1px solid rgba(59, 130, 246, 0.5) !important;
@@ -122,7 +122,6 @@ st.markdown("""
         margin-bottom: 30px !important;
         transition: all 0.2s ease-out !important;
     }
-    
     div[data-testid="stButton"] > button p {
         color: #FFFFFF !important;
         font-weight: 900 !important;
@@ -131,7 +130,6 @@ st.markdown("""
         text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
         margin: 0 !important;
     }
-
     div[data-testid="stButton"] > button:hover {
         background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important; 
         border-color: rgba(96, 165, 250, 0.6) !important;
@@ -166,17 +164,25 @@ st.markdown("""
         margin-top: 20px;
     }
 
-    /* --- MOBILE RESPONSIVENESS --- */
+    /* --- MOBILE RESPONSIVENESS (SMART STACK) --- */
     @media (max-width: 768px) {
-        .hero-card { padding: 25px 15px; } 
-        .hero-top-metrics { font-size: 11px; letter-spacing: 0.5px; }
+        .hero-card { padding: 20px 15px; } 
+        .hero-top-metrics { 
+            font-size: 10px; 
+            letter-spacing: 0.5px; 
+            justify-content: space-around;
+        }
         .hero-top-metrics > div { 
             display: flex; 
             flex-direction: column; 
             gap: 4px; 
             text-align: center;
         }
-        .hero-main-value { font-size: 42px; }
+        .hero-main-value { font-size: 38px; margin-bottom: 15px; }
+        .cat-card { padding: 12px 15px; }
+        .cat-label { font-size: 14px !important; }
+        .transaction-card { padding: 12px 12px; }
+        h1 { font-size: 32px !important; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -215,8 +221,7 @@ def get_progress_html(name, reel, prevu):
 <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
 <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
 </div>
-</div>
-"""
+</div>"""
 
 def get_transaction_html(date, merchant, amount, category):
     cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
@@ -233,8 +238,7 @@ def get_transaction_html(date, merchant, amount, category):
 </div>
 </div>
 <div class="trans-amount">{amount}</div>
-</div>
-"""
+</div>"""
 
 # --- CONNECTION ---
 @st.cache_resource
@@ -325,26 +329,27 @@ st.markdown(f"""
 <div style="text-align: center; margin-bottom: 30px;">
     <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">Dashboard</div>
     <div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div>
-</div>
-""", unsafe_allow_html=True)
+</div>""", unsafe_allow_html=True)
 
 bar_color = 'linear-gradient(90deg, #059669, #10B981)'
-if percent >= 0.8: bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
-elif percent >= 0.5: bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
+if percent >= 0.8:
+    bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
+elif percent >= 0.5:
+    bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
 
+# Modif Mobile: Utilisation de &nbsp; pour garder le CHF collé au montant
 hero_html = f"""
 <div class="hero-card">
-    <div class="hero-top-metrics">
-        <div><span>REMAINING</span> <span style="color:#FFFFFF; font-size: 14px;">{format_chf(restant)}&nbsp;CHF</span></div>
-        <div><span>PLANNED</span> <span style="color:#FFFFFF; font-size: 14px;">{format_chf(prevu_var)}&nbsp;CHF</span></div>
-    </div>
-    <div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
-    <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-        <div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
-    </div>
-    {insight_html}
+<div class="hero-top-metrics">
+<div><span>REMAINING</span> <span style="color:#FFFFFF; font-size: 14px; font-weight: 700;">{format_chf(restant)}&nbsp;CHF</span></div>
+<div><span>PLANNED</span> <span style="color:#FFFFFF; font-size: 14px; font-weight: 700;">{format_chf(prevu_var)}&nbsp;CHF</span></div>
 </div>
-"""
+<div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
+<div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+<div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
+</div>
+{insight_html}
+</div>"""
 st.markdown(hero_html, unsafe_allow_html=True)
 
 # --- POP-UP DIALOG (MODAL) ---
@@ -360,9 +365,15 @@ def add_transaction_modal():
     
     if st.button("CONFIRM EXPENSE", use_container_width=True):
         if lib and amt > 0:
-            target = len(ws.col_values(2)) + 1
+            col_b = ws.col_values(2)
+            target = 60
+            for r in range(60, 150):
+                if r > len(col_b) or not str(col_b[r-1]).strip():
+                    target = r
+                    break
             new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
             ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
+            st.cache_resource.clear()
             st.rerun()
 
 if st.button("+ ADD NEW EXPENSE", use_container_width=True):
@@ -392,7 +403,7 @@ with col_c2:
 
 st.divider()
 
-# --- BOTTOM SECTION: DONUT CHART ---
+# --- BOTTOM SECTION: 3D STYLIZED DONUT CHART ---
 st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
 st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 5px;'><i class='ph ph-chart-donut'></i> Spending Distribution</h3>", unsafe_allow_html=True)
 
@@ -402,16 +413,17 @@ if category_progress:
     
     if values:
         azure_colors = ['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A', '#BFDBFE']
-        fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=azure_colors, line=dict(color='#030712', width=5)), textinfo='none')])
+        fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=azure_colors, line=dict(color='#030712', width=5)), textinfo='none', hoverinfo='label+percent+value')])
         fig.update_layout(
             showlegend=True,
             legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color="#94A3B8")),
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            height=450, margin=dict(t=20, b=20, l=10, r=10),
+            margin=dict(t=20, b=20, l=10, r=10), height=450,
             annotations=[dict(text='TOTAL SPENT', x=0.5, y=0.58, font_size=12, font_color='#93C5FD', showarrow=False),
                          dict(text=f"<b>{format_chf(reel_var)}</b><br><span style='font-size:18px; color:#60A5FA'>CHF</span>", x=0.5, y=0.45, font_size=36, font_color='#FFFFFF', showarrow=False)]
         )
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 st.markdown("</div>", unsafe_allow_html=True)
+st.write("")
 st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
