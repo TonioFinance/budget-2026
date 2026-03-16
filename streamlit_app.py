@@ -5,106 +5,114 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # --- CONFIGURATION DE LA PAGE ---
-st.set_page_config(page_title="Budget 2026", page_icon="💠", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE ULTRA-PRO / GLOW BLEU ---
+# --- STYLE OBSIDIAN & AZURE (NOIR / BLANC / BLEU) ---
 st.markdown("""
     <style>
-    /* Fond principal : Dégradé radial bleu abysse vers noir */
+    /* Import de la police technique/finance */
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
+
+    /* Fond principal : Noir profond avec un projecteur bleu au centre-haut */
     .stApp { 
-        background: radial-gradient(circle at top, #0A192F 0%, #020C1B 100%);
-        color: #E2E8F0; 
-        font-family: 'Inter', -apple-system, sans-serif;
+        background-color: #030712;
+        background-image: radial-gradient(circle at 50% -20%, #172554 0%, #030712 70%);
+        color: #F8FAFC; 
+        font-family: 'Space Grotesk', sans-serif;
     }
     
-    /* Textes et Titres */
-    h1, h2, h3 { color: #FFFFFF !important; font-weight: 800 !important; text-shadow: 0 0 20px rgba(0, 198, 255, 0.3); }
-    p, label { color: #94A3B8 !important; font-weight: 500; }
+    /* Textes et Titres purs */
+    h1, h2, h3 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
+    p, label { color: #94A3B8 !important; }
     
-    /* Cartes des Métriques (Reste / Total) - Effet Verre & Néon */
+    /* --- CARTES DES MÉTRIQUES (GLOW EFFECT) --- */
     div[data-testid="stMetricValue"] { 
-        font-size: 42px; 
-        font-weight: 900; 
-        color: #00F0FF !important; /* Bleu Cyan Néon */
-        text-shadow: 0 0 15px rgba(0, 240, 255, 0.6), 0 0 30px rgba(0, 240, 255, 0.2); 
-        letter-spacing: -1px;
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 44px; 
+        font-weight: 700; 
+        color: #FFFFFF !important; /* Chiffres Blanc Pur */
+        text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 20px rgba(59, 130, 246, 0.5); /* Halo bleu/blanc */
     }
     div[data-testid="stMetricLabel"] {
-        color: #60A5FA !important;
-        font-size: 15px;
+        color: #60A5FA !important; /* Label Bleu clair */
+        font-size: 14px;
         text-transform: uppercase;
-        letter-spacing: 2px;
+        letter-spacing: 1.5px;
     }
     .stMetric { 
-        background: rgba(13, 25, 48, 0.6);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        padding: 25px; 
-        border-radius: 24px; 
-        border: 1px solid rgba(0, 240, 255, 0.15); 
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(0, 122, 255, 0.1); 
-        transition: all 0.3s ease;
+        background: rgba(15, 23, 42, 0.4); /* Fond de carte noir/bleuté transparent */
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 24px; 
+        border-radius: 20px; 
+        border: 1px solid rgba(255, 255, 255, 0.05); 
+        border-top: 1px solid rgba(59, 130, 246, 0.5); /* Ligne bleue lumineuse en haut */
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8); 
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .stMetric:hover { 
-        transform: translateY(-5px); 
-        box-shadow: 0 15px 40px rgba(0, 122, 255, 0.3), inset 0 0 25px rgba(0, 240, 255, 0.2); 
-        border: 1px solid rgba(0, 240, 255, 0.4);
+        transform: translateY(-4px); 
+        box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3), inset 0 0 15px rgba(59, 130, 246, 0.1); 
+        border-color: rgba(59, 130, 246, 0.4);
     }
 
-    /* Barre de progression (Luminescence Bleue) */
+    /* --- BARRE DE PROGRESSION --- */
     .stProgress > div > div > div > div { 
-        background: linear-gradient(90deg, #0072FF, #00F0FF); 
-        box-shadow: 0 0 20px rgba(0, 240, 255, 0.7);
+        background: linear-gradient(90deg, #1E3A8A, #3B82F6, #E0F2FE); 
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.4);
         border-radius: 10px;
     }
 
-    /* Boîte du Formulaire */
+    /* --- BOÎTE DU FORMULAIRE --- */
     div[data-testid="stForm"] { 
-        background: linear-gradient(145deg, #0B1930, #040D21);
-        padding: 35px; 
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.6) 0%, rgba(3, 7, 18, 0.9) 100%);
+        padding: 30px; 
         border-radius: 24px; 
-        border: 1px solid #1E3A5F; 
-        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6); 
+        border: 1px solid rgba(59, 130, 246, 0.2); 
+        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255,255,255,0.05); 
     }
 
-    /* Inputs et Selectbox */
+    /* Inputs */
     .stTextInput>div>div>input, .stNumberInput>div>div>input {
-        background-color: rgba(2, 12, 27, 0.8) !important;
-        color: #00F0FF !important;
-        border: 1px solid #1E3A5F !important;
+        background-color: rgba(3, 7, 18, 0.8) !important;
+        color: #FFFFFF !important;
+        border: 1px solid rgba(59, 130, 246, 0.3) !important;
         border-radius: 12px;
-        box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+        font-family: 'Space Grotesk', sans-serif;
     }
     .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus {
-        border-color: #00F0FF !important;
-        box-shadow: 0 0 15px rgba(0, 240, 255, 0.4) !important;
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.5) !important;
     }
 
-    /* Bouton d'action "Valider" - Glowing Button */
+    /* --- BOUTON D'ACTION (LUMINESCENT) --- */
     .stButton>button { 
-        background: linear-gradient(90deg, #0072FF 0%, #00C6FF 100%);
+        background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
         color: #FFFFFF !important; 
-        border-radius: 16px; 
+        border-radius: 14px; 
         height: 3.8em; 
         font-size: 16px;
-        font-weight: 800; 
-        text-transform: uppercase;
-        letter-spacing: 1.5px; 
+        font-weight: 700; 
+        letter-spacing: 2px; 
         width: 100%; 
         border: none; 
-        box-shadow: 0 8px 25px rgba(0, 198, 255, 0.4); 
-        transition: all 0.3s ease-in-out; 
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); 
+        transition: all 0.3s ease; 
     }
     .stButton>button:hover { 
-        box-shadow: 0 12px 35px rgba(0, 240, 255, 0.7); 
-        transform: scale(1.03); 
+        background: linear-gradient(90deg, #2563EB 0%, #60A5FA 100%);
+        box-shadow: 0 0 25px rgba(59, 130, 246, 0.8), 0 0 40px rgba(59, 130, 246, 0.3); 
+        transform: scale(1.02); 
     }
     
-    /* Séparateur discret */
-    hr { border-color: rgba(30, 58, 95, 0.5) !important; margin-top: 2.5rem; margin-bottom: 2.5rem; }
+    /* --- TABLEAU DE DONNÉES --- */
+    .stDataFrame { 
+        border: 1px solid rgba(59, 130, 246, 0.2); 
+        border-radius: 14px; 
+        background: rgba(15, 23, 42, 0.3); 
+    }
     
-    /* Tableaux de données (Dataframe) */
-    .stDataFrame { border: 1px solid #1E3A5F; border-radius: 14px; overflow: hidden; background: rgba(13, 25, 48, 0.4); }
+    hr { border-color: rgba(59, 130, 246, 0.15) !important; margin: 2rem 0; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -186,7 +194,7 @@ restant = prevu_var - reel_var
 percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
 # --- UI PRINCIPALE ---
-st.title(f"💠 {selected_month} {now.year}")
+st.title(f"⚡ {selected_month} {now.year}")
 st.write("") 
 
 c1, c2 = st.columns(2)
@@ -194,32 +202,32 @@ with c1: st.metric("Restant", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delt
 with c2: st.metric("Budget Fixé", f"{prevu_var:.1f} CHF")
 
 st.write("")
-st.markdown(f"**Conso actuelle :** <span style='color: #00F0FF; font-weight: 700; text-shadow: 0 0 10px rgba(0,240,255,0.5);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
+st.markdown(f"**Conso actuelle :** <span style='color: #FFFFFF; font-family: \"Space Grotesk\", sans-serif; font-size: 18px; text-shadow: 0 0 10px rgba(59, 130, 246, 0.6);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
 
 # --- FORMULAIRE ---
 with st.form("new_exp", clear_on_submit=True):
-    st.markdown("<h3 style='color: #00F0FF !important; text-shadow: 0 0 15px rgba(0, 240, 255, 0.5);'>⚡ Nouvelle Transaction</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #FFFFFF; text-shadow: 0 0 15px rgba(59, 130, 246, 0.5);'>Ajouter une Dépense</h3>", unsafe_allow_html=True)
     st.write("")
     col_a, col_b = st.columns([2, 1])
-    with col_a: lib = st.text_input("Bénéficiaire / Lieu", placeholder="Ex: Migros, Apple, Uber...")
+    with col_a: lib = st.text_input("Bénéficiaire / Lieu", placeholder="Ex: Migros, Apple...")
     with col_b: amt = st.number_input("Montant (CHF)", min_value=0.0, step=0.1, format="%.2f")
     cat = st.selectbox("Catégorie", ["Courses", "Sorties/Restos", "Transport", "Loisirs", "Imprévus", "Shopping", "Hygiène"])
     note = st.text_input("Note (optionnel)")
     
     st.write("")
-    if st.form_submit_button("VALIDER LE PAIEMENT") and lib and amt > 0:
+    if st.form_submit_button("ENREGISTRER") and lib and amt > 0:
         ws.append_row([datetime.now().strftime("%Y-%m-%d"), lib, amt, note, cat], value_input_option="USER_ENTERED")
-        st.success("✅ Transaction encryptée et ajoutée.")
+        st.success("✅ Transaction confirmée.")
         st.cache_resource.clear()
         st.rerun()
 
 # --- HISTORIQUE ---
 if expenses_list:
     st.write("")
-    with st.expander("📡 Flux Récents", expanded=True):
+    with st.expander("📊 Flux Récents", expanded=True):
         st.dataframe(pd.DataFrame(expenses_list[::-1]).head(5), use_container_width=True, hide_index=True)
 
-st.sidebar.caption(f"Dernière synchronisation serveur : {datetime.now().strftime('%H:%M')}")
+st.sidebar.caption(f"Dernière synchronisation : {datetime.now().strftime('%H:%M')}")
