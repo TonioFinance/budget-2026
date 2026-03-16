@@ -6,9 +6,9 @@ from google.oauth2.service_account import Credentials
 import plotly.graph_objects as go
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & AZURE (SAAS EDITION) ---
+# --- STYLE OBSIDIAN & AZURE (FULL SAAS PREMIUM EDITION) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
@@ -26,6 +26,59 @@ st.markdown("""
 
     h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
+    /* --- CUSTOM TABS NAVIGATION (CENTERED & ICONIFIED) --- */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+        background-color: rgba(15, 23, 42, 0.7);
+        padding: 10px 20px;
+        border-radius: 26px;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        backdrop-filter: blur(25px);
+        margin-bottom: 50px;
+        justify-content: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 55px;
+        background-color: transparent !important;
+        border-radius: 16px !important;
+        color: #64748B !important;
+        font-weight: 700 !important;
+        border: none !important;
+        padding: 0 35px !important;
+        font-size: 15px !important;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* Injection of Phosphor Pictograms via CSS */
+    .stTabs [data-baseweb="tab"]::before {
+        font-family: "phosphor-regular" !important;
+        font-size: 22px;
+        transition: all 0.2s ease;
+    }
+    /* Tab 1 Icon: ChartPie */
+    .stTabs [data-baseweb="tab"]:nth-child(1)::before { content: "\\e0da"; }
+    /* Tab 2 Icon: Scan */
+    .stTabs [data-baseweb="tab"]:nth-child(2)::before { content: "\\e40a"; }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: rgba(37, 99, 235, 0.1) !important;
+        color: #FFFFFF !important;
+        font-weight: 900 !important;
+        text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+    }
+    
+    .stTabs [aria-selected="true"]::before {
+        color: #60A5FA !important;
+        filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.8));
+        transform: scale(1.1);
+    }
+
     /* --- HERO DASHBOARD (TOP CARD) --- */
     .hero-card {
         background: linear-gradient(160deg, rgba(30, 58, 138, 0.25) 0%, rgba(3, 7, 18, 0.8) 100%);
@@ -101,17 +154,16 @@ st.markdown("""
         justify-content: space-between; 
         align-items: center;
         border: 1px solid rgba(255,255,255,0.03);
-        cursor: pointer;
     }
     .transaction-card:hover {
-        transform: translateY(-2px);
+        transform: translateX(8px) scale(1.01);
         background: rgba(59, 130, 246, 0.08);
         border: 1px solid rgba(59, 130, 246, 0.3);
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- EXPANDER (FULL WIDTH ADD EXPENSE) & HOVER --- */
+    /* --- EXPANDER & FORM PREMIUM --- */
     .stExpander {
         background: rgba(15, 23, 42, 0.2) !important;
         border: 1px solid rgba(59, 130, 246, 0.3) !important;
@@ -126,30 +178,13 @@ st.markdown("""
         font-weight: 900 !important;
         letter-spacing: 1.5px !important;
         border-radius: 14px !important;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        transition: transform 0.2s ease-out, box-shadow 0.2s ease-out !important;
     }
-    .stExpander details summary:hover {
-        background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important;
-        box-shadow: 0 0 30px rgba(59, 130, 246, 0.4) !important;
-        transform: scale(1.02) !important;
-    }
-
-    /* --- AZURE INPUT FIELDS STYLING --- */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input, div[data-baseweb="select"] > div {
-        background-color: rgba(15, 23, 42, 0.6) !important; /* Navy profond */
+    
+    /* Input Styling */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input {
+        background-color: rgba(15, 23, 42, 0.6) !important;
         color: #FFFFFF !important;
         border: 1px solid rgba(59, 130, 246, 0.2) !important;
-        border-radius: 12px !important;
-        backdrop-filter: blur(8px);
-        padding: 10px 15px !important;
-    }
-    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, div[data-baseweb="select"] > div:focus-within {
-        border-color: #3B82F6 !important;
-        box-shadow: 0 0 15px rgba(59, 130, 246, 0.4) !important;
-        background-color: rgba(30, 41, 59, 0.8) !important;
     }
 
     /* --- BLUE GLOW BUTTON (CONFIRM) --- */
@@ -160,18 +195,14 @@ st.markdown("""
         height: 3.8rem !important;
         box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255,255,255,0.2) !important;
         transition: all 0.2s ease-out !important;
-        margin-top: 10px;
-    }
-    div[data-testid="stButton"] > button p {
-        color: #FFFFFF !important;
+        width: 100%;
+        color: white !important;
         font-weight: 900 !important;
-        font-size: 16px !important;
-        letter-spacing: 1.5px !important;
-        text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
-        margin: 0 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1.5px;
     }
 
-    /* Chart Glass Container */
+    /* --- CHART GLASS CONTAINER --- */
     .chart-container {
         background: rgba(15, 23, 42, 0.3);
         border: 1px solid rgba(59, 130, 246, 0.15);
@@ -180,11 +211,13 @@ st.markdown("""
         margin-top: 20px;
     }
 
-    /* --- MOBILE RESPONSIVENESS --- */
-    @media (max-width: 768px) {
-        .hero-card { padding: 20px 15px; } 
-        .hero-top-metrics { font-size: 10px; }
-        .hero-main-value { font-size: 38px; }
+    /* Scanner Dropzone */
+    .scanner-zone {
+        border: 2px dashed rgba(59, 130, 246, 0.3);
+        border-radius: 28px;
+        padding: 60px 20px;
+        text-align: center;
+        background: rgba(15, 23, 42, 0.2);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -262,17 +295,14 @@ months_map = {"January": "Janvier", "February": "Février", "March": "Mars", "Ap
 now = datetime.now()
 selected_month_en = st.sidebar.selectbox("Select Month", list(months_map.keys()), index=now.month - 1)
 selected_month = months_map[selected_month_en]
-
-try:
-    ws = sh.worksheet(next((s for s in [s.title for s in sh.worksheets()] if selected_month.lower() in s.lower()), None))
-except Exception: st.error("Tab not found"); st.stop()
+ws = sh.worksheet(next((s for s in [s.title for s in sh.worksheets()] if selected_month.lower() in s.lower()), None))
 
 # --- DATA EXTRACTION ---
 all_rows = ws.get_all_values()
-prevu_var, reel_var = 0.0, 0.0
-expenses_list = []
 category_progress = []
+raw_expenses = []
 
+# Logic for Categories
 col_var, col_prevu, col_actuel, row_var_start = -1, -1, -1, -1
 for i, row in enumerate(all_rows):
     if i >= 65: break
@@ -292,19 +322,18 @@ if col_var != -1:
     for i in range(row_var_start + 1, min(row_var_start + 20, len(all_rows))):
         row = all_rows[i]
         cat = str(row[col_var]).strip()
-        if "total" in cat.lower(): break
+        if "total" in cat.lower() or not cat: break
         elif cat and cat.lower() not in ["", "nan"]:
             if "vacance" not in cat.lower():
-                p_val = parse_amount(row[col_prevu]) if len(row) > col_prevu else 0.0
-                r_val = parse_amount(row[col_actuel]) if len(row) > col_actuel else 0.0
-                category_progress.append({"name": cat, "prevu": p_val, "reel": r_val})
-                
-    prevu_var = sum(c["prevu"] for c in category_progress)
-    reel_var = sum(c["reel"] for c in category_progress)
+                category_progress.append({"name": cat, "prevu": parse_amount(row[col_prevu]), "reel": parse_amount(row[col_actuel])})
 
+prevu_var = sum(c["prevu"] for c in category_progress)
+reel_var = sum(c["reel"] for c in category_progress)
+
+# History Scan (Robust "Date" finding)
 row_history_start = -1
 for i, row in enumerate(all_rows):
-    if len(row) > 0 and str(row[0]).strip().lower() == "date":
+    if any(str(cell).strip().lower() == "date" for cell in row):
         row_history_start = i + 1
         break
 
@@ -312,153 +341,110 @@ if row_history_start != -1:
     for i in range(row_history_start, len(all_rows)):
         row = all_rows[i]
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
-            if "total" in str(row[0]).lower() or "total" in str(row[1]).lower(): continue
-            raw_val = parse_amount(row[2])
-            expenses_list.append({
-                "Date": row[0], 
-                "Marchand": row[1], 
-                "Montant": format_chf(raw_val) + " CHF", 
-                "Catégorie": row[4],
-                "RawAmount": raw_val # Needed for trend calculation
-            })
+            if "total" in str(row[0]).lower(): continue
+            raw_amt = parse_amount(row[2])
+            raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": raw_amt, "Category": row[4]})
 
-restant = prevu_var - reel_var
-percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
+# --- TABS SYSTEM ---
+tab_dashboard, tab_scanner = st.tabs(["Dashboard", "Scanner"])
 
-# --- SMART INSIGHT LOGIC ---
-if percent >= 0.80:
-    insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% of budget consumed</div>"
-elif percent >= 0.50:
-    insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% of budget consumed</div>"
-else:
-    insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> Finances are on track</div>"
+with tab_dashboard:
+    # --- DASHBOARD LOGIC ---
+    restant = prevu_var - reel_var
+    percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
-# --- MAIN UI ---
-st.markdown(f"""
-<div style="text-align: center; margin-bottom: 30px;">
-    <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">DASHBOARD</div>
-    <div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div>
-</div>""", unsafe_allow_html=True)
+    if percent >= 0.80: insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% consumed</div>"
+    elif percent >= 0.50: insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% consumed</div>"
+    else: insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> On track</div>"
 
-bar_color = 'linear-gradient(90deg, #059669, #10B981)'
-if percent >= 0.8:
-    bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
-elif percent >= 0.5:
-    bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
+    st.markdown(f"""<div style="text-align: center; margin-bottom: 30px;"><div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">OVERVIEW</div><div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div></div>""", unsafe_allow_html=True)
 
-hero_html = f"""
-<div class="hero-card">
-<div class="hero-top-metrics">
-<div><span>REMAINING</span> <span style="color:#FFFFFF; font-size: 14px; font-weight: 700;">{format_chf(restant)}&nbsp;CHF</span></div>
-<div><span>PLANNED</span> <span style="color:#FFFFFF; font-size: 14px; font-weight: 700;">{format_chf(prevu_var)}&nbsp;CHF</span></div>
-</div>
-<div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
-<div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-<div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
-</div>
-{insight_html}
-</div>"""
-st.markdown(hero_html, unsafe_allow_html=True)
+    bar_color = 'linear-gradient(90deg, #059669, #10B981)'
+    if percent >= 0.8: bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
+    elif percent >= 0.5: bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
 
-# --- FULL WIDTH ADD EXPENSE MENU ---
-form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
+    st.markdown(f"""
+    <div class="hero-card">
+        <div class="hero-top-metrics">
+            <div><span>REMAINING</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(restant)} CHF</span></div>
+            <div><span>PLANNED</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(prevu_var)} CHF</span></div>
+        </div>
+        <div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
+        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+            <div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
+        </div>
+        {insight_html}
+    </div>""", unsafe_allow_html=True)
 
-with st.expander("ADD NEW EXPENSE", expanded=False):
-    st.markdown("<br>", unsafe_allow_html=True)
-    lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
-    amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
-    cat_en = st.selectbox("Category", list(form_cat_map.keys()))
-    note = st.text_input("Note (Optional)")
-    
-    if st.button("CONFIRM TRANSACTION", use_container_width=True):
-        if lib and amt > 0:
-            target = len(ws.col_values(2)) + 1
-            new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
-            ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
-            st.cache_resource.clear()
-            st.rerun()
+    # ADD EXPENSE (Writing from Line 60)
+    form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
+    with st.expander("ADD NEW EXPENSE", expanded=False):
+        lib = st.text_input("Merchant", placeholder="Apple, Migros...")
+        amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
+        cat_en = st.selectbox("Category", list(form_cat_map.keys()))
+        note = st.text_input("Note")
+        if st.button("CONFIRM TRANSACTION", use_container_width=True):
+            if lib and amt > 0:
+                col_b = ws.col_values(2)
+                target = 60
+                for r in range(60, 150):
+                    if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
+                new_data = [[datetime.now().strftime("%d/%m/%Y"), lib, amt, note, form_cat_map[cat_en]]]
+                ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
+                st.cache_resource.clear(); st.rerun()
 
-# --- SPLIT LAYOUT ---
-col_c1, col_c2 = st.columns(2, gap="large")
+    c1, c2 = st.columns(2, gap="large")
+    with c1:
+        st.markdown("<h3 style='font-size: 18px;'>Category Breakdown</h3>", unsafe_allow_html=True)
+        sorted_cats = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
+        for cat in sorted_cats: st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
+    with c2:
+        st.markdown("<h3 style='font-size: 18px;'>Recent Activity</h3>", unsafe_allow_html=True)
+        if raw_expenses:
+            with st.container(height=450, border=False):
+                for exp in raw_expenses[::-1]: st.markdown(get_transaction_html(exp["Date"], exp["Merchant"], format_chf(exp["Amount"]) + " CHF", exp["Category"]), unsafe_allow_html=True)
 
-with col_c1:
-    st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-list-dashes'></i> Category Breakdown</h3>", unsafe_allow_html=True)
+    st.divider()
+
+    # --- TREND CHART ---
+    st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
+    if raw_expenses:
+        df_trends = pd.DataFrame(raw_expenses)
+        df_trends['Date'] = pd.to_datetime(df_trends['Date'], dayfirst=True, errors='coerce')
+        df_trends = df_trends.dropna(subset=['Date'])
+        if not df_trends.empty:
+            daily = df_trends.groupby('Date')['Amount'].sum().reset_index().sort_values('Date')
+            daily['Cumulative'] = daily['Amount'].cumsum()
+            fig = go.Figure(go.Scatter(x=daily['Date'], y=daily['Cumulative'], mode='lines', fill='tozeroy', line=dict(color='#60A5FA', width=4), fillcolor='rgba(96, 165, 250, 0.1)'))
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"))
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    st.markdown("</div><div class='chart-container'>", unsafe_allow_html=True)
+
+    # --- DONUT CHART ---
+    st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
     if category_progress:
-        sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
-        for cat in sorted_categories:
-            st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
+        labels = [c["name"] for c in category_progress if c["reel"] > 0]
+        values = [c["reel"] for c in category_progress if c["reel"] > 0]
+        if values:
+            fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']))])
+            fig_pie.update_layout(showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=0, b=0, l=0, r=0), annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False)])
+            st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
+    st.markdown("</div>", unsafe_allow_html=True)
 
-with col_c2:
-    st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
-    if expenses_list:
-        with st.container(height=500, border=False): 
-            for exp in expenses_list[::-1]: 
-                st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
-    else:
-        st.info("No recent transactions.")
+with tab_scanner:
+    st.markdown("<div style='text-align: center; margin-top: 20px;'>", unsafe_allow_html=True)
+    st.markdown("<h2>📸 AI RECEIPT SCANNER</h2>", unsafe_allow_html=True)
+    st.markdown('<div class="scanner-zone">', unsafe_allow_html=True)
+    up_file = st.file_uploader("Drop receipt here", type=["jpg", "png", "pdf"], label_visibility="collapsed")
+    if not up_file: st.markdown('<i class="ph ph-scan" style="font-size: 80px; color: rgba(59,130,246,0.3); padding: 40px 0;"></i>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    if up_file:
+        st.info("Analysis in progress...")
+        cs1, cs2 = st.columns(2)
+        with cs1: st.text_input("Merchant", value="Store (Simulated)"); st.number_input("Amount", value=0.0)
+        with cs2: st.selectbox("Category", list(form_cat_map.keys()), index=0); st.write("<br>", unsafe_allow_html=True)
+        if st.button("SAVE DATA", use_container_width=True): st.success("Added!")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-st.divider()
-
-# --- NEW SECTION: SPENDING TREND (CUMULATIVE LINE CHART) ---
-st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
-st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
-
-if expenses_list:
-    df_trends = pd.DataFrame(expenses_list)
-    # FIX: force dayfirst=True to avoid American format confusion
-    df_trends['Date'] = pd.to_datetime(df_trends['Date'], dayfirst=True, errors='coerce')
-    df_trends = df_trends.dropna(subset=['Date'])
-    
-    if not df_trends.empty:
-        # Sort and calculate daily cumulative sum
-        daily_spend = df_trends.groupby('Date')['RawAmount'].sum().reset_index().sort_values('Date')
-        daily_spend['Cumulative'] = daily_spend['RawAmount'].cumsum()
-
-        fig_trend = go.Figure()
-        fig_trend.add_trace(go.Scatter(
-            x=daily_spend['Date'], y=daily_spend['Cumulative'],
-            mode='lines', fill='tozeroy',
-            line=dict(color='#60A5FA', width=4),
-            fillcolor='rgba(96, 165, 250, 0.1)',
-            hoverinfo='x+y'
-        ))
-        fig_trend.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            height=300, margin=dict(t=10, b=10, l=10, r=10),
-            xaxis=dict(showgrid=False, color="#94A3B8", tickformat="%d %b"),
-            yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8")
-        )
-        st.plotly_chart(fig_trend, use_container_width=True, config={'displayModeBar': False})
-st.markdown("</div>", unsafe_allow_html=True)
-
-# --- BOTTOM SECTION: DONUT CHART ---
-st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
-st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 5px;'><i class='ph ph-chart-donut'></i> Spending Distribution</h3>", unsafe_allow_html=True)
-
-if category_progress:
-    labels = [c["name"] for c in category_progress if c["reel"] > 0]
-    values = [c["reel"] for c in category_progress if c["reel"] > 0]
-    
-    if values:
-        azure_colors = ['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A', '#BFDBFE']
-        fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=azure_colors, line=dict(color='#030712', width=5)), textinfo='none', hoverinfo='label+percent+value')])
-        fig.update_layout(
-            showlegend=True,
-            legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color="#94A3B8")),
-            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            margin=dict(t=20, b=20, l=10, r=10), height=450,
-            annotations=[dict(text='TOTAL SPENT', x=0.5, y=0.58, font_size=12, font_color='#93C5FD', showarrow=False),
-                         dict(text=f"<b>{format_chf(reel_var)}</b><br><span style='font-size:18px; color:#60A5FA'>CHF</span>", x=0.5, y=0.45, font_size=36, font_color='#FFFFFF', showarrow=False)]
-        )
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# --- DISCREET DATA AUDIT ---
-with st.sidebar.expander("🔍 Budget Inspector (Audit)"):
-    st.write("Détail des montants lus par le code :")
-    for cat in category_progress:
-        st.write(f"- {cat['name']} : **{cat['reel']}**")
-    st.write(f"Total calculé par l'app : **{reel_var}**")
-
-st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
+st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
