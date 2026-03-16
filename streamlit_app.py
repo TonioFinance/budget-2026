@@ -329,7 +329,7 @@ else:
 # --- MAIN UI ---
 st.markdown(f"""
 <div style="text-align: center; margin-bottom: 30px;">
-    <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">Dashboard</div>
+    <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">DASHBOARD</div>
     <div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div>
 </div>""", unsafe_allow_html=True)
 
@@ -356,7 +356,7 @@ st.markdown(hero_html, unsafe_allow_html=True)
 # --- FULL WIDTH ADD EXPENSE MENU ---
 form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
 
-with st.expander("+ ADD NEW EXPENSE", expanded=False):
+with st.expander("ADD NEW EXPENSE", expanded=False):
     st.markdown("<br>", unsafe_allow_html=True)
     lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
     amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
