@@ -112,7 +112,7 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- BLUE GLOW BUTTON (REFINED LUEUR) --- */
+    /* --- BLUE GLOW BUTTON (REFINED) --- */
     div[data-testid="stButton"] > button {
         background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
         border: 1px solid rgba(59, 130, 246, 0.5) !important;
@@ -133,18 +133,22 @@ st.markdown("""
     div[data-testid="stButton"] > button:hover {
         background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important; 
         border-color: rgba(96, 165, 250, 0.6) !important;
-        /* Lueur réduite pour plus d'élégance */
+        /* Lueur subtile */
         box-shadow: 0 0 12px rgba(96, 165, 250, 0.4), 0 8px 20px rgba(37, 99, 235, 0.3) !important;
         transform: translateY(-2px) scale(1.01) !important;
     }
     
-    /* Pop-up Glassmorphism */
+    /* --- THE ONGLET MODAL & DEEP BLUR --- */
+    div[data-baseweb="modal"] {
+        background-color: rgba(0, 0, 0, 0.6) !important;
+        backdrop-filter: blur(12px) !important; 
+    }
     div[data-testid="stDialog"] > div {
-        background: linear-gradient(160deg, rgba(30, 58, 138, 0.9) 0%, rgba(3, 7, 18, 0.95) 100%) !important;
+        background: linear-gradient(160deg, rgba(15, 23, 42, 0.95) 0%, rgba(3, 7, 18, 1) 100%) !important;
         border: 1px solid rgba(59, 130, 246, 0.4) !important;
-        border-top: 2px solid rgba(59, 130, 246, 0.8) !important;
-        border-radius: 24px !important;
-        backdrop-filter: blur(20px) !important;
+        border-top: 4px solid #3B82F6 !important;
+        border-radius: 28px !important;
+        box-shadow: 0 50px 100px rgba(0,0,0,0.9) !important;
     }
     
     /* Pure Glass Input Fields styling */
@@ -164,7 +168,7 @@ st.markdown("""
         margin-top: 20px;
     }
 
-    /* --- MOBILE RESPONSIVENESS (SMART STACK) --- */
+    /* --- MOBILE RESPONSIVENESS --- */
     @media (max-width: 768px) {
         .hero-card { padding: 20px 15px; } 
         .hero-top-metrics { 
@@ -327,7 +331,7 @@ else:
 # --- MAIN UI: CENTERED TITLE & HERO DASHBOARD ---
 st.markdown(f"""
 <div style="text-align: center; margin-bottom: 30px;">
-    <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">DASHBOARD</div>
+    <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">Dashboard</div>
     <div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div>
 </div>""", unsafe_allow_html=True)
 
@@ -337,7 +341,6 @@ if percent >= 0.8:
 elif percent >= 0.5:
     bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
 
-# Modif Mobile: Utilisation de &nbsp; pour garder le CHF collé au montant
 hero_html = f"""
 <div class="hero-card">
 <div class="hero-top-metrics">
@@ -357,23 +360,17 @@ form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport":
 
 @st.dialog("Add New Transaction")
 def add_transaction_modal():
-    st.write("Enter details for the new expense:")
+    st.markdown("<h2 style='text-align:center; color:#60A5FA; margin-bottom:20px;'>New Expense</h2>", unsafe_allow_html=True)
     lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
     amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
     cat_en = st.selectbox("Category", list(form_cat_map.keys()))
     note = st.text_input("Note (Optional)")
     
-    if st.button("CONFIRM EXPENSE", use_container_width=True):
+    if st.button("CONFIRM TRANSACTION", use_container_width=True):
         if lib and amt > 0:
-            col_b = ws.col_values(2)
-            target = 60
-            for r in range(60, 150):
-                if r > len(col_b) or not str(col_b[r-1]).strip():
-                    target = r
-                    break
+            target = len(ws.col_values(2)) + 1
             new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
             ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
-            st.cache_resource.clear()
             st.rerun()
 
 if st.button("+ ADD NEW EXPENSE", use_container_width=True):
