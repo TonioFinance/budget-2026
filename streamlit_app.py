@@ -49,10 +49,6 @@ st.markdown("""
         border-top: 1.5px solid rgba(59, 130, 246, 0.4) !important;
         padding: 15px 20px !important;
     }
-    .stMetric:hover {
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 15px 30px rgba(0,0,0,0.5);
-    }
 
     /* BASE PROGRESS BAR STYLE */
     .stProgress > div > div > div > div { 
@@ -63,8 +59,8 @@ st.markdown("""
     /* --- CATEGORY CARD SYSTEM --- */
     .cat-card {
         background: rgba(255,255,255,0.02);
-        padding: 14px 20px;
-        border-radius: 16px;
+        padding: 16px 22px;
+        border-radius: 18px;
         margin-bottom: 12px;
         border: 1px solid rgba(255,255,255,0.03);
     }
@@ -78,22 +74,22 @@ st.markdown("""
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         width: 100%;
     }
     
     .cat-label {
         color: #FFFFFF !important;
-        font-size: 18px !important;
+        font-size: 19px !important;
         font-weight: 700;
         letter-spacing: -0.2px;
     }
     
     .cat-amount {
         color: #FFFFFF !important;
-        font-size: 14px;
+        font-size: 18px !important; /* Agrandissement du prix */
         font-weight: 700;
-        text-shadow: 0 0 10px rgba(255,255,255,0.4);
+        text-shadow: 0 0 15px rgba(255,255,255,0.5); /* White Glow renforcé */
     }
 
     /* Form Design */
@@ -114,10 +110,6 @@ st.markdown("""
         align-items: center;
         border: 1px solid rgba(255,255,255,0.02);
     }
-    .transaction-card:hover {
-        transform: translateX(8px);
-        background: rgba(255,255,255,0.05);
-    }
     
     input, select { font-family: 'Lato', sans-serif !important; }
     </style>
@@ -135,7 +127,7 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    # NEW LOGIC: Green -> Orange (at 2/3) -> Red (at 100%)
+    # Logic: Green -> Orange (2/3) -> Red (100%)
     if percent >= 1.0: 
         bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" # Red
     elif percent >= 0.66: 
@@ -150,7 +142,7 @@ def get_progress_html(name, reel, prevu):
     <div class="cat-card">
         <div class="cat-container">
             <span class="cat-label">{ui_name}</span>
-            <span class="cat-amount">{reel:.2f} / {prevu:.0f} CHF</span>
+            <span class="cat-amount">{reel:.0f} / {prevu:.0f} CHF</span>
         </div>
         <div style="background: rgba(0,0,0,0.4); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
             <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
