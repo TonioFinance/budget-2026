@@ -103,7 +103,6 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.03);
         cursor: pointer;
     }
-    /* FIX: Mouvement uniquement vertical (translateY) pour éviter le décalage horizontal */
     .transaction-card:hover {
         transform: translateY(-2px);
         background: rgba(59, 130, 246, 0.08);
@@ -133,15 +132,14 @@ st.markdown("""
     div[data-testid="stButton"] > button:hover {
         background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important; 
         border-color: rgba(96, 165, 250, 0.6) !important;
-        /* Lueur subtile */
         box-shadow: 0 0 12px rgba(96, 165, 250, 0.4), 0 8px 20px rgba(37, 99, 235, 0.3) !important;
         transform: translateY(-2px) scale(1.01) !important;
     }
     
-    /* --- THE ONGLET MODAL & BLUR ONLY (MODIF EFFECTUÉE) --- */
+    /* --- THE ONGLET MODAL & LIGHT BLUR (CORRECTED) --- */
     div[data-baseweb="modal"] {
-        background-color: transparent !important; /* PLUS DE COULEUR DE FOND */
-        backdrop-filter: blur(6px) !important;  /* VOILE FLOUTÉ UNIQUEMENT */
+        background-color: transparent !important; /* AUCUN FOND COLORÉ */
+        backdrop-filter: blur(6px) !important;     /* UNIQUEMENT LE FLOU */
     }
     div[data-testid="stDialog"] > div {
         background: linear-gradient(160deg, rgba(15, 23, 42, 0.95) 0%, rgba(3, 7, 18, 1) 100%) !important;
@@ -158,14 +156,10 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-radius: 12px !important;
     }
-
-    /* Donut Chart Glass Container */
-    .chart-container {
-        background: rgba(15, 23, 42, 0.3);
-        border: 1px solid rgba(59, 130, 246, 0.15);
-        border-radius: 24px;
-        padding: 20px;
-        margin-top: 20px;
+    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, div[data-baseweb="select"] > div:focus-within {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.5) !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
     }
 
     /* --- MOBILE RESPONSIVENESS --- */
@@ -187,6 +181,15 @@ st.markdown("""
         .cat-label { font-size: 14px !important; }
         .transaction-card { padding: 12px 12px; }
         h1 { font-size: 32px !important; }
+    }
+
+    /* Donut Chart Glass Container */
+    .chart-container {
+        background: rgba(15, 23, 42, 0.3);
+        border: 1px solid rgba(59, 130, 246, 0.15);
+        border-radius: 24px;
+        padding: 20px;
+        margin-top: 20px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -371,6 +374,7 @@ def add_transaction_modal():
             target = len(ws.col_values(2)) + 1
             new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
             ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
+            st.cache_resource.clear()
             st.rerun()
 
 if st.button("+ ADD NEW EXPENSE", use_container_width=True):
@@ -384,14 +388,12 @@ with col_c1:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-list-dashes'></i> Category Breakdown</h3>", unsafe_allow_html=True)
     if category_progress:
         sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
-        # Figé : Pas de conteneur height ici
         for cat in sorted_categories:
             st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
 
 with col_c2:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
     if expenses_list:
-        # Mobile : Hauteur fixe alignée sur les catégories pour le scroll vertical uniquement
         with st.container(height=500, border=False): 
             for exp in expenses_list[::-1]: 
                 st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
