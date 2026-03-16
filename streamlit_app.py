@@ -3,14 +3,16 @@ import pandas as pd
 from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
+import plotly.graph_objects as go
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & AZURE WITH GLASSMORPHISM (LATO FONT) ---
+# --- STYLE OBSIDIAN & AZURE (SAAS EDITION) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
+    @import url('https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css');
 
     .stApp { 
         background-color: #030712;
@@ -24,51 +26,60 @@ st.markdown("""
 
     h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
-    /* Metrics Top (Blue Glow effect) */
-    div[data-testid="stMetricValue"] { 
-        font-family: 'Lato', sans-serif;
-        font-size: 40px !important; 
-        font-weight: 900 !important;
-        color: #FFFFFF !important; 
-        text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 30px rgba(59, 130, 246, 0.3); 
-    }
-    
-    div[data-testid="stMetricLabel"] { 
-        font-weight: 700;
-        color: #60A5FA !important; 
-        text-transform: uppercase; 
-        letter-spacing: 1.5px;
-        font-size: 11px;
-    }
-    
-    .stMetric { 
-        background: rgba(15, 23, 42, 0.4) !important; 
+    /* --- HERO DASHBOARD (TOP CARD) --- */
+    .hero-card {
+        background: linear-gradient(160deg, rgba(30, 58, 138, 0.25) 0%, rgba(3, 7, 18, 0.8) 100%);
+        padding: 35px 30px;
+        border-radius: 24px;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-top: 2px solid rgba(59, 130, 246, 0.7);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 20px rgba(59, 130, 246, 0.1);
         backdrop-filter: blur(15px);
-        border-radius: 20px; 
-        border: 1px solid rgba(255, 255, 255, 0.05) !important; 
-        border-top: 1.5px solid rgba(59, 130, 246, 0.4) !important;
-        padding: 15px 20px !important;
+        margin-bottom: 25px;
+        text-align: center;
+    }
+    .hero-top-metrics {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 13px;
+        color: #93C5FD;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 700;
+    }
+    .hero-main-value {
+        font-size: 52px;
+        font-weight: 900;
+        color: #FFFFFF;
+        text-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+        margin-bottom: 25px;
+        letter-spacing: -1px;
     }
     
-    .stMetric:hover {
-        transform: translateY(-3px);
-        border-top: 1.5px solid rgba(59, 130, 246, 0.8) !important;
-        background: rgba(15, 23, 42, 0.6) !important;
-        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.15);
+    /* Smart Insight Banner */
+    .insight-banner {
+        margin-top: 25px;
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
     }
-
-    .stProgress > div > div > div > div { 
-        border-radius: 10px;
-        height: 14px !important; 
-    }
+    .insight-green { background: rgba(16, 185, 129, 0.1); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .insight-orange { background: rgba(245, 158, 11, 0.1); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .insight-red { background: rgba(225, 29, 72, 0.1); color: #FB7185; border: 1px solid rgba(225, 29, 72, 0.3); }
 
     /* --- CATEGORY CARD SYSTEM --- */
     .cat-card {
         background: rgba(255,255,255,0.02);
-        padding: 14px 20px;
-        border-radius: 16px;
+        padding: 16px 20px;
+        border-radius: 18px;
         margin-bottom: 12px;
-        border: 1px solid rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.04);
         cursor: pointer;
     }
     .cat-card:hover {
@@ -76,33 +87,15 @@ st.markdown("""
         transform: scale(1.02);
         border: 1px solid rgba(59, 130, 246, 0.3);
     }
-
-    .cat-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-        width: 100%;
-    }
-    
-    .cat-label {
-        color: #FFFFFF !important;
-        font-size: 18px !important;
-        font-weight: 700;
-    }
-    
-    .cat-amount {
-        color: #FFFFFF !important;
-        font-size: 16px;
-        font-weight: 700;
-        text-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
-    }
+    .cat-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; width: 100%; }
+    .cat-label { color: #FFFFFF !important; font-size: 16px !important; font-weight: 700; }
+    .cat-amount { color: #FFFFFF !important; font-size: 15px; font-weight: 700; text-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
 
     /* --- RECENT ACTIVITY CARDS --- */
     .transaction-card {
         background: rgba(255, 255, 255, 0.02); 
-        border-radius: 18px; 
-        padding: 15px 20px; 
+        border-radius: 16px; 
+        padding: 14px 18px; 
         margin-bottom: 10px; 
         display: flex; 
         justify-content: space-between; 
@@ -114,107 +107,116 @@ st.markdown("""
         transform: translateX(6px) scale(1.01);
         background: rgba(59, 130, 246, 0.08);
         border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
     }
-    
-    .trans-amount {
-        color: #FFFFFF !important;
-        font-weight: 800;
-        font-size: 16px;
-        text-shadow: 0 0 10px rgba(255,255,255,0.3);
-    }
+    .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- ENHANCED FORM DESIGN --- */
-    div[data-testid="stForm"] { 
-        background: linear-gradient(160deg, rgba(30, 58, 138, 0.2) 0%, rgba(3, 7, 18, 0.7) 100%) !important;
-        padding: 30px !important; 
-        border-radius: 24px !important; 
-        border: 1px solid rgba(59, 130, 246, 0.2) !important; 
-        border-top: 1.5px solid rgba(59, 130, 246, 0.6) !important; 
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(59, 130, 246, 0.1) !important;
-        backdrop-filter: blur(10px);
-    }
-    
-    /* Pure Glass Input Fields styling (No Gray) */
-    .stTextInput>div>div>input, 
-    .stNumberInput>div>div>input,
-    div[data-baseweb="select"] > div {
-        background-color: rgba(255, 255, 255, 0.03) !important;
-        color: #FFFFFF !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 12px !important;
-        font-family: 'Lato', sans-serif !important;
-    }
-    
-    /* Input Focus effect (Azure Glow) */
-    .stTextInput>div>div>input:focus, 
-    .stNumberInput>div>div>input:focus,
-    div[data-baseweb="select"] > div:focus-within {
-        border-color: #3B82F6 !important;
-        box-shadow: 0 0 15px rgba(59, 130, 246, 0.5) !important;
-        background-color: rgba(255, 255, 255, 0.08) !important;
-    }
-    
-    /* Blue Button */
+    /* --- ADD BUTTON (FLOATING ACTION STYLE) --- */
     .stButton>button {
         background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
         color: white !important;
-        border-radius: 12px;
-        font-weight: 700;
+        border-radius: 16px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        height: 3.5rem;
         border: none;
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-        margin-top: 10px;
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+        margin-bottom: 30px;
     }
     .stButton>button:hover {
-        box-shadow: 0 6px 25px rgba(59, 130, 246, 0.6);
-        transform: scale(1.02);
+        box-shadow: 0 15px 35px rgba(59, 130, 246, 0.6);
+        transform: translateY(-2px) scale(1.01);
+    }
+    
+    /* Pop-up Glassmorphism */
+    div[data-testid="stDialog"] > div {
+        background: linear-gradient(160deg, rgba(30, 58, 138, 0.9) 0%, rgba(3, 7, 18, 0.95) 100%) !important;
+        border: 1px solid rgba(59, 130, 246, 0.4) !important;
+        border-top: 2px solid rgba(59, 130, 246, 0.8) !important;
+        border-radius: 24px !important;
+        backdrop-filter: blur(20px) !important;
+    }
+    
+    /* Pure Glass Input Fields styling */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input, div[data-baseweb="select"] > div {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #FFFFFF !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 12px !important;
+    }
+    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, div[data-baseweb="select"] > div:focus-within {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.5) !important;
+        background-color: rgba(255, 255, 255, 0.1) !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- HELPERS ---
+# --- FORMATTING HELPERS ---
 def parse_amount(val):
     if not val: return 0.0
     cleaned = str(val).upper().replace("CHF", "").replace(" ", "").replace(" ", "").replace("'", "").replace(",", ".").strip()
     try: return float(cleaned)
     except ValueError: return 0.0
 
+def format_chf(value):
+    """Formatte en style Banque Suisse (Ex: 1'500.00 CHF)"""
+    return f"{value:,.2f}".replace(",", "'")
+
 def get_progress_html(name, reel, prevu):
     if prevu > 0: percent = reel / prevu
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    # Vert (0-50%), Orange (50-80%), Rouge (80-100%+)
-    if percent >= 0.80: 
-        bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" # Rouge
-    elif percent >= 0.50: 
-        bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" # Orange
-    else: 
-        bar_color = "linear-gradient(90deg, #059669, #10B981)" # Vert
+    if percent >= 0.80: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" # Rouge
+    elif percent >= 0.50: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" # Orange
+    else: bar_color = "linear-gradient(90deg, #059669, #10B981)" # Vert
     
-    cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
-    ui_name = cat_ui_map.get(name.strip(), name)
+    # Mapping UI Name + Phosphor Icons
+    cat_ui_map = {
+        "Courses": ("Groceries", "ph-shopping-cart"), 
+        "Sorties/Restos": ("Dining", "ph-fork-knife"), 
+        "Transport": ("Transport", "ph-car"), 
+        "Loisirs": ("Leisure", "ph-game-controller"), 
+        "Imprévus": ("Unexpected", "ph-warning-circle"), 
+        "Shopping": ("Shopping", "ph-tote"), 
+        "Hygiène": ("Hygiene", "ph-drop")
+    }
+    ui_name, icon = cat_ui_map.get(name.strip(), (name, "ph-wallet"))
 
     return f"""
     <div class="cat-card">
         <div class="cat-container">
-            <span class="cat-label">{ui_name}</span>
-            <span class="cat-amount">{reel:.2f} / {prevu:.0f} CHF</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i>
+                <span class="cat-label">{ui_name}</span>
+            </div>
+            <span class="cat-amount">{format_chf(reel)} CHF</span>
         </div>
-        <div style="background: rgba(0,0,0,0.4); border-radius: 10px; width: 100%; height: 14px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
+        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
             <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
         </div>
     </div>
     """
 
 def get_transaction_html(date, merchant, amount, category):
-    cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
-    ui_category = cat_ui_map.get(category.strip(), category)
+    cat_ui_map = {
+        "Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), 
+        "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), 
+        "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), 
+        "Hygiène": ("Hygiene", "ph-drop")
+    }
+    ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""
     <div class="transaction-card">
-        <div>
-            <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
-            <div style="color: #64748B; font-size: 12px;">{date} • {ui_category}</div>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                <i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i>
+            </div>
+            <div>
+                <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
+                <div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div>
+            </div>
         </div>
         <div class="trans-amount">{amount}</div>
     </div>
@@ -270,19 +272,13 @@ if col_var != -1:
     for i in range(row_var_start + 1, min(row_var_start + 20, len(all_rows))):
         row = all_rows[i]
         cat = str(row[col_var]).strip()
-        
-        if "total" in cat.lower():
-            # On ignore la ligne Total du fichier Excel pour la recalculer sans les vacances
-            break
-            
+        if "total" in cat.lower(): break
         elif cat and cat.lower() not in ["", "nan"]:
             if "vacance" not in cat.lower():
-                # Sécurité pour éviter les IndexErrors
                 p_val = parse_amount(row[col_prevu]) if len(row) > col_prevu else 0.0
                 r_val = parse_amount(row[col_actuel]) if len(row) > col_actuel else 0.0
                 category_progress.append({"name": cat, "prevu": p_val, "reel": r_val})
                 
-    # Calcul manuel des totaux sans les vacances
     prevu_var = sum(c["prevu"] for c in category_progress)
     reel_var = sum(c["reel"] for c in category_progress)
 
@@ -297,72 +293,111 @@ if row_history_start != -1:
         row = all_rows[i]
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
             if "total" in str(row[0]).lower() or "total" in str(row[1]).lower(): continue
-            expenses_list.append({"Date": row[0], "Marchand": row[1], "Montant": f"{parse_amount(row[2]):.2f} CHF", "Catégorie": row[4]})
+            expenses_list.append({"Date": row[0], "Marchand": row[1], "Montant": format_chf(parse_amount(row[2])) + " CHF", "Catégorie": row[4]})
 
 restant = prevu_var - reel_var
 percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
-# --- MAIN UI ---
-st.title(f"⚡ {selected_month_en} {now.year}")
-c1, c2 = st.columns(2)
-with c1: st.metric("Remaining", f"{restant:.2f} CHF", delta=f"{restant:.2f}")
-with c2: st.metric("Budget Plan", f"{prevu_var:.0f} CHF")
+# --- SMART INSIGHT LOGIC ---
+if percent >= 0.80:
+    insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% of budget consumed</div>"
+elif percent >= 0.50:
+    insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% of budget consumed</div>"
+elif percent <= 0.40 and now.day > 15:
+    insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-trend-down'></i> Excellent pacing mid-month!</div>"
+else:
+    insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> Finances are on track</div>"
 
-st.write("")
-st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 800; font-size: 20px; text-shadow: 0 0 10px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
+# --- MAIN UI: HERO DASHBOARD ---
+st.title(f"Dashboard • {selected_month_en}")
 
-# Vert (0-50%), Orange (50-80%), Rouge (80-100%+) pour la barre globale
-main_bar_color = "#10B981" # Vert
-if percent >= 0.80: main_bar_color = "#E11D48" # Rouge
-elif percent >= 0.50: main_bar_color = "#F59E0B" # Orange
+# Custom HTML Hero Block
+hero_html = f"""
+<div class="hero-card">
+    <div class="hero-top-metrics">
+        <div>Remaining: <span style="color:#FFFFFF;">{format_chf(restant)} CHF</span></div>
+        <div>Planned: <span style="color:#FFFFFF;">{format_chf(prevu_var)} CHF</span></div>
+    </div>
+    <div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
+    
+    <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+        <div style="background: {'linear-gradient(90deg, #9F1239, #E11D48)' if percent >= 0.8 else 'linear-gradient(90deg, #B45309, #F59E0B)' if percent >= 0.5 else 'linear-gradient(90deg, #059669, #10B981)'}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
+    </div>
+    
+    {insight_html}
+</div>
+"""
+st.markdown(hero_html, unsafe_allow_html=True)
 
-st.markdown(f"""
-    <style>
-    .stProgress > div > div > div > div {{ background: {main_bar_color} !important; box-shadow: 0 0 10px {main_bar_color}66; }}
-    </style>
-""", unsafe_allow_html=True)
-st.progress(percent)
-
-st.divider()
-
-# --- CATEGORIES TRACKER ---
-st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; margin-bottom: 25px;'>📊 Categories</h3>", unsafe_allow_html=True)
-if category_progress:
-    sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
-    for cat in sorted_categories:
-        st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
-
-st.divider()
-
-# --- FORM & HISTORY ---
-col_form, col_hist = st.columns([1.1, 1])
+# --- POP-UP DIALOG (MODAL) ---
 form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
 
-with col_form:
-    with st.form("new_exp", clear_on_submit=True):
-        st.markdown("<h4 style='color: #FFFFFF; font-size: 20px; margin-bottom: 15px;'>➕ New Entry</h4>", unsafe_allow_html=True)
-        lib = st.text_input("Merchant", placeholder="Apple, Migros...")
-        amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
-        cat_en = st.selectbox("Category", list(form_cat_map.keys()))
-        note = st.text_input("Note")
-        
-        if st.form_submit_button("CONFIRM"):
-            if lib and amt > 0:
-                col_b = ws.col_values(2)
-                target = 60
-                for r in range(60, 150):
-                    if r > len(col_b) or not str(col_b[r-1]).strip():
-                        target = r
-                        break
-                new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
-                ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
-                st.cache_resource.clear()
-                st.rerun()
+@st.dialog("Add New Transaction")
+def add_transaction_modal():
+    st.write("Enter details for the new expense:")
+    lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
+    amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
+    cat_en = st.selectbox("Category", list(form_cat_map.keys()))
+    note = st.text_input("Note (Optional)")
+    
+    if st.button("CONFIRM EXPENSE", use_container_width=True):
+        if lib and amt > 0:
+            col_b = ws.col_values(2)
+            target = 60
+            for r in range(60, 150):
+                if r > len(col_b) or not str(col_b[r-1]).strip():
+                    target = r
+                    break
+            new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
+            ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
+            st.cache_resource.clear()
+            st.rerun()
 
-with col_hist:
-    st.markdown("<h4 style='color: #FFFFFF; font-size: 20px; margin-bottom: 15px;'>📡 History</h4>", unsafe_allow_html=True)
+# Floating Action Button trigger
+if st.button("➕ ADD NEW EXPENSE", use_container_width=True):
+    add_transaction_modal()
+
+
+# --- SPLIT LAYOUT: CATEGORIES & VIZ ---
+col_c1, col_c2 = st.columns([1.2, 1], gap="large")
+
+with col_c1:
+    st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-list-dashes'></i> Category Breakdown</h3>", unsafe_allow_html=True)
+    if category_progress:
+        sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
+        for cat in sorted_categories:
+            st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
+
+with col_c2:
+    st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-chart-donut'></i> Spending Distribution</h3>", unsafe_allow_html=True)
+    
+    # Plotly Donut Chart
+    if category_progress:
+        labels = [c["name"] for c in category_progress if c["reel"] > 0]
+        values = [c["reel"] for c in category_progress if c["reel"] > 0]
+        
+        if values:
+            # Azure-themed color palette
+            azure_colors = ['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A', '#BFDBFE']
+            fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.75, marker=dict(colors=azure_colors, line=dict(color='#030712', width=3)))])
+            fig.update_layout(
+                showlegend=False,
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                margin=dict(t=10, b=10, l=10, r=10),
+                height=260,
+                annotations=[dict(text='Total', x=0.5, y=0.55, font_size=14, font_color='#93C5FD', showarrow=False),
+                             dict(text=f"{reel_var:.0f}", x=0.5, y=0.45, font_size=24, font_color='#FFFFFF', showarrow=False)]
+            )
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        else:
+            st.info("No spending recorded yet.")
+            
+    st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-top: 30px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
     if expenses_list:
-        for exp in expenses_list[::-1][:5]:
-            st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
+        with st.container(height=350, border=False): # Rend l'historique scrollable si trop long
+            for exp in expenses_list[::-1]: # Affiche tout mais permet de scroller
+                st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
+    else:
+        st.info("No recent transactions.")
 
 st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
