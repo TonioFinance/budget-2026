@@ -103,11 +103,12 @@ st.markdown("""
         border: 1px solid rgba(255,255,255,0.03);
         cursor: pointer;
     }
+    /* FIX: Mouvement uniquement vertical (translateY) pour éviter le décalage horizontal */
     .transaction-card:hover {
-        transform: translateX(6px) scale(1.01);
+        transform: translateY(-2px);
         background: rgba(59, 130, 246, 0.08);
         border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
@@ -122,7 +123,6 @@ st.markdown("""
         transition: all 0.2s ease-out !important;
     }
     
-    /* Force bold and white on all content inside the button */
     div[data-testid="stButton"] > button p {
         color: #FFFFFF !important;
         font-weight: 900 !important;
@@ -135,12 +135,9 @@ st.markdown("""
     div[data-testid="stButton"] > button:hover {
         background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important; 
         border-color: rgba(96, 165, 250, 0.6) !important;
-        box-shadow: 0 0 8px rgba(96, 165, 250, 0.3), 0 6px 15px rgba(37, 99, 235, 0.2) !important;
+        /* Lueur réduite pour plus d'élégance */
+        box-shadow: 0 0 12px rgba(96, 165, 250, 0.4), 0 8px 20px rgba(37, 99, 235, 0.3) !important;
         transform: translateY(-2px) scale(1.01) !important;
-    }
-    div[data-testid="stButton"] > button:active {
-        transform: translateY(1px) scale(0.98) !important;
-        box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3) !important;
     }
     
     /* Pop-up Glassmorphism */
@@ -159,12 +156,7 @@ st.markdown("""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-radius: 12px !important;
     }
-    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, div[data-baseweb="select"] > div:focus-within {
-        border-color: #3B82F6 !important;
-        box-shadow: 0 0 15px rgba(59, 130, 246, 0.5) !important;
-        background-color: rgba(255, 255, 255, 0.1) !important;
-    }
-    
+
     /* Donut Chart Glass Container */
     .chart-container {
         background: rgba(15, 23, 42, 0.3);
@@ -172,6 +164,19 @@ st.markdown("""
         border-radius: 24px;
         padding: 20px;
         margin-top: 20px;
+    }
+
+    /* --- MOBILE RESPONSIVENESS --- */
+    @media (max-width: 768px) {
+        .hero-card { padding: 25px 15px; } 
+        .hero-top-metrics { font-size: 11px; letter-spacing: 0.5px; }
+        .hero-top-metrics > div { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 4px; 
+            text-align: center;
+        }
+        .hero-main-value { font-size: 42px; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -195,15 +200,7 @@ def get_progress_html(name, reel, prevu):
     elif percent >= 0.50: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" 
     else: bar_color = "linear-gradient(90deg, #059669, #10B981)" 
     
-    cat_ui_map = {
-        "Courses": ("Groceries", "ph-shopping-cart"), 
-        "Sorties/Restos": ("Dining", "ph-fork-knife"), 
-        "Transport": ("Transport", "ph-car"), 
-        "Loisirs": ("Leisure", "ph-game-controller"), 
-        "Imprévus": ("Unexpected", "ph-warning-circle"), 
-        "Shopping": ("Shopping", "ph-tote"), 
-        "Hygiène": ("Hygiene", "ph-drop")
-    }
+    cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
     ui_name, icon = cat_ui_map.get(name.strip(), (name, "ph-wallet"))
 
     return f"""
@@ -222,12 +219,7 @@ def get_progress_html(name, reel, prevu):
 """
 
 def get_transaction_html(date, merchant, amount, category):
-    cat_ui_map = {
-        "Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), 
-        "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), 
-        "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), 
-        "Hygiène": ("Hygiene", "ph-drop")
-    }
+    cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""
 <div class="transaction-card">
@@ -325,8 +317,6 @@ if percent >= 0.80:
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% of budget consumed</div>"
 elif percent >= 0.50:
     insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% of budget consumed</div>"
-elif percent <= 0.40 and now.day > 15:
-    insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-trend-down'></i> Excellent pacing mid-month!</div>"
 else:
     insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> Finances are on track</div>"
 
@@ -339,22 +329,20 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 bar_color = 'linear-gradient(90deg, #059669, #10B981)'
-if percent >= 0.8:
-    bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
-elif percent >= 0.5:
-    bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
+if percent >= 0.8: bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
+elif percent >= 0.5: bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
 
 hero_html = f"""
 <div class="hero-card">
-<div class="hero-top-metrics">
-<div>Remaining: <span style="color:#FFFFFF;">{format_chf(restant)} CHF</span></div>
-<div>Planned: <span style="color:#FFFFFF;">{format_chf(prevu_var)} CHF</span></div>
-</div>
-<div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
-<div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-<div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
-</div>
-{insight_html}
+    <div class="hero-top-metrics">
+        <div><span>REMAINING</span> <span style="color:#FFFFFF; font-size: 14px;">{format_chf(restant)}&nbsp;CHF</span></div>
+        <div><span>PLANNED</span> <span style="color:#FFFFFF; font-size: 14px;">{format_chf(prevu_var)}&nbsp;CHF</span></div>
+    </div>
+    <div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
+    <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+        <div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
+    </div>
+    {insight_html}
 </div>
 """
 st.markdown(hero_html, unsafe_allow_html=True)
@@ -372,39 +360,31 @@ def add_transaction_modal():
     
     if st.button("CONFIRM EXPENSE", use_container_width=True):
         if lib and amt > 0:
-            col_b = ws.col_values(2)
-            target = 60
-            for r in range(60, 150):
-                if r > len(col_b) or not str(col_b[r-1]).strip():
-                    target = r
-                    break
+            target = len(ws.col_values(2)) + 1
             new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
             ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
-            st.cache_resource.clear()
             st.rerun()
 
-# Floating Action Button trigger
 if st.button("+ ADD NEW EXPENSE", use_container_width=True):
     add_transaction_modal()
 
 
-# --- SPLIT LAYOUT: CATEGORIES (LEFT) & HISTORY (RIGHT) ---
+# --- SPLIT LAYOUT: CATEGORIES (FIXED) & HISTORY (SCROLLABLE) ---
 col_c1, col_c2 = st.columns(2, gap="large")
 
 with col_c1:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-list-dashes'></i> Category Breakdown</h3>", unsafe_allow_html=True)
     if category_progress:
         sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
-        # Conteneur fixe pour alignement avec la colonne de droite
-        with st.container(height=480, border=False):
-            for cat in sorted_categories:
-                st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
+        # Figé : Pas de conteneur height ici
+        for cat in sorted_categories:
+            st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
 
 with col_c2:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
     if expenses_list:
-        # Conteneur fixe de même taille que la colonne de gauche
-        with st.container(height=480, border=False): 
+        # Mobile : Hauteur fixe alignée sur les catégories pour le scroll vertical uniquement
+        with st.container(height=500, border=False): 
             for exp in expenses_list[::-1]: 
                 st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
     else:
@@ -412,7 +392,7 @@ with col_c2:
 
 st.divider()
 
-# --- BOTTOM SECTION: 3D STYLIZED DONUT CHART ---
+# --- BOTTOM SECTION: DONUT CHART ---
 st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
 st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 5px;'><i class='ph ph-chart-donut'></i> Spending Distribution</h3>", unsafe_allow_html=True)
 
@@ -422,34 +402,16 @@ if category_progress:
     
     if values:
         azure_colors = ['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A', '#BFDBFE']
-        
-        fig = go.Figure(data=[go.Pie(
-            labels=labels, 
-            values=values, 
-            hole=.7, 
-            marker=dict(colors=azure_colors, line=dict(color='#030712', width=5)),
-            textinfo='none', 
-            hoverinfo='label+percent+value'
-        )])
-        
+        fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=azure_colors, line=dict(color='#030712', width=5)), textinfo='none')])
         fig.update_layout(
             showlegend=True,
             legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color="#94A3B8")),
-            paper_bgcolor='rgba(0,0,0,0)', 
-            plot_bgcolor='rgba(0,0,0,0)',
-            margin=dict(t=20, b=20, l=10, r=10),
-            height=450,
-            annotations=[
-                dict(text='TOTAL SPENT', x=0.5, y=0.58, font_size=12, font_color='#93C5FD', showarrow=False),
-                dict(text=f"<b>{format_chf(reel_var)}</b><br><span style='font-size:18px; color:#60A5FA'>CHF</span>", 
-                     x=0.5, y=0.45, font_size=36, font_color='#FFFFFF', showarrow=False)
-            ]
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+            height=450, margin=dict(t=20, b=20, l=10, r=10),
+            annotations=[dict(text='TOTAL SPENT', x=0.5, y=0.58, font_size=12, font_color='#93C5FD', showarrow=False),
+                         dict(text=f"<b>{format_chf(reel_var)}</b><br><span style='font-size:18px; color:#60A5FA'>CHF</span>", x=0.5, y=0.45, font_size=36, font_color='#FFFFFF', showarrow=False)]
         )
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-    else:
-        st.info("No spending recorded yet.")
 
 st.markdown("</div>", unsafe_allow_html=True)
-
-st.write("")
 st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
