@@ -7,7 +7,7 @@ from google.oauth2.service_account import Credentials
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & AZURE WITH DYNAMIC GLOW (LATO FONT) ---
+# --- STYLE OBSIDIAN & AZURE WITH GLASSMORPHISM (LATO FONT) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
@@ -135,7 +135,7 @@ st.markdown("""
         backdrop-filter: blur(10px);
     }
     
-    /* Pure Glass Input Fields styling */
+    /* Pure Glass Input Fields styling (No Gray) */
     .stTextInput>div>div>input, 
     .stNumberInput>div>div>input,
     div[data-baseweb="select"] > div {
@@ -270,13 +270,21 @@ if col_var != -1:
     for i in range(row_var_start + 1, min(row_var_start + 20, len(all_rows))):
         row = all_rows[i]
         cat = str(row[col_var]).strip()
+        
         if "total" in cat.lower():
-            prevu_var, reel_var = parse_amount(row[col_prevu]), parse_amount(row[col_actuel])
+            # On ignore la ligne Total du fichier Excel pour la recalculer sans les vacances
             break
+            
         elif cat and cat.lower() not in ["", "nan"]:
-            # On ignore volontairement la catégorie "vacance(s)"
             if "vacance" not in cat.lower():
-                category_progress.append({"name": cat, "prevu": parse_amount(row[col_prevu]), "reel": parse_amount(row[col_actuel])})
+                # Sécurité pour éviter les IndexErrors
+                p_val = parse_amount(row[col_prevu]) if len(row) > col_prevu else 0.0
+                r_val = parse_amount(row[col_actuel]) if len(row) > col_actuel else 0.0
+                category_progress.append({"name": cat, "prevu": p_val, "reel": r_val})
+                
+    # Calcul manuel des totaux sans les vacances
+    prevu_var = sum(c["prevu"] for c in category_progress)
+    reel_var = sum(c["reel"] for c in category_progress)
 
 row_history_start = -1
 for i, row in enumerate(all_rows):
