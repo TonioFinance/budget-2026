@@ -406,12 +406,4 @@ if category_progress:
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 st.markdown("</div>", unsafe_allow_html=True)
-
-# --- DISCREET DATA AUDIT ---
-with st.sidebar.expander("🔍 Budget Inspector (Audit)"):
-    st.write("Détail des montants lus par le code :")
-    for cat in category_progress:
-        st.write(f"- {cat['name']} : **{cat['reel']}**")
-    st.write(f"Total calculé par l'app : **{reel_var}**")
-
 st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
