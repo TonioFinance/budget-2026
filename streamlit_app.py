@@ -141,7 +141,7 @@ st.markdown("""
     /* --- THE ONGLET MODAL & LIGHT BLUR (MODIF APPLIQUÉE) --- */
     div[data-baseweb="modal"] {
         background-color: rgba(0, 0, 0, 0.3) !important; /* Moins d'obscurcissement */
-        backdrop-filter: blur(4px) !important;  /* Moins de flou */
+        backdrop-filter: blur(1px) !important;  /* Moins de flou */
     }
     div[data-testid="stDialog"] > div {
         background: linear-gradient(160deg, rgba(15, 23, 42, 0.95) 0%, rgba(3, 7, 18, 1) 100%) !important;
