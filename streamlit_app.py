@@ -7,33 +7,35 @@ from google.oauth2.service_account import Credentials
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & EMERALD WITH DYNAMIC GLOW (LATO FONT) ---
+# --- STYLE OBSIDIAN & EMERALD (ULTRA-REACTIVE) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
 
     .stApp { 
         background-color: #030712;
-        background-image: radial-gradient(circle at 50% -20%, #172554 0%, #030712 85%);
+        background-image: radial-gradient(circle at 50% -20%, #064e3b 0%, #030712 85%);
         color: #F8FAFC; 
         font-family: 'Lato', sans-serif;
     }
 
-    * { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+    /* --- SNAPPY ANIMATIONS (0.15s) --- */
+    * { transition: all 0.15s ease-out; }
 
     h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
+    /* Metrics Top */
     div[data-testid="stMetricValue"] { 
         font-family: 'Lato', sans-serif;
         font-size: 40px !important; 
         font-weight: 900 !important;
         color: #FFFFFF !important; 
-        text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 30px rgba(59, 130, 246, 0.3); 
+        text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 30px rgba(16, 185, 129, 0.3); 
     }
     
     div[data-testid="stMetricLabel"] { 
         font-weight: 700;
-        color: #60A5FA !important; 
+        color: #34d399 !important; 
         text-transform: uppercase; 
         letter-spacing: 1.5px;
         font-size: 11px;
@@ -44,33 +46,41 @@ st.markdown("""
         backdrop-filter: blur(15px);
         border-radius: 20px; 
         border: 1px solid rgba(255, 255, 255, 0.05) !important; 
-        border-top: 1.5px solid rgba(59, 130, 246, 0.4) !important;
+        border-top: 1.5px solid rgba(16, 185, 129, 0.4) !important;
         padding: 15px 20px !important;
     }
+    .stMetric:hover {
+        transform: translateY(-3px);
+        border-top: 1.5px solid rgba(16, 185, 129, 0.8) !important;
+        background: rgba(15, 23, 42, 0.6) !important;
+    }
 
+    /* THICK PROGRESS BARS */
     .stProgress > div > div > div > div { 
         border-radius: 10px;
-        height: 14px !important; /* Barre un peu plus épaisse comme demandé */
+        height: 14px !important;
     }
 
+    /* --- CATEGORY CARD SYSTEM --- */
     .cat-card {
         background: rgba(255,255,255,0.02);
-        padding: 14px 20px;
-        border-radius: 16px;
+        padding: 16px 22px;
+        border-radius: 18px;
         margin-bottom: 12px;
         border: 1px solid rgba(255,255,255,0.03);
+        cursor: pointer;
     }
     .cat-card:hover {
-        background: rgba(255,255,255,0.05);
-        transform: scale(1.01);
-        border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(16, 185, 129, 0.08);
+        transform: scale(1.02);
+        border: 1px solid rgba(16, 185, 129, 0.3);
     }
 
     .cat-container {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         width: 100%;
     }
     
@@ -84,9 +94,10 @@ st.markdown("""
         color: #FFFFFF !important;
         font-size: 16px;
         font-weight: 700;
-        text-shadow: 0 0 12px rgba(255,255,255,0.5);
+        text-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
     }
 
+    /* --- RECENT ACTIVITY CARDS --- */
     .transaction-card {
         background: rgba(15, 23, 42, 0.4); 
         border-radius: 18px; 
@@ -96,13 +107,13 @@ st.markdown("""
         justify-content: space-between; 
         align-items: center;
         border: 1px solid rgba(255,255,255,0.02);
-        box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+        cursor: pointer;
     }
     .transaction-card:hover {
-        transform: translateX(10px) scale(1.02);
-        background: rgba(30, 41, 59, 0.6);
-        border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        transform: translateX(8px);
+        background: rgba(16, 185, 129, 0.05);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
     }
     
     .trans-amount {
@@ -115,10 +126,24 @@ st.markdown("""
     div[data-testid="stForm"] { 
         background: rgba(15, 23, 42, 0.3) !important;
         padding: 25px; border-radius: 25px; 
-        border: 1px solid rgba(255, 255, 255, 0.05) !important; 
+        border: 1px solid rgba(16, 185, 129, 0.1) !important; 
     }
     
     input, select { font-family: 'Lato', sans-serif !important; }
+    
+    /* Emerald Button */
+    .stButton>button {
+        background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+        color: white !important;
+        border-radius: 12px;
+        font-weight: 700;
+        border: none;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+    }
+    .stButton>button:hover {
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        transform: scale(1.01);
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -134,12 +159,10 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    if percent >= 1.0: 
-        bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
-    elif percent >= 0.66: 
-        bar_color = "linear-gradient(90deg, #B45309, #F59E0B)"
-    else: 
-        bar_color = "linear-gradient(90deg, #059669, #10B981)" 
+    # Dynamic Color: Green -> Orange -> Red
+    if percent >= 1.0: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
+    elif percent >= 0.70: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)"
+    else: bar_color = "linear-gradient(90deg, #059669, #10B981)" 
     
     cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
     ui_name = cat_ui_map.get(name.strip(), name)
@@ -150,8 +173,8 @@ def get_progress_html(name, reel, prevu):
             <span class="cat-label">{ui_name}</span>
             <span class="cat-amount">{reel:.2f} / {prevu:.0f} CHF</span>
         </div>
-        <div style="background: rgba(0,0,0,0.4); border-radius: 10px; width: 100%; height: 14px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
-            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
+        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 14px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
+            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);"></div>
         </div>
     </div>
     """
@@ -182,17 +205,17 @@ SHEET_ID = "1HXd22qMTATg__4U1Os0ktUMnhK1vflKlRU9b5yoxFHU"
 client = get_gsheet_client()
 if not client: st.stop()
 try: sh = client.open_by_key(SHEET_ID)
-except Exception: st.error("Access Denied"); st.stop()
+except Exception: st.error("Connection Error"); st.stop()
 
-# --- NAVIGATION ---
+# --- NAVIGATION (English UI) ---
 months_map = {"January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril", "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août", "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"}
 now = datetime.now()
-selected_month_en = st.sidebar.selectbox("Select Month", list(months_map.keys()), index=now.month - 1)
+selected_month_en = st.sidebar.selectbox("Month", list(months_map.keys()), index=now.month - 1)
 selected_month = months_map[selected_month_en]
 
 try:
     ws = sh.worksheet(next((s for s in [s.title for s in sh.worksheets()] if selected_month.lower() in s.lower()), None))
-except Exception: st.error("Tab not found"); st.stop()
+except Exception: st.error("Sheet not found"); st.stop()
 
 # --- DATA EXTRACTION ---
 all_rows = ws.get_all_values()
@@ -248,28 +271,30 @@ with c1: st.metric("Remaining", f"{restant:.2f} CHF", delta=f"{restant:.2f}")
 with c2: st.metric("Budget Plan", f"{prevu_var:.0f} CHF")
 
 st.write("")
-st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 800; font-size: 20px; text-shadow: 0 0 10px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
+st.markdown(f"**Total Spending:** <span style='color: #10B981; font-weight: 800; font-size: 20px;'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 
-main_bar_color = "#059669"
+main_bar_color = "#10B981"
 if percent >= 1.0: main_bar_color = "#E11D48"
-elif percent >= 0.66: main_bar_color = "#F59E0B"
+elif percent >= 0.70: main_bar_color = "#F59E0B"
 
 st.markdown(f"""
     <style>
-    .stProgress > div > div > div > div {{ background: {main_bar_color} !important; box-shadow: 0 0 10px {main_bar_color}44; }}
+    .stProgress > div > div > div > div {{ background: {main_bar_color} !important; box-shadow: 0 0 10px {main_bar_color}66; }}
     </style>
 """, unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
 
-# --- CATEGORIES ---
+# --- CATEGORIES TRACKER ---
 st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; margin-bottom: 25px;'>📊 Categories</h3>", unsafe_allow_html=True)
 if category_progress:
-    # On trie pour mettre les catégories actives en haut
     sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
-    for cat in sorted_categories:
-        st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
+    col_c1, col_c2 = st.columns(2)
+    for idx, cat in enumerate(sorted_categories):
+        target_col = col_c1 if idx % 2 == 0 else col_c2
+        with target_col:
+            st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
 
 st.divider()
 
@@ -279,25 +304,4 @@ form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport":
 
 with col_form:
     with st.form("new_exp", clear_on_submit=True):
-        st.markdown("<h4 style='color: #FFFFFF; font-size: 18px;'>➕ New Entry</h4>", unsafe_allow_html=True)
-        lib = st.text_input("Merchant", placeholder="Apple, Migros...")
-        amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
-        cat_en = st.selectbox("Category", list(form_cat_map.keys()))
-        note = st.text_input("Note")
-        
-        if st.form_submit_button("CONFIRM"):
-            if lib and amt > 0:
-                # Méthode plus rapide pour ajouter une ligne
-                new_data = [datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]
-                ws.append_row(new_data, value_input_option="USER_ENTERED")
-                st.cache_resource.clear()
-                st.rerun()
-
-with col_hist:
-    st.markdown("<h4 style='color: #FFFFFF; font-size: 18px;'>📡 History</h4>", unsafe_allow_html=True)
-    if expenses_list:
-        # On affiche les 5 dernières dépenses
-        for exp in expenses_list[::-1][:5]:
-            st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
-
-st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
+        st.markdown("<h4 style='color: #FFFFFF; font-size: 18px;'>➕ New Entry</h4>", unsafe
