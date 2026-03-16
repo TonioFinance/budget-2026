@@ -12,7 +12,6 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap');
 
-    /* Fond principal Obsidian with Blue Glow */
     .stApp { 
         background-color: #030712;
         background-image: radial-gradient(circle at 50% -20%, #172554 0%, #030712 70%);
@@ -23,74 +22,48 @@ st.markdown("""
     h1, h2, h3 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     p, label { color: #94A3B8 !important; }
     
-    /* Metrics Top (Blue Accents) */
     div[data-testid="stMetricValue"] { 
         font-family: 'Space Grotesk', sans-serif;
-        font-size: 44px; 
-        font-weight: 700; 
-        color: #FFFFFF !important; 
+        font-size: 44px; font-weight: 700; color: #FFFFFF !important; 
         text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 20px rgba(59, 130, 246, 0.5); 
     }
-    div[data-testid="stMetricLabel"] {
-        color: #60A5FA !important; 
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-    }
+    
+    div[data-testid="stMetricLabel"] { color: #60A5FA !important; font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; }
+    
     .stMetric { 
-        background: rgba(15, 23, 42, 0.4); 
-        backdrop-filter: blur(10px);
-        padding: 24px; 
-        border-radius: 20px; 
-        border: 1px solid rgba(255, 255, 255, 0.05); 
-        border-top: 1px solid rgba(59, 130, 246, 0.5); 
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8); 
-        transition: all 0.4s ease;
+        background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(10px);
+        padding: 24px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.05); 
+        border-top: 1px solid rgba(59, 130, 246, 0.5); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8); 
     }
 
-    /* Progress Bars (THICK & GREEN) */
+    /* PROGRESS BARS: THICK & GREEN */
     .stProgress > div > div > div > div { 
         background: linear-gradient(90deg, #065F46, #10B981, #34D399); 
         box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
         border-radius: 12px;
-        height: 14px !important;
+        height: 18px !important;
     }
 
-    /* Form Design */
     div[data-testid="stForm"] { 
         background: linear-gradient(180deg, rgba(15, 23, 42, 0.4) 0%, rgba(3, 7, 18, 0.8) 100%);
-        padding: 25px; 
-        border-radius: 20px; 
-        border: 1px solid rgba(59, 130, 246, 0.2); 
+        padding: 25px; border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.2); 
     }
 
-    /* Glowing Blue Button */
     .stButton>button { 
         background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
-        color: #FFFFFF !important; 
-        border-radius: 14px; 
-        height: 3.5em; 
-        font-weight: 700; 
-        width: 100%; 
-        border: none; 
-        box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); 
+        color: #FFFFFF !important; border-radius: 14px; height: 3.5em; 
+        font-weight: 700; width: 100%; border: none; box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); 
     }
     
-    /* Transaction Card */
     .transaction-card {
-        background: rgba(15, 23, 42, 0.5); 
-        border: 1px solid rgba(59, 130, 246, 0.15); 
-        border-radius: 16px; 
-        padding: 16px 20px; 
-        margin-bottom: 12px; 
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center; 
+        background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(59, 130, 246, 0.15); 
+        border-radius: 16px; padding: 16px 20px; margin-bottom: 12px; 
+        display: flex; justify-content: space-between; align-items: center; 
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- HELPERS ---
+# --- HELPER FUNCTIONS ---
 def parse_amount(val):
     if not val: return 0.0
     cleaned = str(val).upper().replace("CHF", "").replace(" ", "").replace(" ", "").replace("'", "").replace(",", ".").strip()
@@ -102,22 +75,22 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    # Logic: Green -> Orange -> Red
-    if percent >= 1.0: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
-    elif percent > 0.8: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)"
-    else: bar_color = "linear-gradient(90deg, #065F46, #10B981)" 
-
+    # Red if > 100%, Orange if > 80%, Green otherwise
+    bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" if percent >= 1.0 else "linear-gradient(90deg, #B45309, #F59E0B)" if percent > 0.8 else "linear-gradient(90deg, #065F46, #10B981)"
+    
     cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
     ui_name = cat_ui_map.get(name.strip(), name)
 
     return f"""
-    <div style="margin-bottom: 20px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-            <span style="color: #F8FAFC; font-size: 15px; font-weight: 600;">{ui_name}</span>
-            <span style="color: #34D399; font-size: 14px; font-weight: 700;">{reel:.0f} / {prevu:.0f} CHF</span>
+    <div style="margin-bottom: 25px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <span style="color: #F8FAFC; font-size: 16px; font-weight: 600; letter-spacing: 0.5px;">{ui_name}</span>
+            <span style="color: #FFFFFF; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);">
+                {reel:.0f} / {prevu:.0f} CHF
+            </span>
         </div>
-        <div style="background: rgba(15, 23, 42, 0.8); border-radius: 20px; width: 100%; height: 14px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);">
-            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 20px;"></div>
+        <div style="background: rgba(15, 23, 42, 0.8); border-radius: 20px; width: 100%; height: 18px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);">
+            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 20px; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);"></div>
         </div>
     </div>
     """
@@ -172,7 +145,6 @@ for i, row in enumerate(all_rows):
     for j, cell in enumerate(row):
         if "charges variables" in str(cell).strip().lower():
             row_str = " ".join([str(x).lower() for x in row])
-            # On s'assure de trouver la ligne qui contient aussi Prévu/Actuel
             if any(x in row_str for x in ["prévu", "actuel", "réel"]):
                 col_var, row_var_start = j, i
                 for k in range(j + 1, len(row)):
@@ -192,7 +164,6 @@ if col_var != -1:
         elif cat and cat.lower() not in ["", "nan"]:
             category_progress.append({"name": cat, "prevu": parse_amount(row[col_prevu]), "reel": parse_amount(row[col_actuel])})
 
-# History Scan (find "Date" header)
 row_history_start = -1
 for i, row in enumerate(all_rows):
     if len(row) > 0 and str(row[0]).strip().lower() == "date":
@@ -211,13 +182,12 @@ percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
 # --- MAIN UI ---
 st.title(f"⚡ {selected_month_en} {now.year}")
-
 c1, c2 = st.columns(2)
 with c1: st.metric("Remaining", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color="normal" if restant > 0 else "inverse")
 with c2: st.metric("Planned Budget", f"{prevu_var:.1f} CHF")
 
 st.write("")
-st.markdown(f"**Current Spending:** <span style='color: #FFFFFF; font-weight: 700;'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
+st.markdown(f"**Current Spending:** <span style='color: #FFFFFF; font-weight: 700; text-shadow: 0 0 10px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
@@ -225,10 +195,14 @@ st.divider()
 # --- CATEGORY TRACKER ---
 st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; margin-bottom: 25px;'>📊 Category Tracker</h3>", unsafe_allow_html=True)
 if category_progress:
-    col_c1, col_c2 = st.columns(2)
-    for idx, cat in enumerate(category_progress):
-        target_col = col_c1 if idx % 2 == 0 else col_c2
-        with target_col: st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
+    # SORTING CATEGORIES BY PLANNED BUDGET (Descending)
+    sorted_categories = sorted(category_progress, key=lambda x: x['prevu'], reverse=True)
+    
+    # VERTICAL LIST (ONE PER LINE)
+    for cat in sorted_categories:
+        st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
+else:
+    st.info("No expense category found.")
 
 st.divider()
 
@@ -239,21 +213,24 @@ form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport":
 with col_form:
     with st.form("new_exp", clear_on_submit=True):
         st.markdown("<h4 style='color: #FFFFFF;'>➕ New Expense</h4>", unsafe_allow_html=True)
-        lib = st.text_input("Merchant", placeholder="e.g. Migros, Apple...")
+        lib = st.text_input("Merchant", placeholder="e.g. Migros...")
         amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
         cat_en = st.selectbox("Category", list(form_cat_map.keys()))
         note = st.text_input("Note")
-        if st.form_submit_button("ADD EXPENSE") and lib and amt > 0:
-            # Smart find next empty row starting at 60
+        
+        if st.form_submit_button("ADD TRANSACTION") and lib and amt > 0:
             col_b = ws.col_values(2)
             target = 60
             for r in range(60, 150):
                 if r > len(col_b) or not str(col_b[r-1]).strip():
                     target = r
                     break
-            ws.update(range_name=f"A{target}:E{target}", values=[[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]], value_input_option="USER_ENTERED")
-            st.success(f"Added to row {target}!")
+            
+            new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
+            ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
+            
             st.cache_resource.clear()
+            st.success(f"✅ Synced to row {target}!")
             st.rerun()
 
 with col_hist:
