@@ -149,6 +149,15 @@ st.markdown("""
         box-shadow: 0 0 15px rgba(59, 130, 246, 0.5) !important;
         background-color: rgba(255, 255, 255, 0.1) !important;
     }
+    
+    /* Donut Chart Glass Container */
+    .chart-container {
+        background: rgba(15, 23, 42, 0.3);
+        border: 1px solid rgba(59, 130, 246, 0.15);
+        border-radius: 24px;
+        padding: 20px;
+        margin-top: 20px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -160,7 +169,6 @@ def parse_amount(val):
     except ValueError: return 0.0
 
 def format_chf(value):
-    """Formatte en style Banque Suisse (Ex: 1'500.00 CHF)"""
     return f"{value:,.2f}".replace(",", "'")
 
 def get_progress_html(name, reel, prevu):
@@ -184,19 +192,19 @@ def get_progress_html(name, reel, prevu):
     ui_name, icon = cat_ui_map.get(name.strip(), (name, "ph-wallet"))
 
     return f"""
-<div class="cat-card">
-<div class="cat-container">
-<div style="display:flex; align-items:center; gap:10px;">
-<i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i>
-<span class="cat-label">{ui_name}</span>
-</div>
-<span class="cat-amount">{format_chf(reel)} CHF</span>
-</div>
-<div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
-<div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
-</div>
-</div>
-"""
+    <div class="cat-card">
+        <div class="cat-container">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i>
+                <span class="cat-label">{ui_name}</span>
+            </div>
+            <span class="cat-amount">{format_chf(reel)} CHF</span>
+        </div>
+        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
+            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
+        </div>
+    </div>
+    """
 
 def get_transaction_html(date, merchant, amount, category):
     cat_ui_map = {
@@ -207,19 +215,19 @@ def get_transaction_html(date, merchant, amount, category):
     }
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""
-<div class="transaction-card">
-<div style="display:flex; align-items:center; gap:15px;">
-<div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
-<i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i>
-</div>
-<div>
-<div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
-<div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div>
-</div>
-</div>
-<div class="trans-amount">{amount}</div>
-</div>
-"""
+    <div class="transaction-card">
+        <div style="display:flex; align-items:center; gap:15px;">
+            <div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+                <i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i>
+            </div>
+            <div>
+                <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
+                <div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div>
+            </div>
+        </div>
+        <div class="trans-amount">{amount}</div>
+    </div>
+    """
 
 # --- CONNECTION ---
 @st.cache_resource
@@ -360,8 +368,8 @@ if st.button("➕ ADD NEW EXPENSE", use_container_width=True):
     add_transaction_modal()
 
 
-# --- SPLIT LAYOUT: CATEGORIES & VIZ ---
-col_c1, col_c2 = st.columns([1.2, 1], gap="large")
+# --- SPLIT LAYOUT: CATEGORIES (LEFT) & HISTORY (RIGHT) ---
+col_c1, col_c2 = st.columns(2, gap="large")
 
 with col_c1:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-list-dashes'></i> Category Breakdown</h3>", unsafe_allow_html=True)
@@ -371,35 +379,58 @@ with col_c1:
             st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
 
 with col_c2:
-    st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-chart-donut'></i> Spending Distribution</h3>", unsafe_allow_html=True)
-    
-    # Plotly Donut Chart
-    if category_progress:
-        labels = [c["name"] for c in category_progress if c["reel"] > 0]
-        values = [c["reel"] for c in category_progress if c["reel"] > 0]
-        
-        if values:
-            # Azure-themed color palette
-            azure_colors = ['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A', '#BFDBFE']
-            fig = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.75, marker=dict(colors=azure_colors, line=dict(color='#030712', width=3)))])
-            fig.update_layout(
-                showlegend=False,
-                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                margin=dict(t=10, b=10, l=10, r=10),
-                height=260,
-                annotations=[dict(text='Total', x=0.5, y=0.55, font_size=14, font_color='#93C5FD', showarrow=False),
-                             dict(text=f"{reel_var:.0f}", x=0.5, y=0.45, font_size=24, font_color='#FFFFFF', showarrow=False)]
-            )
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-        else:
-            st.info("No spending recorded yet.")
-            
-    st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-top: 30px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
     if expenses_list:
-        with st.container(height=350, border=False): 
+        # Conteneur scrollable si l'historique est long, pour rester aligné avec les catégories
+        with st.container(height=450, border=False): 
             for exp in expenses_list[::-1]: 
                 st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
     else:
         st.info("No recent transactions.")
 
+st.divider()
+
+# --- BOTTOM SECTION: 3D STYLIZED DONUT CHART ---
+st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 5px;'><i class='ph ph-chart-donut'></i> Spending Distribution</h3>", unsafe_allow_html=True)
+
+if category_progress:
+    labels = [c["name"] for c in category_progress if c["reel"] > 0]
+    values = [c["reel"] for c in category_progress if c["reel"] > 0]
+    
+    if values:
+        # Palette de couleurs Premium Azure
+        azure_colors = ['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A', '#BFDBFE']
+        
+        # Création du Donut avec effet Pseudo-3D (Bordures noires épaisses)
+        fig = go.Figure(data=[go.Pie(
+            labels=labels, 
+            values=values, 
+            hole=.7, # Anneau très fin pour plus d'élégance
+            marker=dict(colors=azure_colors, line=dict(color='#030712', width=5)), # Lignes de séparation simulant la profondeur
+            textinfo='none', # On cache le texte sur les parts pour faire plus propre
+            hoverinfo='label+percent+value'
+        )])
+        
+        # Stylisation du texte central (Le Total + CHF)
+        fig.update_layout(
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(color="#94A3B8")),
+            paper_bgcolor='rgba(0,0,0,0)', 
+            plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(t=20, b=20, l=10, r=10),
+            height=450,
+            annotations=[
+                dict(text='TOTAL SPENT', x=0.5, y=0.58, font_size=12, font_color='#93C5FD', showarrow=False),
+                dict(text=f"<b>{format_chf(reel_var)}</b><br><span style='font-size:18px; color:#60A5FA'>CHF</span>", 
+                     x=0.5, y=0.45, font_size=36, font_color='#FFFFFF', showarrow=False)
+            ]
+        )
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    else:
+        st.info("No spending recorded yet.")
+
+st.markdown("</div>", unsafe_allow_html=True) # Fin du chart-container
+
+st.write("")
 st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
