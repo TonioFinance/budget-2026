@@ -22,12 +22,12 @@ st.markdown("""
     h1, h2, h3 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     p, label { color: #94A3B8 !important; }
     
+    /* Metrics Top */
     div[data-testid="stMetricValue"] { 
         font-family: 'Space Grotesk', sans-serif;
         font-size: 44px; font-weight: 700; color: #FFFFFF !important; 
         text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 20px rgba(59, 130, 246, 0.5); 
     }
-    
     div[data-testid="stMetricLabel"] { color: #60A5FA !important; font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; }
     
     .stMetric { 
@@ -44,6 +44,7 @@ st.markdown("""
         height: 18px !important;
     }
 
+    /* Form Design */
     div[data-testid="stForm"] { 
         background: linear-gradient(180deg, rgba(15, 23, 42, 0.4) 0%, rgba(3, 7, 18, 0.8) 100%);
         padding: 25px; border-radius: 20px; border: 1px solid rgba(59, 130, 246, 0.2); 
@@ -63,7 +64,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- HELPER FUNCTIONS ---
+# --- HELPERS ---
 def parse_amount(val):
     if not val: return 0.0
     cleaned = str(val).upper().replace("CHF", "").replace(" ", "").replace(" ", "").replace("'", "").replace(",", ".").strip()
@@ -82,15 +83,15 @@ def get_progress_html(name, reel, prevu):
     ui_name = cat_ui_map.get(name.strip(), name)
 
     return f"""
-    <div style="margin-bottom: 25px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+    <div style="margin-bottom: 30px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
             <span style="color: #F8FAFC; font-size: 16px; font-weight: 600; letter-spacing: 0.5px;">{ui_name}</span>
-            <span style="color: #FFFFFF; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; text-shadow: 0 0 10px rgba(255, 255, 255, 0.4);">
-                {reel:.0f} / {prevu:.0f} CHF
+            <span style="color: #FFFFFF; font-size: 15px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);">
+                {reel:.2f} / {prevu:.0f} CHF
             </span>
         </div>
         <div style="background: rgba(15, 23, 42, 0.8); border-radius: 20px; width: 100%; height: 18px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);">
-            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 20px; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);"></div>
+            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 20px;"></div>
         </div>
     </div>
     """
@@ -162,7 +163,11 @@ if col_var != -1:
             prevu_var, reel_var = parse_amount(row[col_prevu]), parse_amount(row[col_actuel])
             break
         elif cat and cat.lower() not in ["", "nan"]:
-            category_progress.append({"name": cat, "prevu": parse_amount(row[col_prevu]), "reel": parse_amount(row[col_actuel])})
+            category_progress.append({
+                "name": cat, 
+                "prevu": parse_amount(row[col_prevu]), 
+                "reel": parse_amount(row[col_actuel])
+            })
 
 row_history_start = -1
 for i, row in enumerate(all_rows):
@@ -187,18 +192,20 @@ with c1: st.metric("Remaining", f"{restant:.2f} CHF", delta=f"{restant:.2f}", de
 with c2: st.metric("Planned Budget", f"{prevu_var:.1f} CHF")
 
 st.write("")
-st.markdown(f"**Current Spending:** <span style='color: #FFFFFF; font-weight: 700; text-shadow: 0 0 10px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
+st.markdown(f"**Current Spending:** <span style='color: #FFFFFF; font-weight: 700;'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 st.progress(percent)
 
 st.divider()
 
-# --- CATEGORY TRACKER ---
-st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; margin-bottom: 25px;'>📊 Category Tracker</h3>", unsafe_allow_html=True)
+# --- CATEGORY TRACKER (VERTICAL & SMART SORT) ---
+st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; margin-bottom: 30px;'>📊 Category Tracker</h3>", unsafe_allow_html=True)
 if category_progress:
-    # SORTING CATEGORIES BY PLANNED BUDGET (Descending)
-    sorted_categories = sorted(category_progress, key=lambda x: x['prevu'], reverse=True)
+    # --- LOGIQUE DE TRI ---
+    # 1. On trie par dépense effectuée (Actual > 0)
+    # 2. On trie ensuite par budget prévu (Planned)
+    sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
     
-    # VERTICAL LIST (ONE PER LINE)
+    # Affichage vertical
     for cat in sorted_categories:
         st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
 else:
@@ -225,10 +232,8 @@ with col_form:
                 if r > len(col_b) or not str(col_b[r-1]).strip():
                     target = r
                     break
-            
             new_data = [[datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]]
             ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
-            
             st.cache_resource.clear()
             st.success(f"✅ Synced to row {target}!")
             st.rerun()
