@@ -11,6 +11,14 @@ import json
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
+# --- AI CONFIGURATION ---
+if "GEMINI_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    # Use Gemini 1.5 Flash for high-speed receipt processing
+    model = genai.GenerativeModel('gemini-1.5-flash')
+else:
+    st.warning("AI Scanner: Please add 'GEMINI_API_KEY' to Streamlit Secrets to enable receipt scanning.")
+
 # --- STYLE OBSIDIAN & AZURE (FULL SAAS PREMIUM EDITION) ---
 st.markdown("""
     <style>
@@ -239,44 +247,15 @@ def get_progress_html(name, reel, prevu):
     if prevu > 0: percent = reel / prevu
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
-    
-    if percent >= 0.80: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
-    elif percent >= 0.50: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" 
-    else: bar_color = "linear-gradient(90deg, #059669, #10B981)" 
-    
+    bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" if percent >= 1.0 else "linear-gradient(90deg, #B45309, #F59E0B)" if percent >= 0.66 else "linear-gradient(90deg, #059669, #10B981)" 
     cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
     ui_name, icon = cat_ui_map.get(name.strip(), (name, "ph-wallet"))
-
-    return f"""
-<div class="cat-card">
-<div class="cat-container">
-<div style="display:flex; align-items:center; gap:10px;">
-<i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i>
-<span class="cat-label">{ui_name}</span>
-</div>
-<span class="cat-amount">{format_chf(reel)} CHF</span>
-</div>
-<div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
-<div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
-</div>
-</div>"""
+    return f"""<div class="cat-card"><div class="cat-container"><div style="display:flex; align-items:center; gap:10px;"><i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i><span class="cat-label">{ui_name}</span></div><span class="cat-amount">{format_chf(reel)} CHF</span></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;"><div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div></div></div>"""
 
 def get_transaction_html(date, merchant, amount, category):
     cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
-    return f"""
-<div class="transaction-card">
-<div style="display:flex; align-items:center; gap:15px;">
-<div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
-<i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i>
-</div>
-<div>
-<div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
-<div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div>
-</div>
-</div>
-<div class="trans-amount">{amount}</div>
-</div>"""
+    return f"""<div class="transaction-card"><div style="display:flex; align-items:center; gap:15px;"><div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i></div><div><div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div><div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div></div></div><div class="trans-amount">{amount}</div></div>"""
 
 # --- CONNECTION ---
 @st.cache_resource
@@ -302,10 +281,7 @@ ws = sh.worksheet(next((s for s in [s.title for s in sh.worksheets()] if selecte
 
 # --- DATA EXTRACTION ---
 all_rows = ws.get_all_values()
-category_progress = []
-raw_expenses = []
-
-# Logic for Categories
+category_progress, raw_expenses = [], []
 col_var, col_prevu, col_actuel, row_var_start = -1, -1, -1, -1
 for i, row in enumerate(all_rows):
     if i >= 65: break
@@ -330,10 +306,8 @@ if col_var != -1:
             if "vacance" not in cat.lower():
                 category_progress.append({"name": cat, "prevu": parse_amount(row[col_prevu]), "reel": parse_amount(row[col_actuel])})
 
-prevu_var = sum(c["prevu"] for c in category_progress)
-reel_var = sum(c["reel"] for c in category_progress)
+prevu_var, reel_var = sum(c["prevu"] for c in category_progress), sum(c["reel"] for c in category_progress)
 
-# History Scan (Robust "Date" finding)
 row_history_start = -1
 for i, row in enumerate(all_rows):
     if any(str(cell).strip().lower() == "date" for cell in row):
@@ -345,8 +319,8 @@ if row_history_start != -1:
         row = all_rows[i]
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
             if "total" in str(row[0]).lower(): continue
-            raw_amt = parse_amount(row[2])
-            raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": raw_amt, "Category": row[4]})
+            amt_val = parse_amount(row[2])
+            raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
 # --- TABS SYSTEM ---
 tab_dashboard, tab_scanner = st.tabs(["Dashboard", "Scanner"])
@@ -355,41 +329,22 @@ with tab_dashboard:
     # --- DASHBOARD LOGIC ---
     restant = prevu_var - reel_var
     percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
-
-    if percent >= 0.80: insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% consumed</div>"
-    elif percent >= 0.50: insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% consumed</div>"
-    else: insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> On track</div>"
+    insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% consumed</div>" if percent >= 0.80 else f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% consumed</div>" if percent >= 0.66 else f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> On track</div>"
 
     st.markdown(f"""<div style="text-align: center; margin-bottom: 30px;"><div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">OVERVIEW</div><div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div></div>""", unsafe_allow_html=True)
+    bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)' if percent >= 0.8 else 'linear-gradient(90deg, #B45309, #F59E0B)' if percent >= 0.66 else 'linear-gradient(90deg, #059669, #10B981)'
 
-    bar_color = 'linear-gradient(90deg, #059669, #10B981)'
-    if percent >= 0.8: bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
-    elif percent >= 0.5: bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
+    st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>REMAINING</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(restant)} CHF</span></div><div><span>PLANNED</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(prevu_var)} CHF</span></div></div><div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;"><div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div></div>{insight_html}</div>""", unsafe_allow_html=True)
 
-    st.markdown(f"""
-    <div class="hero-card">
-        <div class="hero-top-metrics">
-            <div><span>REMAINING</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(restant)} CHF</span></div>
-            <div><span>PLANNED</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(prevu_var)} CHF</span></div>
-        </div>
-        <div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
-        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-            <div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
-        </div>
-        {insight_html}
-    </div>""", unsafe_allow_html=True)
-
-    # ADD EXPENSE (Writing from Line 60)
     form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
-    with st.expander("ADD NEW EXPENSE", expanded=False):
+    with st.expander("➕ ADD NEW EXPENSE", expanded=False):
         lib = st.text_input("Merchant", placeholder="Apple, Migros...")
         amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
         cat_en = st.selectbox("Category", list(form_cat_map.keys()))
         note = st.text_input("Note")
         if st.button("CONFIRM TRANSACTION", use_container_width=True):
             if lib and amt > 0:
-                col_b = ws.col_values(2)
-                target = 60
+                col_b = ws.col_values(2); target = 60
                 for r in range(60, 150):
                     if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
                 new_data = [[datetime.now().strftime("%d/%m/%Y"), lib, amt, note, form_cat_map[cat_en]]]
@@ -398,20 +353,16 @@ with tab_dashboard:
 
     c1, c2 = st.columns(2, gap="large")
     with c1:
-        st.markdown("<h3 style='font-size: 18px;'>Category Breakdown</h3>", unsafe_allow_html=True)
-        sorted_cats = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
-        for cat in sorted_cats: st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
+        st.markdown("<h3 style='font-size: 20px; margin-bottom: 20px;'>Category Breakdown</h3>", unsafe_allow_html=True)
+        for cat in sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True): st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
     with c2:
-        st.markdown("<h3 style='font-size: 18px;'>Recent Activity</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='font-size: 20px; margin-bottom: 20px;'>Recent Activity</h3>", unsafe_allow_html=True)
         if raw_expenses:
-            with st.container(height=450, border=False):
+            with st.container(height=500, border=False):
                 for exp in raw_expenses[::-1]: st.markdown(get_transaction_html(exp["Date"], exp["Merchant"], format_chf(exp["Amount"]) + " CHF", exp["Category"]), unsafe_allow_html=True)
 
     st.divider()
-
-    # --- TREND CHART ---
-    st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
-    st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
+    st.markdown("<div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
     if raw_expenses:
         df_trends = pd.DataFrame(raw_expenses)
         df_trends['Date'] = pd.to_datetime(df_trends['Date'], dayfirst=True, errors='coerce')
@@ -420,12 +371,9 @@ with tab_dashboard:
             daily = df_trends.groupby('Date')['Amount'].sum().reset_index().sort_values('Date')
             daily['Cumulative'] = daily['Amount'].cumsum()
             fig = go.Figure(go.Scatter(x=daily['Date'], y=daily['Cumulative'], mode='lines', fill='tozeroy', line=dict(color='#60A5FA', width=4), fillcolor='rgba(96, 165, 250, 0.1)'))
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"))
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3, B8"))
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-    st.markdown("</div><div class='chart-container'>", unsafe_allow_html=True)
-
-    # --- DONUT CHART ---
-    st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
+    st.markdown("</div><div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
     if category_progress:
         labels = [c["name"] for c in category_progress if c["reel"] > 0]
         values = [c["reel"] for c in category_progress if c["reel"] > 0]
@@ -436,18 +384,57 @@ with tab_dashboard:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with tab_scanner:
-    st.markdown("<div style='text-align: center; margin-top: 20px;'>", unsafe_allow_html=True)
-    st.markdown("<h2>📸 AI RECEIPT SCANNER</h2>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; margin-top: 20px;'><h2>📸 AI RECEIPT SCANNER</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94A3B8;'>Powered by Gemini 1.5 Flash Vision</p>", unsafe_allow_html=True)
     st.markdown('<div class="scanner-zone">', unsafe_allow_html=True)
-    up_file = st.file_uploader("Drop receipt here", type=["jpg", "png", "pdf"], label_visibility="collapsed")
+    up_file = st.file_uploader("Upload Receipt", type=["jpg", "png", "jpeg"], label_visibility="collapsed")
     if not up_file: st.markdown('<i class="ph ph-scan" style="font-size: 80px; color: rgba(59,130,246,0.3); padding: 40px 0;"></i>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+    
     if up_file:
-        st.info("Analysis in progress...")
-        cs1, cs2 = st.columns(2)
-        with cs1: st.text_input("Merchant", value="Store (Simulated)"); st.number_input("Amount", value=0.0)
-        with cs2: st.selectbox("Category", list(form_cat_map.keys()), index=0); st.write("<br>", unsafe_allow_html=True)
-        if st.button("SAVE DATA", use_container_width=True): st.success("Added!")
+        img = Image.open(up_file)
+        st.image(img, width=220, caption="Scanned Image Preview")
+        
+        if st.button("⚡ START AI ANALYSIS"):
+            with st.spinner("AI is analyzing text and numbers..."):
+                try:
+                    # Prompt designed to extract JSON for direct parsing
+                    prompt = """Extract receipt details and return ONLY a JSON object with: 
+                    "merchant" (string), "amount" (float), "category" (exactly one of: Groceries, Dining, Transport, Leisure, Unexpected, Shopping, Hygiene).
+                    If unsure about the category, use your best judgment based on the merchant name."""
+                    
+                    response = model.generate_content([prompt, img])
+                    # Clean markdown formatting if AI returns it
+                    clean_json = response.text.replace("```json", "").replace("```", "").strip()
+                    st.session_state['scan_res'] = json.loads(clean_json)
+                    st.success("Analysis Complete!")
+                except Exception as e:
+                    st.error(f"Scan failed: {e}")
+
+        if 'scan_res' in st.session_state:
+            res = st.session_state['scan_res']
+            s1, s2 = st.columns(2)
+            with s1:
+                s_lib = st.text_input("Merchant Name", value=res.get("merchant", ""))
+                s_amt = st.number_input("Detected Amount", value=float(res.get("amount", 0.0)))
+            with s2:
+                # Category mapping back to dropdown options
+                default_cat = res.get("category", "Groceries")
+                if default_cat not in form_cat_map: default_cat = "Groceries"
+                s_cat = st.selectbox("Assign Category", list(form_cat_map.keys()), index=list(form_cat_map.keys()).index(default_cat))
+                
+                st.write("<br>", unsafe_allow_html=True)
+                if st.button("SAVE TRANSACTION TO SHEET"):
+                    col_b = ws.col_values(2); target_row = 60
+                    for idx in range(60, 150):
+                        if idx > len(col_b) or not str(col_b[idx-1]).strip(): target_row = idx; break
+                    
+                    final_data = [[datetime.now().strftime("%d/%m/%Y"), s_lib, s_amt, "AI Scan", form_cat_map[s_cat]]]
+                    ws.update(values=final_data, range_name=f"A{target_row}:E{target_row}", value_input_option="USER_ENTERED")
+                    st.cache_resource.clear()
+                    st.success("Successfully added to G-Sheet!")
+                    del st.session_state['scan_res']
+                    st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
 st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
