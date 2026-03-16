@@ -111,21 +111,29 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- ADD BUTTON (FLOATING ACTION STYLE) --- */
-    .stButton>button {
-        background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
-        color: white !important;
-        border-radius: 16px;
-        font-weight: 900;
-        letter-spacing: 1px;
-        height: 3.5rem;
-        border: none;
-        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
-        margin-bottom: 30px;
+    /* --- BEAUTIFUL 3D GLASS BUTTON --- */
+    div.stButton > button {
+        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%) !important;
+        color: #FFFFFF !important;
+        border: 1px solid rgba(59, 130, 246, 0.5) !important;
+        border-radius: 16px !important;
+        font-weight: 900 !important;
+        letter-spacing: 2px !important;
+        height: 3.8rem !important;
+        box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4), inset 0 1.5px 2px rgba(255, 255, 255, 0.3) !important;
+        margin-bottom: 30px !important;
+        transition: all 0.2s ease-out !important;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
     }
-    .stButton>button:hover {
-        box-shadow: 0 15px 35px rgba(59, 130, 246, 0.6);
-        transform: translateY(-2px) scale(1.01);
+    div.stButton > button:hover {
+        background: linear-gradient(135deg, #2563EB 0%, #60A5FA 100%) !important;
+        box-shadow: 0 12px 35px rgba(59, 130, 246, 0.6), inset 0 1.5px 2px rgba(255, 255, 255, 0.4) !important;
+        transform: translateY(-2px) scale(1.01) !important;
+        border-color: rgba(96, 165, 250, 0.8) !important;
+    }
+    div.stButton > button:active {
+        transform: translateY(2px) scale(0.98) !important;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4), inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
     }
     
     /* Pop-up Glassmorphism */
@@ -350,7 +358,7 @@ def add_transaction_modal():
     cat_en = st.selectbox("Category", list(form_cat_map.keys()))
     note = st.text_input("Note (Optional)")
     
-    if st.button("CONFIRM EXPENSE", use_container_width=True):
+    if st.button("CONFIRM EXPENSE", use_container_width=True, type="primary"):
         if lib and amt > 0:
             col_b = ws.col_values(2)
             target = 60
@@ -364,7 +372,7 @@ def add_transaction_modal():
             st.rerun()
 
 # Floating Action Button trigger
-if st.button("➕ ADD NEW EXPENSE", use_container_width=True):
+if st.button("➕ ADD NEW EXPENSE", use_container_width=True, type="primary"):
     add_transaction_modal()
 
 
