@@ -346,18 +346,17 @@ elif percent >= 0.5:
 
 hero_html = f"""
 <div class="hero-card">
-<div class="hero-top-metrics">
-<div>Remaining: <span style="color:#FFFFFF;">{format_chf(restant)} CHF</span></div>
-<div>Planned: <span style="color:#FFFFFF;">{format_chf(prevu_var)} CHF</span></div>
+    <div class="hero-top-metrics">
+        <div><span>REMAINING</span> <span style="color:#FFFFFF; font-size: 14px;">{format_chf(restant)}&nbsp;CHF</span></div>
+        <div><span>PLANNED</span> <span style="color:#FFFFFF; font-size: 14px;">{format_chf(prevu_var)}&nbsp;CHF</span></div>
+    </div>
+    <div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
+    <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+        <div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
+    </div>
+    {insight_html}
 </div>
-<div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
-<div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-<div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
-</div>
-{insight_html}
-</div>
-"""
-st.markdown(hero_html, unsafe_allow_html=True)
+""" 
 
 # --- POP-UP DIALOG (MODAL) ---
 form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
