@@ -133,10 +133,8 @@ st.markdown("""
     }
 
     div[data-testid="stButton"] > button:hover {
-        /* Dégradé moins agressif au survol */
         background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important; 
         border-color: rgba(96, 165, 250, 0.6) !important;
-        /* Lueur fortement réduite pour plus d'élégance */
         box-shadow: 0 0 8px rgba(96, 165, 250, 0.3), 0 6px 15px rgba(37, 99, 235, 0.2) !important;
         transform: translateY(-2px) scale(1.01) !important;
     }
@@ -397,13 +395,16 @@ with col_c1:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-list-dashes'></i> Category Breakdown</h3>", unsafe_allow_html=True)
     if category_progress:
         sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
-        for cat in sorted_categories:
-            st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
+        # Conteneur fixe pour alignement avec la colonne de droite
+        with st.container(height=480, border=False):
+            for cat in sorted_categories:
+                st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
 
 with col_c2:
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
     if expenses_list:
-        with st.container(height=450, border=False): 
+        # Conteneur fixe de même taille que la colonne de gauche
+        with st.container(height=480, border=False): 
             for exp in expenses_list[::-1]: 
                 st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
     else:
