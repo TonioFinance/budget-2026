@@ -168,11 +168,10 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    if percent >= 0.80: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" # Rouge
-    elif percent >= 0.50: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" # Orange
-    else: bar_color = "linear-gradient(90deg, #059669, #10B981)" # Vert
+    if percent >= 0.80: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
+    elif percent >= 0.50: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" 
+    else: bar_color = "linear-gradient(90deg, #059669, #10B981)" 
     
-    # Mapping UI Name + Phosphor Icons
     cat_ui_map = {
         "Courses": ("Groceries", "ph-shopping-cart"), 
         "Sorties/Restos": ("Dining", "ph-fork-knife"), 
@@ -185,19 +184,19 @@ def get_progress_html(name, reel, prevu):
     ui_name, icon = cat_ui_map.get(name.strip(), (name, "ph-wallet"))
 
     return f"""
-    <div class="cat-card">
-        <div class="cat-container">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i>
-                <span class="cat-label">{ui_name}</span>
-            </div>
-            <span class="cat-amount">{format_chf(reel)} CHF</span>
-        </div>
-        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
-            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
-        </div>
-    </div>
-    """
+<div class="cat-card">
+<div class="cat-container">
+<div style="display:flex; align-items:center; gap:10px;">
+<i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i>
+<span class="cat-label">{ui_name}</span>
+</div>
+<span class="cat-amount">{format_chf(reel)} CHF</span>
+</div>
+<div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
+<div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
+</div>
+</div>
+"""
 
 def get_transaction_html(date, merchant, amount, category):
     cat_ui_map = {
@@ -208,19 +207,19 @@ def get_transaction_html(date, merchant, amount, category):
     }
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""
-    <div class="transaction-card">
-        <div style="display:flex; align-items:center; gap:15px;">
-            <div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
-                <i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i>
-            </div>
-            <div>
-                <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
-                <div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div>
-            </div>
-        </div>
-        <div class="trans-amount">{amount}</div>
-    </div>
-    """
+<div class="transaction-card">
+<div style="display:flex; align-items:center; gap:15px;">
+<div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+<i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i>
+</div>
+<div>
+<div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
+<div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div>
+</div>
+</div>
+<div class="trans-amount">{amount}</div>
+</div>
+"""
 
 # --- CONNECTION ---
 @st.cache_resource
@@ -311,20 +310,23 @@ else:
 # --- MAIN UI: HERO DASHBOARD ---
 st.title(f"Dashboard • {selected_month_en}")
 
-# Custom HTML Hero Block
+bar_color = 'linear-gradient(90deg, #059669, #10B981)'
+if percent >= 0.8:
+    bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
+elif percent >= 0.5:
+    bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
+
 hero_html = f"""
 <div class="hero-card">
-    <div class="hero-top-metrics">
-        <div>Remaining: <span style="color:#FFFFFF;">{format_chf(restant)} CHF</span></div>
-        <div>Planned: <span style="color:#FFFFFF;">{format_chf(prevu_var)} CHF</span></div>
-    </div>
-    <div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
-    
-    <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
-        <div style="background: {'linear-gradient(90deg, #9F1239, #E11D48)' if percent >= 0.8 else 'linear-gradient(90deg, #B45309, #F59E0B)' if percent >= 0.5 else 'linear-gradient(90deg, #059669, #10B981)'}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
-    </div>
-    
-    {insight_html}
+<div class="hero-top-metrics">
+<div>Remaining: <span style="color:#FFFFFF;">{format_chf(restant)} CHF</span></div>
+<div>Planned: <span style="color:#FFFFFF;">{format_chf(prevu_var)} CHF</span></div>
+</div>
+<div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
+<div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+<div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div>
+</div>
+{insight_html}
 </div>
 """
 st.markdown(hero_html, unsafe_allow_html=True)
@@ -394,8 +396,8 @@ with col_c2:
             
     st.markdown("<h3 style='color: #FFFFFF; font-size: 20px; margin-top: 30px; margin-bottom: 20px;'><i class='ph ph-clock-counter-clockwise'></i> Recent Activity</h3>", unsafe_allow_html=True)
     if expenses_list:
-        with st.container(height=350, border=False): # Rend l'historique scrollable si trop long
-            for exp in expenses_list[::-1]: # Affiche tout mais permet de scroller
+        with st.container(height=350, border=False): 
+            for exp in expenses_list[::-1]: 
                 st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
     else:
         st.info("No recent transactions.")
