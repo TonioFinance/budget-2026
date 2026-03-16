@@ -134,7 +134,22 @@ st.markdown("""
     .stExpander details summary:hover {
         background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important;
         box-shadow: 0 0 30px rgba(59, 130, 246, 0.4) !important;
-        transform: scale(1.02) !important; /* GROSSIT LE BOUTON COMPLET */
+        transform: scale(1.02) !important;
+    }
+
+    /* --- AZURE INPUT FIELDS STYLING --- */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input, div[data-baseweb="select"] > div {
+        background-color: rgba(15, 23, 42, 0.6) !important; /* Navy profond */
+        color: #FFFFFF !important;
+        border: 1px solid rgba(59, 130, 246, 0.2) !important;
+        border-radius: 12px !important;
+        backdrop-filter: blur(8px);
+        padding: 10px 15px !important;
+    }
+    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus, div[data-baseweb="select"] > div:focus-within {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.4) !important;
+        background-color: rgba(30, 41, 59, 0.8) !important;
     }
 
     /* --- BLUE GLOW BUTTON (CONFIRM) --- */
@@ -145,6 +160,7 @@ st.markdown("""
         height: 3.8rem !important;
         box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255,255,255,0.2) !important;
         transition: all 0.2s ease-out !important;
+        margin-top: 10px;
     }
     div[data-testid="stButton"] > button p {
         color: #FFFFFF !important;
@@ -153,14 +169,6 @@ st.markdown("""
         letter-spacing: 1.5px !important;
         text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
         margin: 0 !important;
-    }
-
-    /* Pure Glass Input Fields styling */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input, div[data-baseweb="select"] > div {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        color: #FFFFFF !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 12px !important;
     }
 
     /* Donut Chart Glass Container */
@@ -321,7 +329,7 @@ else:
 # --- MAIN UI ---
 st.markdown(f"""
 <div style="text-align: center; margin-bottom: 30px;">
-    <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">DASHBOARD</div>
+    <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">Dashboard</div>
     <div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div>
 </div>""", unsafe_allow_html=True)
 
@@ -348,7 +356,7 @@ st.markdown(hero_html, unsafe_allow_html=True)
 # --- FULL WIDTH ADD EXPENSE MENU ---
 form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
 
-with st.expander("ADD NEW EXPENSE", expanded=False):
+with st.expander("+ ADD NEW EXPENSE", expanded=False):
     st.markdown("<br>", unsafe_allow_html=True)
     lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
     amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
@@ -406,4 +414,12 @@ if category_progress:
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 st.markdown("</div>", unsafe_allow_html=True)
+
+# --- DISCREET DATA AUDIT ---
+with st.sidebar.expander("🔍 Budget Inspector (Audit)"):
+    st.write("Détail des montants lus par le code :")
+    for cat in category_progress:
+        st.write(f"- {cat['name']} : **{cat['reel']}**")
+    st.write(f"Total calculé par l'app : **{reel_var}**")
+
 st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
