@@ -111,12 +111,12 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- EXPANDER (FULL WIDTH BUTTON) & HOVER EFFECT --- */
+    /* --- EXPANDER (FULL WIDTH ADD EXPENSE) & HOVER --- */
     .stExpander {
         background: rgba(15, 23, 42, 0.2) !important;
         border: 1px solid rgba(59, 130, 246, 0.3) !important;
         border-radius: 16px !important;
-        margin-bottom: 15px !important; /* Rapproche la section suivante */
+        margin-bottom: 15px !important;
         overflow: hidden;
     }
     .stExpander details summary {
@@ -129,12 +129,12 @@ st.markdown("""
         display: flex;
         justify-content: center;
         align-items: center;
-        transition: all 0.2s ease-out !important;
+        transition: transform 0.2s ease-out, box-shadow 0.2s ease-out !important;
     }
     .stExpander details summary:hover {
         background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important;
-        box-shadow: 0 0 25px rgba(59, 130, 246, 0.6) !important;
-        transform: scale(1.015); /* Effet de zoom SaaS */
+        box-shadow: 0 0 30px rgba(59, 130, 246, 0.4) !important;
+        transform: scale(1.02) !important; /* GROSSIT LE BOUTON COMPLET */
     }
 
     /* --- BLUE GLOW BUTTON (CONFIRM) --- */
@@ -152,6 +152,7 @@ st.markdown("""
         font-size: 16px !important;
         letter-spacing: 1.5px !important;
         text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+        margin: 0 !important;
     }
 
     /* Pure Glass Input Fields styling */
