@@ -139,7 +139,7 @@ st.markdown("""
 
     /* --- AZURE INPUT FIELDS STYLING --- */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, div[data-baseweb="select"] > div {
-        background-color: rgba(15, 23, 42, 0.6) !important;
+        background-color: rgba(15, 23, 42, 0.6) !important; /* Navy profond */
         color: #FFFFFF !important;
         border: 1px solid rgba(59, 130, 246, 0.2) !important;
         border-radius: 12px !important;
@@ -205,7 +205,7 @@ def get_progress_html(name, reel, prevu):
     pct_str = f"{min(percent*100, 100):.1f}%"
     
     if percent >= 0.80: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
-    elif percent >= 0.66: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" 
+    elif percent >= 0.50: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" 
     else: bar_color = "linear-gradient(90deg, #059669, #10B981)" 
     
     cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
@@ -313,13 +313,13 @@ if row_history_start != -1:
         row = all_rows[i]
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
             if "total" in str(row[0]).lower() or "total" in str(row[1]).lower(): continue
-            raw_amt = parse_amount(row[2])
+            raw_val = parse_amount(row[2])
             expenses_list.append({
                 "Date": row[0], 
                 "Marchand": row[1], 
-                "Montant": format_chf(raw_amt) + " CHF", 
+                "Montant": format_chf(raw_val) + " CHF", 
                 "Catégorie": row[4],
-                "RawAmount": raw_amt
+                "RawAmount": raw_val # Needed for trend calculation
             })
 
 restant = prevu_var - reel_var
@@ -328,7 +328,7 @@ percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 # --- SMART INSIGHT LOGIC ---
 if percent >= 0.80:
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% of budget consumed</div>"
-elif percent >= 0.66:
+elif percent >= 0.50:
     insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% of budget consumed</div>"
 else:
     insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> Finances are on track</div>"
@@ -343,7 +343,7 @@ st.markdown(f"""
 bar_color = 'linear-gradient(90deg, #059669, #10B981)'
 if percent >= 0.8:
     bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
-elif percent >= 0.66:
+elif percent >= 0.5:
     bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
 
 hero_html = f"""
@@ -399,17 +399,18 @@ with col_c2:
 
 st.divider()
 
-# --- TREND DASHBOARD (LINE CHART) ---
+# --- NEW SECTION: SPENDING TREND (CUMULATIVE LINE CHART) ---
 st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
 st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
 
 if expenses_list:
     df_trends = pd.DataFrame(expenses_list)
-    # CORRECTED: errors='coerce' handle bad dates and we drop them
-    df_trends['Date'] = pd.to_datetime(df_trends['Date'], errors='coerce')
+    # FIX: force dayfirst=True to avoid American format confusion
+    df_trends['Date'] = pd.to_datetime(df_trends['Date'], dayfirst=True, errors='coerce')
     df_trends = df_trends.dropna(subset=['Date'])
     
     if not df_trends.empty:
+        # Sort and calculate daily cumulative sum
         daily_spend = df_trends.groupby('Date')['RawAmount'].sum().reset_index().sort_values('Date')
         daily_spend['Cumulative'] = daily_spend['RawAmount'].cumsum()
 
@@ -430,7 +431,7 @@ if expenses_list:
         st.plotly_chart(fig_trend, use_container_width=True, config={'displayModeBar': False})
 st.markdown("</div>", unsafe_allow_html=True)
 
-# --- DONUT CHART ---
+# --- BOTTOM SECTION: DONUT CHART ---
 st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
 st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 5px;'><i class='ph ph-chart-donut'></i> Spending Distribution</h3>", unsafe_allow_html=True)
 
