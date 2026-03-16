@@ -111,33 +111,37 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- BLUE GLOW BUTTON --- */
+    /* --- BLUE GLOW BUTTON (REFINED) --- */
     div[data-testid="stButton"] > button {
         background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
-        color: #FFFFFF !important;
         border: 1px solid rgba(59, 130, 246, 0.5) !important;
         border-radius: 16px !important;
-        font-weight: 900 !important;
-        letter-spacing: 1.5px !important;
         height: 3.8rem !important;
-        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3), inset 0 1px 2px rgba(255,255,255,0.2) !important;
+        box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255,255,255,0.2) !important;
         margin-bottom: 30px !important;
         transition: all 0.2s ease-out !important;
     }
+    
+    /* Force bold and white on all content inside the button */
+    div[data-testid="stButton"] > button p {
+        color: #FFFFFF !important;
+        font-weight: 900 !important;
+        font-size: 16px !important;
+        letter-spacing: 1.5px !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+        margin: 0 !important;
+    }
+
     div[data-testid="stButton"] > button:hover {
-        background: linear-gradient(90deg, #2563EB 0%, #60A5FA 100%) !important; /* S'éclaircit drastiquement */
-        border-color: rgba(147, 197, 253, 0.9) !important;
-        /* Double ombre : une pour la profondeur, l'autre pour l'effet Néon (Glow) */
-        box-shadow: 0 0 30px rgba(96, 165, 250, 0.7), 0 10px 25px rgba(37, 99, 235, 0.5) !important;
-        transform: translateY(-3px) scale(1.01) !important;
+        background: linear-gradient(90deg, #2563EB 0%, #60A5FA 100%) !important;
+        border-color: rgba(147, 197, 253, 0.8) !important;
+        /* Lueur (glow) réduite et plus subtile */
+        box-shadow: 0 0 15px rgba(96, 165, 250, 0.5), 0 8px 20px rgba(37, 99, 235, 0.3) !important;
+        transform: translateY(-2px) scale(1.01) !important;
     }
     div[data-testid="stButton"] > button:active {
         transform: translateY(1px) scale(0.98) !important;
-        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4) !important;
-    }
-    div[data-testid="stButton"] > button * {
-        color: #FFFFFF !important; /* Force le texte en blanc absolu */
-        text-shadow: 0 1px 3px rgba(0,0,0,0.5) !important;
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3) !important;
     }
     
     /* Pop-up Glassmorphism */
@@ -362,6 +366,7 @@ def add_transaction_modal():
     cat_en = st.selectbox("Category", list(form_cat_map.keys()))
     note = st.text_input("Note (Optional)")
     
+    # Bouton de confirmation classique
     if st.button("CONFIRM EXPENSE", use_container_width=True):
         if lib and amt > 0:
             col_b = ws.col_values(2)
@@ -375,8 +380,8 @@ def add_transaction_modal():
             st.cache_resource.clear()
             st.rerun()
 
-# Floating Action Button trigger
-if st.button("➕ ADD NEW EXPENSE", use_container_width=True):
+# Floating Action Button trigger (Le fameux bouton +)
+if st.button("+ ADD NEW EXPENSE", use_container_width=True):
     add_transaction_modal()
 
 
