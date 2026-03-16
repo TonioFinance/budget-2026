@@ -310,9 +310,9 @@ restant = prevu_var - reel_var
 percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
 # --- SMART INSIGHT LOGIC ---
-if percent >= 0.80:
+if percent >= 0.90:
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% of budget consumed</div>"
-elif percent >= 0.50:
+elif percent >= 0.75:
     insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% of budget consumed</div>"
 else:
     insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> Finances are on track</div>"
