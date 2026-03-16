@@ -111,7 +111,33 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- BLUE GLOW BUTTON (REFINED) --- */
+    /* --- EXPANDER (FULL WIDTH BUTTON) & HOVER EFFECT --- */
+    .stExpander {
+        background: rgba(15, 23, 42, 0.2) !important;
+        border: 1px solid rgba(59, 130, 246, 0.3) !important;
+        border-radius: 16px !important;
+        margin-bottom: 15px !important; /* Rapproche la section suivante */
+        overflow: hidden;
+    }
+    .stExpander details summary {
+        background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
+        color: white !important;
+        padding: 14px 20px !important;
+        font-weight: 900 !important;
+        letter-spacing: 1.5px !important;
+        border-radius: 14px !important;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: all 0.2s ease-out !important;
+    }
+    .stExpander details summary:hover {
+        background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important;
+        box-shadow: 0 0 25px rgba(59, 130, 246, 0.6) !important;
+        transform: scale(1.015); /* Effet de zoom SaaS */
+    }
+
+    /* --- BLUE GLOW BUTTON (CONFIRM) --- */
     div[data-testid="stButton"] > button {
         background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
         border: 1px solid rgba(59, 130, 246, 0.5) !important;
@@ -126,34 +152,8 @@ st.markdown("""
         font-size: 16px !important;
         letter-spacing: 1.5px !important;
         text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
-        margin: 0 !important;
     }
 
-    /* --- EXPANDER (FULL WIDTH STYLE) --- */
-    .stExpander {
-        background: rgba(15, 23, 42, 0.2) !important;
-        border: 1px solid rgba(59, 130, 246, 0.3) !important;
-        border-radius: 16px !important;
-        margin-bottom: 30px !important;
-        overflow: hidden;
-    }
-    .stExpander details summary {
-        background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
-        color: white !important;
-        padding: 14px 20px !important;
-        font-weight: 900 !important;
-        letter-spacing: 1.5px !important;
-        border-radius: 14px !important;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        transition: all 0.2s ease;
-    }
-    .stExpander details summary:hover {
-        background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important;
-        box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
-    }
-    
     /* Pure Glass Input Fields styling */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, div[data-baseweb="select"] > div {
         background-color: rgba(255, 255, 255, 0.05) !important;
@@ -310,9 +310,9 @@ restant = prevu_var - reel_var
 percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
 # --- SMART INSIGHT LOGIC ---
-if percent >= 0.90:
+if percent >= 0.80:
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% of budget consumed</div>"
-elif percent >= 0.75:
+elif percent >= 0.50:
     insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% of budget consumed</div>"
 else:
     insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> Finances are on track</div>"
@@ -347,7 +347,7 @@ st.markdown(hero_html, unsafe_allow_html=True)
 # --- FULL WIDTH ADD EXPENSE MENU ---
 form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
 
-with st.expander("ADD NEW EXPENSE", expanded=False):
+with st.expander("+ ADD NEW EXPENSE", expanded=False):
     st.markdown("<br>", unsafe_allow_html=True)
     lib = st.text_input("Merchant", placeholder="e.g. Apple, Migros...")
     amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
@@ -383,7 +383,7 @@ with col_c2:
 
 st.divider()
 
-# --- BOTTOM SECTION: 3D STYLIZED DONUT CHART ---
+# --- BOTTOM SECTION: DONUT CHART ---
 st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
 st.markdown("<h3 style='color: #FFFFFF; font-size: 22px; text-align: center; margin-bottom: 5px;'><i class='ph ph-chart-donut'></i> Spending Distribution</h3>", unsafe_allow_html=True)
 
@@ -405,5 +405,12 @@ if category_progress:
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 st.markdown("</div>", unsafe_allow_html=True)
-st.write("")
+
+# --- DISCREET DATA AUDIT ---
+with st.sidebar.expander("🔍 Budget Inspector (Audit)"):
+    st.write("Détail des montants lus par le code :")
+    for cat in category_progress:
+        st.write(f"- {cat['name']} : **{cat['reel']}**")
+    st.write(f"Total calculé par l'app : **{reel_var}**")
+
 st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
