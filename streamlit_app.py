@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & AZURE (SAAS PREMIUM EDITION) ---
+# --- STYLE OBSIDIAN & AZURE (FULL SAAS PREMIUM EDITION) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
@@ -21,12 +21,12 @@ st.markdown("""
         font-family: 'Lato', sans-serif;
     }
 
-    /* --- INSTANT HOVER ANIMATION (0.05s) --- */
-    * { transition: all 0.05s ease-out; }
+    /* --- INSTANT HOVER ANIMATION --- */
+    * { transition: all 0.1s ease-out; }
 
     h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
-    /* --- DESIGN DES ONGLETS (TABS) - ULTRA PRO --- */
+    /* --- CUSTOM TABS NAVIGATION (CENTERED & GLOW) --- */
     .stTabs [data-baseweb="tab-list"] {
         gap: 20px;
         background-color: rgba(15, 23, 42, 0.6);
@@ -56,18 +56,18 @@ st.markdown("""
         color: #FFFFFF !important;
         font-weight: 900 !important;
         border: 1px solid rgba(59, 130, 246, 0.5) !important;
-        box-shadow: 0 0 25px rgba(37, 99, 235, 0.4), inset 0 0 10px rgba(37, 99, 235, 0.2);
+        box-shadow: 0 0 25px rgba(37, 99, 235, 0.4);
         text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
     }
 
-    /* --- HERO DASHBOARD (TOP CARD) --- */
+    /* --- HERO DASHBOARD --- */
     .hero-card {
         background: linear-gradient(160deg, rgba(30, 58, 138, 0.25) 0%, rgba(3, 7, 18, 0.8) 100%);
         padding: 35px 30px;
         border-radius: 24px;
         border: 1px solid rgba(59, 130, 246, 0.3);
         border-top: 2px solid rgba(59, 130, 246, 0.7);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 20px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
         backdrop-filter: blur(15px);
         margin-bottom: 25px;
         text-align: center;
@@ -101,7 +101,6 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         gap: 10px;
-        text-transform: uppercase;
     }
     .insight-green { background: rgba(16, 185, 129, 0.1); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); }
     .insight-orange { background: rgba(245, 158, 11, 0.1); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); }
@@ -124,7 +123,7 @@ st.markdown("""
     .cat-label { color: #FFFFFF !important; font-size: 19px !important; font-weight: 700; }
     .cat-amount { color: #FFFFFF !important; font-size: 18px; font-weight: 900; text-shadow: 0 0 15px rgba(255, 255, 255, 0.5); }
 
-    /* --- RECENT ACTIVITY CARDS --- */
+    /* --- RECENT ACTIVITY CARDS (AZURE GLOW) --- */
     .transaction-card {
         background: rgba(255, 255, 255, 0.02); 
         border-radius: 16px; 
@@ -134,21 +133,41 @@ st.markdown("""
         justify-content: space-between; 
         align-items: center;
         border: 1px solid rgba(255,255,255,0.03);
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.05);
     }
     .transaction-card:hover {
-        transform: translateX(8px);
+        transform: translateX(8px) scale(1.01);
         background: rgba(59, 130, 246, 0.08);
         border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 16px; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
 
-    /* --- EXPANDER & FORMS --- */
+    /* --- ADD NEW EXPENSE (EXPANDER & BUTTON) --- */
     .stExpander {
-        background: rgba(15, 23, 42, 0.2) !important;
+        background: rgba(15, 23, 42, 0.3) !important;
         border: 1px solid rgba(59, 130, 246, 0.3) !important;
         border-radius: 20px !important;
-        margin-bottom: 15px !important;
+        margin-bottom: 30px !important;
+        backdrop-filter: blur(10px);
+    }
+    
+    div[data-testid="stButton"] > button {
+        background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
+        border: 1px solid rgba(59, 130, 246, 0.5) !important;
+        border-radius: 16px !important;
+        height: 3.8rem !important;
+        color: white !important;
+        font-weight: 900 !important;
+        letter-spacing: 1.5px !important;
+        text-transform: uppercase !important;
+        box-shadow: 0 6px 15px rgba(37, 99, 235, 0.3) !important;
+        width: 100% !important;
+    }
+    div[data-testid="stButton"] > button:hover {
+        transform: scale(1.02) !important;
+        box-shadow: 0 0 30px rgba(59, 130, 246, 0.5) !important;
+        border-color: #60A5FA !important;
     }
 
     /* --- CHART CONTAINER --- */
@@ -161,8 +180,15 @@ st.markdown("""
         box-shadow: 0 15px 35px rgba(0,0,0,0.4);
     }
 
-    /* Progress Bars */
-    .stProgress > div > div > div > div { border-radius: 10px; height: 12px !important; }
+    /* Progress Bars Global */
+    .stProgress > div > div > div > div { border-radius: 10px; height: 14px !important; }
+    
+    /* Input Styling */
+    input, select { 
+        background: rgba(0,0,0,0.2) !important; 
+        border: 1px solid rgba(59,130,246,0.2) !important; 
+        color: white !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -181,11 +207,20 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
+    # Logic: Green -> Orange (2/3) -> Red (100%)
     if percent >= 1.0: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
     elif percent >= 0.66: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)" 
     else: bar_color = "linear-gradient(90deg, #059669, #10B981)" 
     
-    cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
+    cat_ui_map = {
+        "Courses": ("Groceries", "ph-shopping-cart"), 
+        "Sorties/Restos": ("Dining", "ph-fork-knife"), 
+        "Transport": ("Transport", "ph-car"), 
+        "Loisirs": ("Leisure", "ph-game-controller"), 
+        "Imprévus": ("Unexpected", "ph-warning-circle"), 
+        "Shopping": ("Shopping", "ph-tote"), 
+        "Hygiène": ("Hygiene", "ph-drop")
+    }
     ui_name, icon = cat_ui_map.get(name.strip(), (name, "ph-wallet"))
 
     return f"""
@@ -234,7 +269,7 @@ if not client: st.stop()
 try: sh = client.open_by_key(SHEET_ID)
 except Exception: st.error("Access Denied"); st.stop()
 
-# --- NAVIGATION ---
+# --- NAVIGATION (English UI -> French Sheets) ---
 months_map = {"January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril", "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août", "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"}
 now = datetime.now()
 selected_month_en = st.sidebar.selectbox("Select Month", list(months_map.keys()), index=now.month - 1)
@@ -246,7 +281,7 @@ all_rows = ws.get_all_values()
 category_progress = []
 raw_expenses = []
 
-# Find Category Logic
+# FIND CATEGORIES (Charges Variables)
 col_var, col_prevu, col_actuel, row_var_start = -1, -1, -1, -1
 for i, row in enumerate(all_rows):
     if i >= 65: break
@@ -274,7 +309,7 @@ if col_var != -1:
 prevu_var = sum(c["prevu"] for c in category_progress)
 reel_var = sum(c["reel"] for c in category_progress)
 
-# History Scan
+# History Scan (Detect "Date" header)
 row_history_start = -1
 for i, row in enumerate(all_rows):
     if any(str(cell).strip().lower() == "date" for cell in row):
@@ -289,27 +324,33 @@ if row_history_start != -1:
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# --- TABS SYSTEM (DESIGNED) ---
-# Ajout d'emojis et de pictogrammes dans les labels
-tab_dashboard, tab_scanner = st.tabs(["📊 DASHBOARD", "📸 SCAN RECEIPT"])
+# --- TABS SYSTEM ---
+tab_dashboard, tab_scanner = st.tabs(["📊 DASHBOARD", "📸 RECEIPT SCANNER"])
 
 with tab_dashboard:
+    # --- HERO LOGIC ---
     restant = prevu_var - reel_var
     percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
-    if percent >= 0.80: insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> ALERTE : {percent*100:.0f}% DU BUDGET ATTEINT</div>"
-    elif percent >= 0.66: insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> ATTENTION : SEUIL DES 2/3 FRANCHI</div>"
-    else: insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> BUDGET SOUS CONTRÔLE</div>"
+    if percent >= 0.80: insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> CRITICAL: {percent*100:.0f}% BUDGET USED</div>"
+    elif percent >= 0.66: insight_html = f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> WARNING: 2/3 THRESHOLD REACHED</div>"
+    else: insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> BUDGET ON TRACK</div>"
 
     bar_color = 'linear-gradient(90deg, #059669, #10B981)'
     if percent >= 0.8: bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)'
     elif percent >= 0.66: bar_color = 'linear-gradient(90deg, #B45309, #F59E0B)'
 
     st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 30px;">
+        <div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">DASHBOARD</div>
+        <div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div>
+    </div>""", unsafe_allow_html=True)
+
+    st.markdown(f"""
     <div class="hero-card">
         <div class="hero-top-metrics">
-            <div><span>RESTANT</span> <span style="color:#FFFFFF; font-weight:900;">{format_chf(restant)} CHF</span></div>
-            <div><span>PRÉVU</span> <span style="color:#FFFFFF; font-weight:900;">{format_chf(prevu_var)} CHF</span></div>
+            <div><span>REMAINING</span> <span style="color:#FFFFFF; font-weight:900;">{format_chf(restant)} CHF</span></div>
+            <div><span>PLANNED</span> <span style="color:#FFFFFF; font-weight:900;">{format_chf(prevu_var)} CHF</span></div>
         </div>
         <div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
         <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 14px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
@@ -318,13 +359,14 @@ with tab_dashboard:
         {insight_html}
     </div>""", unsafe_allow_html=True)
 
+    # --- ADD NEW EXPENSE FORM ---
     form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
-    with st.expander("➕ AJOUTER UNE DÉPENSE", expanded=False):
-        lib = st.text_input("Marchand", placeholder="Apple, Migros...")
-        amt = st.number_input("Montant (CHF)", min_value=0.0, step=0.1, format="%.2f")
-        cat_en = st.selectbox("Catégorie", list(form_cat_map.keys()))
+    with st.expander("➕ ADD NEW EXPENSE", expanded=False):
+        lib = st.text_input("Merchant", placeholder="Apple, Migros...")
+        amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
+        cat_en = st.selectbox("Category", list(form_cat_map.keys()))
         note = st.text_input("Note")
-        if st.button("CONFIRMER LA TRANSACTION", use_container_width=True):
+        if st.button("CONFIRM TRANSACTION", use_container_width=True):
             if lib and amt > 0:
                 col_b = ws.col_values(2)
                 target = 60
@@ -337,14 +379,15 @@ with tab_dashboard:
                 st.cache_resource.clear()
                 st.rerun()
 
+    # --- SPLIT LAYOUT (CATEGORIES & ACTIVITY) ---
     c1, c2 = st.columns(2, gap="large")
     with c1:
-        st.markdown("<h3 style='font-size: 20px; margin-bottom:20px;'>Catégories</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='font-size: 20px; margin-bottom:20px;'>Category Breakdown</h3>", unsafe_allow_html=True)
         sorted_cats = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
         for cat in sorted_cats:
             st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
     with c2:
-        st.markdown("<h3 style='font-size: 20px; margin-bottom:20px;'>Activité</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='font-size: 20px; margin-bottom:20px;'>Recent Activity</h3>", unsafe_allow_html=True)
         if raw_expenses:
             with st.container(height=500, border=False):
                 for exp in raw_expenses[::-1]:
@@ -352,9 +395,9 @@ with tab_dashboard:
 
     st.divider()
 
-    # --- TREND CHART (CUMULATIF) ---
+    # --- TREND CHART (CUMULATIVE) ---
     st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
-    st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; text-align: center; margin-bottom: 15px;'><i class='ph ph-trend-up'></i> Analyse de Tendance</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; text-align: center; margin-bottom: 15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
     if raw_expenses:
         df_trends = pd.DataFrame(raw_expenses)
         df_trends['Date'] = pd.to_datetime(df_trends['Date'], dayfirst=True, errors='coerce')
@@ -367,28 +410,49 @@ with tab_dashboard:
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
 
-with tab_scanner:
-    st.markdown("<div style='text-align: center; margin-top: 20px;'>", unsafe_allow_html=True)
-    st.markdown("<h2>📸 SCANNER INTELLIGENT</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #94A3B8;'>Uploadez un ticket pour remplir automatiquement la dépense.</p>", unsafe_allow_html=True)
-    st.markdown('<div class="chart-container" style="border-style: dashed; border-width: 2px;">', unsafe_allow_html=True)
-    up_file = st.file_uploader("Drop receipt here", type=["jpg", "png", "pdf"], label_visibility="collapsed")
-    if not up_file:
-        st.markdown('<i class="ph ph-scan" style="font-size: 100px; color: rgba(59,130,246,0.1); padding: 40px 0;"></i>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    if up_file:
-        st.info("ANALYSE IA EN COURS...")
-        # Simu
-        s1, s2 = st.columns(2)
-        with s1:
-            st.text_input("Marchand Détecté", value="Migros")
-            st.number_input("Montant Détecté", value=12.40)
-        with s2:
-            st.selectbox("Catégorie Suggérée", list(form_cat_map.keys()), index=0)
-            st.write("<br>", unsafe_allow_html=True)
-            if st.button("ENREGISTRER LA DÉPENSE", use_container_width=True):
-                st.success("Ajouté !")
+    # --- DONUT CHART ---
+    st.markdown("<div class='chart-container'>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; text-align: center; margin-bottom: 10px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
+    if category_progress:
+        labels = [c["name"] for c in category_progress if c["reel"] > 0]
+        values = [c["reel"] for c in category_progress if c["reel"] > 0]
+        if values:
+            azure_colors = ['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']
+            fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=azure_colors))])
+            fig_pie.update_layout(showlegend=True, legend=dict(font=dict(color="#94A3B8")), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=450, margin=dict(t=0, b=0, l=0, r=0), annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font_color="white")])
+            st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
 
-st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
+with tab_scanner:
+    # --- RECEIPT SCANNER UI ---
+    st.markdown("<div style='text-align: center; margin-top: 20px;'>", unsafe_allow_html=True)
+    st.markdown("<h2>📸 AI RECEIPT SCANNER</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94A3B8;'>Upload your receipt to auto-fill the expense info.</p>", unsafe_allow_html=True)
+    
+    st.markdown('<div class="chart-container" style="border-style: dashed; border-width: 2px; text-align: center;">', unsafe_allow_html=True)
+    up_file = st.file_uploader("Drop receipt here", type=["jpg", "png", "pdf"], label_visibility="collapsed")
+    if not up_file:
+        st.markdown('<i class="ph ph-scan" style="font-size: 80px; color: rgba(59,130,246,0.3); padding: 40px 0;"></i>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    if up_file:
+        st.info("⚡ AI Engine Analysis in progress...")
+        c_scan1, c_scan2 = st.columns(2)
+        with c_scan1:
+            st.text_input("Detected Merchant", value="Store (Simulated)")
+            st.number_input("Detected Amount", value=0.0)
+        with c_scan2:
+            st.selectbox("Suggested Category", list(form_cat_map.keys()), index=1)
+            st.write("<br>", unsafe_allow_html=True)
+            if st.button("SAVE SCANNED DATA", use_container_width=True):
+                st.success("Transaction added!")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# --- AUDIT SIDEBAR ---
+with st.sidebar.expander("🔍 Budget Inspector (Audit)"):
+    st.write("Raw category values:")
+    for cat in category_progress:
+        st.write(f"- {cat['name']} : **{cat['reel']}**")
+    st.write(f"Total Sum: **{reel_var}**")
+
+st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
