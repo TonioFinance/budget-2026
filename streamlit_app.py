@@ -4,32 +4,195 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 
-# --- CONFIGURATION DE LA PAGE ---
-st.set_page_config(page_title="Budget 2026", page_icon="💰", layout="centered", initial_sidebar_state="collapsed")
+# --- PAGE CONFIGURATION ---
+st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE PRO & GLOW (DARK BLUE) ---
+# --- STYLE OBSIDIAN & EMERALD (ULTRA-REACTIVE) ---
 st.markdown("""
     <style>
-    .stApp { background-color: #0B1120; color: #F8FAFC; }
-    h1, h2, h3, p, label { color: #E2E8F0 !important; }
-    div[data-testid="stMetricValue"] { font-size: 32px; font-weight: 800; color: #38BDF8 !important; text-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
-    .stMetric { background-color: #1E293B; padding: 20px; border-radius: 16px; border: 1px solid #334155; box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
-    .stProgress > div > div > div > div { background: linear-gradient(90deg, #0EA5E9, #3B82F6); box-shadow: 0 0 12px rgba(59, 130, 246, 0.6); }
-    div[data-testid="stForm"] { background-color: #162032; padding: 25px; border-radius: 20px; border: 1px solid #1E293B; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); }
-    .stButton>button { background: linear-gradient(135deg, #2563EB, #1D4ED8); color: white !important; border-radius: 12px; height: 3.5em; font-weight: 700; letter-spacing: 1px; width: 100%; border: none; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); transition: all 0.3s ease; }
-    .stButton>button:hover { box-shadow: 0 6px 20px rgba(37, 99, 235, 0.7); transform: translateY(-2px); background: linear-gradient(135deg, #3B82F6, #2563EB); }
-    hr { border-color: #334155 !important; }
-    </style>
-    """, unsafe_allow_html=True)
+    @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
 
-# --- FONCTION DE NETTOYAGE ---
+    .stApp { 
+        background-color: #030712;
+        background-image: radial-gradient(circle at 50% -20%, #064e3b 0%, #030712 85%);
+        color: #F8FAFC; 
+        font-family: 'Lato', sans-serif;
+    }
+
+    /* --- SNAPPY ANIMATIONS (0.15s) --- */
+    * { transition: all 0.15s ease-out; }
+
+    h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
+    
+    /* Metrics Top */
+    div[data-testid="stMetricValue"] { 
+        font-family: 'Lato', sans-serif;
+        font-size: 40px !important; 
+        font-weight: 900 !important;
+        color: #FFFFFF !important; 
+        text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 30px rgba(16, 185, 129, 0.3); 
+    }
+    
+    div[data-testid="stMetricLabel"] { 
+        font-weight: 700;
+        color: #34d399 !important; 
+        text-transform: uppercase; 
+        letter-spacing: 1.5px;
+        font-size: 11px;
+    }
+    
+    .stMetric { 
+        background: rgba(15, 23, 42, 0.4) !important; 
+        backdrop-filter: blur(15px);
+        border-radius: 20px; 
+        border: 1px solid rgba(255, 255, 255, 0.05) !important; 
+        border-top: 1.5px solid rgba(16, 185, 129, 0.4) !important;
+        padding: 15px 20px !important;
+    }
+    .stMetric:hover {
+        transform: translateY(-3px);
+        border-top: 1.5px solid rgba(16, 185, 129, 0.8) !important;
+        background: rgba(15, 23, 42, 0.6) !important;
+    }
+
+    /* THICK PROGRESS BARS */
+    .stProgress > div > div > div > div { 
+        border-radius: 10px;
+        height: 14px !important;
+    }
+
+    /* --- CATEGORY CARD SYSTEM --- */
+    .cat-card {
+        background: rgba(255,255,255,0.02);
+        padding: 16px 22px;
+        border-radius: 18px;
+        margin-bottom: 12px;
+        border: 1px solid rgba(255,255,255,0.03);
+        cursor: pointer;
+    }
+    .cat-card:hover {
+        background: rgba(16, 185, 129, 0.08);
+        transform: scale(1.02);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .cat-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        width: 100%;
+    }
+    
+    .cat-label {
+        color: #FFFFFF !important;
+        font-size: 18px !important;
+        font-weight: 700;
+    }
+    
+    .cat-amount {
+        color: #FFFFFF !important;
+        font-size: 16px;
+        font-weight: 700;
+        text-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+    }
+
+    /* --- RECENT ACTIVITY CARDS --- */
+    .transaction-card {
+        background: rgba(15, 23, 42, 0.4); 
+        border-radius: 18px; 
+        padding: 15px 20px; 
+        margin-bottom: 10px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        border: 1px solid rgba(255,255,255,0.02);
+        cursor: pointer;
+    }
+    .transaction-card:hover {
+        transform: translateX(8px);
+        background: rgba(16, 185, 129, 0.05);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+    }
+    
+    .trans-amount {
+        color: #FFFFFF !important;
+        font-weight: 800;
+        font-size: 16px;
+        text-shadow: 0 0 10px rgba(255,255,255,0.3);
+    }
+
+    div[data-testid="stForm"] { 
+        background: rgba(15, 23, 42, 0.3) !important;
+        padding: 25px; border-radius: 25px; 
+        border: 1px solid rgba(16, 185, 129, 0.1) !important; 
+    }
+    
+    input, select { font-family: 'Lato', sans-serif !important; }
+    
+    /* Emerald Button */
+    .stButton>button {
+        background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+        color: white !important;
+        border-radius: 12px;
+        font-weight: 700;
+        border: none;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+    }
+    .stButton>button:hover {
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        transform: scale(1.01);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- HELPERS ---
 def parse_amount(val):
     if not val: return 0.0
     cleaned = str(val).upper().replace("CHF", "").replace(" ", "").replace(" ", "").replace("'", "").replace(",", ".").strip()
     try: return float(cleaned)
     except ValueError: return 0.0
 
-# --- CONNEXION ---
+def get_progress_html(name, reel, prevu):
+    if prevu > 0: percent = reel / prevu
+    else: percent = 1.0 if reel > 0 else 0.0
+    pct_str = f"{min(percent*100, 100):.1f}%"
+    
+    # Dynamic Color: Green -> Orange -> Red
+    if percent >= 1.0: bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
+    elif percent >= 0.70: bar_color = "linear-gradient(90deg, #B45309, #F59E0B)"
+    else: bar_color = "linear-gradient(90deg, #059669, #10B981)" 
+    
+    cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
+    ui_name = cat_ui_map.get(name.strip(), name)
+
+    return f"""
+    <div class="cat-card">
+        <div class="cat-container">
+            <span class="cat-label">{ui_name}</span>
+            <span class="cat-amount">{reel:.2f} / {prevu:.0f} CHF</span>
+        </div>
+        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 14px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
+            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);"></div>
+        </div>
+    </div>
+    """
+
+def get_transaction_html(date, merchant, amount, category):
+    cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
+    ui_category = cat_ui_map.get(category.strip(), category)
+    return f"""
+    <div class="transaction-card">
+        <div>
+            <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
+            <div style="color: #64748B; font-size: 12px;">{date} • {ui_category}</div>
+        </div>
+        <div class="trans-amount">{amount}</div>
+    </div>
+    """
+
+# --- CONNECTION ---
 @st.cache_resource
 def get_gsheet_client():
     if "gcp_service_account" not in st.secrets: return None
@@ -42,107 +205,122 @@ SHEET_ID = "1HXd22qMTATg__4U1Os0ktUMnhK1vflKlRU9b5yoxFHU"
 client = get_gsheet_client()
 if not client: st.stop()
 try: sh = client.open_by_key(SHEET_ID)
-except Exception as e: st.error(f"Accès refusé: {e}"); st.stop()
+except Exception: st.error("Connection Error"); st.stop()
 
-# --- NAVIGATION ---
-mois_fr = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"]
+# --- NAVIGATION (English UI) ---
+months_map = {"January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril", "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août", "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"}
 now = datetime.now()
-selected_month = st.sidebar.selectbox("Mois consulté", mois_fr, index=now.month - 1)
+selected_month_en = st.sidebar.selectbox("Month", list(months_map.keys()), index=now.month - 1)
+selected_month = months_map[selected_month_en]
 
 try:
     ws = sh.worksheet(next((s for s in [s.title for s in sh.worksheets()] if selected_month.lower() in s.lower()), None))
-except Exception: st.error("Onglet introuvable"); st.stop()
+except Exception: st.error("Sheet not found"); st.stop()
 
-# --- EXTRACTION DONNÉES ---
+# --- DATA EXTRACTION ---
 all_rows = ws.get_all_values()
 prevu_var, reel_var = 0.0, 0.0
 expenses_list = []
-debug_info = [] 
+category_progress = []
 
-# 1. RECHERCHE DYNAMIQUE DU HAUT DU TABLEAU
-col_var = -1
-col_prevu = -1
-col_actuel = -1
-row_var_start = -1
-
-# On balaie tout le fichier (avant la ligne 60) pour trouver "Charges Variables", "Prévu" et "Actuel"
+col_var, col_prevu, col_actuel, row_var_start = -1, -1, -1, -1
 for i, row in enumerate(all_rows):
-    if i >= 59: break
+    if i >= 65: break
     for j, cell in enumerate(row):
         if "charges variables" in str(cell).strip().lower():
-            col_var = j
-            row_var_start = i
-            # On cherche les colonnes Prévu et Actuel sur la même ligne
-            for k in range(j + 1, len(row)):
-                cell_val = str(row[k]).strip().lower()
-                if "prévu" in cell_val or "prevu" in cell_val: col_prevu = k
-                elif "actuel" in cell_val: col_actuel = k
-            break
+            row_str = " ".join([str(x).lower() for x in row])
+            if any(x in row_str for x in ["prévu", "actuel", "réel"]):
+                col_var, row_var_start = j, i
+                for k in range(j + 1, len(row)):
+                    v = str(row[k]).strip().lower()
+                    if "prévu" in v or "prevu" in v: col_prevu = k
+                    elif any(x in v for x in ["actuel", "réel", "reel"]): col_actuel = k
+                break
     if col_var != -1: break
 
-# Sécurité si les mots n'ont pas été trouvés exactement sur la ligne
-if col_prevu == -1: col_prevu = col_var + 1
-if col_actuel == -1: col_actuel = col_var + 2
-
-if col_var != -1 and row_var_start != -1:
-    debug_info.append(f"✅ 'Charges Variables' trouvé (Ligne {row_var_start+1}, Colonne {col_var+1}). Colonne Actuel = {col_actuel+1}")
-    # On descend dans la MÊME colonne pour chercher le Total
+if col_var != -1:
     for i in range(row_var_start + 1, min(row_var_start + 20, len(all_rows))):
         row = all_rows[i]
-        if len(row) > max(col_prevu, col_actuel):
-            if "total" in str(row[col_var]).strip().lower():
-                prevu_var = parse_amount(row[col_prevu])
-                reel_var = parse_amount(row[col_actuel])
-                debug_info.append(f"✅ 'Total' trouvé (Ligne {i+1}). Prévu: {prevu_var}, Actuel: {reel_var}")
-                break
-else:
-    debug_info.append("❌ Le code n'a pas trouvé la cellule contenant exactement 'Charges Variables'.")
+        cat = str(row[col_var]).strip()
+        if "total" in cat.lower():
+            prevu_var, reel_var = parse_amount(row[col_prevu]), parse_amount(row[col_actuel])
+            break
+        elif cat and cat.lower() not in ["", "nan"]:
+            category_progress.append({"name": cat, "prevu": parse_amount(row[col_prevu]), "reel": parse_amount(row[col_actuel])})
 
-# 2. HISTORIQUE DES DÉPENSES (À partir de la ligne 60)
-for i in range(59, len(all_rows)):
-    row = all_rows[i]
-    if len(row) > 4 and str(row[0]).strip() != "":
-        try:
-            amt_clean = parse_amount(row[2])
-            expenses_list.append({"Date": row[0], "Marchand": row[1], "Montant": f"{amt_clean:.2f} CHF", "Catégorie": row[4]})
-        except IndexError: pass
+row_history_start = -1
+for i, row in enumerate(all_rows):
+    if len(row) > 0 and str(row[0]).strip().lower() == "date":
+        row_history_start = i + 1
+        break
+
+if row_history_start != -1:
+    for i in range(row_history_start, len(all_rows)):
+        row = all_rows[i]
+        if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
+            if "total" in str(row[0]).lower() or "total" in str(row[1]).lower(): continue
+            expenses_list.append({"Date": row[0], "Marchand": row[1], "Montant": f"{parse_amount(row[2]):.2f} CHF", "Catégorie": row[4]})
 
 restant = prevu_var - reel_var
 percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
 
-# --- UI PRINCIPALE ---
-st.title(f"📍 {selected_month} {now.year}")
-
+# --- MAIN UI ---
+st.title(f"⚡ {selected_month_en} {now.year}")
 c1, c2 = st.columns(2)
-with c1: st.metric("Reste", f"{restant:.2f} CHF", delta=f"{restant:.2f}", delta_color="normal" if restant > 0 else "inverse")
-with c2: st.metric("Total Prévu", f"{prevu_var:.1f} CHF")
-st.markdown(f"**Budget Actuel consommé :** `{reel_var:.2f} CHF`")
-st.progress(percent)
+with c1: st.metric("Remaining", f"{restant:.2f} CHF", delta=f"{restant:.2f}")
+with c2: st.metric("Budget Plan", f"{prevu_var:.0f} CHF")
 
-# -- OUTIL DE DÉBOGAGE (Aide visuelle qui s'affiche seulement si ça plante) --
-if prevu_var == 0:
-    with st.expander("🛠️ Console de Débogage (Ouvrir si les chiffres sont à 0)"):
-        for info in debug_info: st.write(info)
+st.write("")
+st.markdown(f"**Total Spending:** <span style='color: #10B981; font-weight: 800; font-size: 20px;'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
+
+main_bar_color = "#10B981"
+if percent >= 1.0: main_bar_color = "#E11D48"
+elif percent >= 0.70: main_bar_color = "#F59E0B"
+
+st.markdown(f"""
+    <style>
+    .stProgress > div > div > div > div {{ background: {main_bar_color} !important; box-shadow: 0 0 10px {main_bar_color}66; }}
+    </style>
+""", unsafe_allow_html=True)
+st.progress(percent)
 
 st.divider()
 
-# --- FORMULAIRE ---
-with st.form("new_exp", clear_on_submit=True):
-    st.subheader("➕ Ajouter un achat")
-    col_a, col_b = st.columns([2, 1])
-    with col_a: lib = st.text_input("Où ?", placeholder="Migros, Coop, Bar...")
-    with col_b: amt = st.number_input("Combien ?", min_value=0.0, step=0.1, format="%.2f")
-    cat = st.selectbox("Catégorie", ["Courses", "Sorties/Restos", "Transport", "Loisirs", "Imprévus", "Shopping", "Hygiène"])
-    note = st.text_input("Note (optionnel)")
-    if st.form_submit_button("VALIDER L'ACHAT") and lib and amt > 0:
-        ws.append_row([datetime.now().strftime("%Y-%m-%d"), lib, amt, note, cat], value_input_option="USER_ENTERED")
-        st.success("✨ Achat enregistré !")
-        st.cache_resource.clear()
-        st.rerun()
+# --- CATEGORIES TRACKER ---
+st.markdown("<h3 style='color: #FFFFFF; font-size: 24px; margin-bottom: 25px;'>📊 Categories</h3>", unsafe_allow_html=True)
+if category_progress:
+    sorted_categories = sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True)
+    col_c1, col_c2 = st.columns(2)
+    for idx, cat in enumerate(sorted_categories):
+        target_col = col_c1 if idx % 2 == 0 else col_c2
+        with target_col:
+            st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
 
-# --- HISTORIQUE ---
-if expenses_list:
-    with st.expander("🕒 Dernières dépenses", expanded=True):
-        st.dataframe(pd.DataFrame(expenses_list[::-1]).head(5), use_container_width=True, hide_index=True)
+st.divider()
 
-st.sidebar.caption(f"Dernière synchro : {datetime.now().strftime('%H:%M')}")
+# --- FORM & HISTORY ---
+col_form, col_hist = st.columns([1.1, 1])
+form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
+
+with col_form:
+    with st.form("new_exp", clear_on_submit=True):
+        st.markdown("<h4 style='color: #FFFFFF; font-size: 18px;'>➕ New Entry</h4>", unsafe_allow_html=True)
+        lib = st.text_input("Merchant", placeholder="Apple, Migros...")
+        amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
+        cat_en = st.selectbox("Category", list(form_cat_map.keys()))
+        note = st.text_input("Note")
+        
+        if st.form_submit_button("CONFIRM TRANSACTION"):
+            if lib and amt > 0:
+                new_data = [datetime.now().strftime("%Y-%m-%d"), lib, amt, note, form_cat_map[cat_en]]
+                ws.append_row(new_data, value_input_option="USER_ENTERED")
+                st.cache_resource.clear()
+                st.rerun()
+
+with col_hist:
+    st.markdown("<h4 style='color: #FFFFFF; font-size: 18px;'>📡 History</h4>", unsafe_allow_html=True)
+    if expenses_list:
+        for exp in expenses_list[::-1][:6]:
+            st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
+
+st.sidebar.caption(f"Last sync: {datetime.now().strftime('%H:%M')}")
