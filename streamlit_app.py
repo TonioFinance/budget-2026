@@ -133,15 +133,16 @@ st.markdown("""
     }
 
     div[data-testid="stButton"] > button:hover {
-        background: linear-gradient(90deg, #2563EB 0%, #60A5FA 100%) !important;
-        border-color: rgba(147, 197, 253, 0.8) !important;
-        /* Lueur (glow) réduite et plus subtile */
-        box-shadow: 0 0 15px rgba(96, 165, 250, 0.5), 0 8px 20px rgba(37, 99, 235, 0.3) !important;
+        /* Dégradé moins agressif au survol */
+        background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%) !important; 
+        border-color: rgba(96, 165, 250, 0.6) !important;
+        /* Lueur fortement réduite pour plus d'élégance */
+        box-shadow: 0 0 8px rgba(96, 165, 250, 0.3), 0 6px 15px rgba(37, 99, 235, 0.2) !important;
         transform: translateY(-2px) scale(1.01) !important;
     }
     div[data-testid="stButton"] > button:active {
         transform: translateY(1px) scale(0.98) !important;
-        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3) !important;
+        box-shadow: 0 3px 8px rgba(37, 99, 235, 0.3) !important;
     }
     
     /* Pop-up Glassmorphism */
@@ -331,8 +332,8 @@ elif percent <= 0.40 and now.day > 15:
 else:
     insight_html = f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> Finances are on track</div>"
 
-# --- MAIN UI: HERO DASHBOARD ---
-st.title(f"Dashboard • {selected_month_en}")
+# --- MAIN UI: CENTERED TITLE & HERO DASHBOARD ---
+st.markdown(f"<h1 style='text-align: center; color: #FFFFFF; font-weight: 900; margin-bottom: 30px; letter-spacing: -1px;'>Dashboard • {selected_month_en}</h1>", unsafe_allow_html=True)
 
 bar_color = 'linear-gradient(90deg, #059669, #10B981)'
 if percent >= 0.8:
@@ -366,7 +367,6 @@ def add_transaction_modal():
     cat_en = st.selectbox("Category", list(form_cat_map.keys()))
     note = st.text_input("Note (Optional)")
     
-    # Bouton de confirmation classique
     if st.button("CONFIRM EXPENSE", use_container_width=True):
         if lib and amt > 0:
             col_b = ws.col_values(2)
@@ -380,7 +380,7 @@ def add_transaction_modal():
             st.cache_resource.clear()
             st.rerun()
 
-# Floating Action Button trigger (Le fameux bouton +)
+# Floating Action Button trigger
 if st.button("+ ADD NEW EXPENSE", use_container_width=True):
     add_transaction_modal()
 
