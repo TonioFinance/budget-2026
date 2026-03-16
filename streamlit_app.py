@@ -20,7 +20,7 @@ st.markdown("""
     }
 
     /* --- INSTANT HOVER ANIMATION (0.05s) --- */
-    * { transition: all 0.1s ease-out; }
+    * { transition: all 0.05s ease-out; }
 
     h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
@@ -125,14 +125,33 @@ st.markdown("""
         text-shadow: 0 0 10px rgba(255,255,255,0.3);
     }
 
-    /* Form Design */
+    /* --- ENHANCED FORM DESIGN --- */
     div[data-testid="stForm"] { 
-        background: rgba(15, 23, 42, 0.3) !important;
-        padding: 25px; border-radius: 25px; 
-        border: 1px solid rgba(59, 130, 246, 0.15) !important; 
+        background: linear-gradient(160deg, rgba(30, 58, 138, 0.25) 0%, rgba(3, 7, 18, 0.8) 100%) !important;
+        padding: 30px !important; 
+        border-radius: 24px !important; 
+        border: 1px solid rgba(59, 130, 246, 0.3) !important; 
+        border-top: 2px solid rgba(59, 130, 246, 0.7) !important; /* Ligne lumineuse en haut */
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(59, 130, 246, 0.15) !important;
+        backdrop-filter: blur(10px);
     }
     
-    input, select { font-family: 'Lato', sans-serif !important; }
+    /* Input Fields styling */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input {
+        background-color: rgba(15, 23, 42, 0.6) !important;
+        color: #FFFFFF !important;
+        border: 1px solid rgba(59, 130, 246, 0.2) !important;
+        border-radius: 12px !important;
+        font-family: 'Lato', sans-serif !important;
+        padding: 12px 15px !important;
+    }
+    
+    /* Input Focus effect */
+    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.5) !important;
+        background-color: rgba(15, 23, 42, 0.9) !important;
+    }
     
     /* Blue Button */
     .stButton>button {
@@ -141,10 +160,11 @@ st.markdown("""
         border-radius: 12px;
         font-weight: 700;
         border: none;
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        margin-top: 10px;
     }
     .stButton>button:hover {
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+        box-shadow: 0 6px 25px rgba(59, 130, 246, 0.6);
         transform: scale(1.02);
     }
     </style>
@@ -308,7 +328,7 @@ form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport":
 
 with col_form:
     with st.form("new_exp", clear_on_submit=True):
-        st.markdown("<h4 style='color: #FFFFFF; font-size: 18px;'>➕ New Entry</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #FFFFFF; font-size: 20px; margin-bottom: 15px;'>➕ New Entry</h4>", unsafe_allow_html=True)
         lib = st.text_input("Merchant", placeholder="Apple, Migros...")
         amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
         cat_en = st.selectbox("Category", list(form_cat_map.keys()))
@@ -328,7 +348,7 @@ with col_form:
                 st.rerun()
 
 with col_hist:
-    st.markdown("<h4 style='color: #FFFFFF; font-size: 18px;'>📡 History</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #FFFFFF; font-size: 20px; margin-bottom: 15px;'>📡 History</h4>", unsafe_allow_html=True)
     if expenses_list:
         for exp in expenses_list[::-1][:5]:
             st.markdown(get_transaction_html(exp["Date"], exp["Marchand"], exp["Montant"], exp["Catégorie"]), unsafe_allow_html=True)
