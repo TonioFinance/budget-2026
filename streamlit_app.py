@@ -111,31 +111,33 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- PURE GLASS BUTTON (TRANSPARENT & WHITE) --- */
+    /* --- BLUE GLOW BUTTON --- */
     div[data-testid="stButton"] > button {
-        background: rgba(255, 255, 255, 0.05) !important; /* Verre transparent */
+        background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
         color: #FFFFFF !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important; /* Bordure blanche fine */
+        border: 1px solid rgba(59, 130, 246, 0.5) !important;
         border-radius: 16px !important;
         font-weight: 900 !important;
-        letter-spacing: 2px !important;
+        letter-spacing: 1.5px !important;
         height: 3.8rem !important;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.1) !important;
-        backdrop-filter: blur(10px) !important;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3), inset 0 1px 2px rgba(255,255,255,0.2) !important;
         margin-bottom: 30px !important;
+        transition: all 0.2s ease-out !important;
     }
     div[data-testid="stButton"] > button:hover {
-        background: rgba(255, 255, 255, 0.15) !important; /* S'éclaire en blanc au survol */
-        border-color: rgba(255, 255, 255, 0.5) !important;
-        box-shadow: 0 12px 35px rgba(59, 130, 246, 0.2), inset 0 1px 5px rgba(255, 255, 255, 0.3) !important;
-        transform: translateY(-2px) scale(1.01) !important;
+        background: linear-gradient(90deg, #2563EB 0%, #60A5FA 100%) !important; /* S'éclaircit drastiquement */
+        border-color: rgba(147, 197, 253, 0.9) !important;
+        /* Double ombre : une pour la profondeur, l'autre pour l'effet Néon (Glow) */
+        box-shadow: 0 0 30px rgba(96, 165, 250, 0.7), 0 10px 25px rgba(37, 99, 235, 0.5) !important;
+        transform: translateY(-3px) scale(1.01) !important;
     }
     div[data-testid="stButton"] > button:active {
-        transform: translateY(2px) scale(0.98) !important;
-        background: rgba(255, 255, 255, 0.02) !important;
+        transform: translateY(1px) scale(0.98) !important;
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.4) !important;
     }
     div[data-testid="stButton"] > button * {
         color: #FFFFFF !important; /* Force le texte en blanc absolu */
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5) !important;
     }
     
     /* Pop-up Glassmorphism */
@@ -202,19 +204,19 @@ def get_progress_html(name, reel, prevu):
     ui_name, icon = cat_ui_map.get(name.strip(), (name, "ph-wallet"))
 
     return f"""
-    <div class="cat-card">
-        <div class="cat-container">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i>
-                <span class="cat-label">{ui_name}</span>
-            </div>
-            <span class="cat-amount">{format_chf(reel)} CHF</span>
-        </div>
-        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
-            <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
-        </div>
-    </div>
-    """
+<div class="cat-card">
+<div class="cat-container">
+<div style="display:flex; align-items:center; gap:10px;">
+<i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i>
+<span class="cat-label">{ui_name}</span>
+</div>
+<span class="cat-amount">{format_chf(reel)} CHF</span>
+</div>
+<div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
+<div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
+</div>
+</div>
+"""
 
 def get_transaction_html(date, merchant, amount, category):
     cat_ui_map = {
@@ -225,19 +227,19 @@ def get_transaction_html(date, merchant, amount, category):
     }
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""
-    <div class="transaction-card">
-        <div style="display:flex; align-items:center; gap:15px;">
-            <div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
-                <i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i>
-            </div>
-            <div>
-                <div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
-                <div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div>
-            </div>
-        </div>
-        <div class="trans-amount">{amount}</div>
-    </div>
-    """
+<div class="transaction-card">
+<div style="display:flex; align-items:center; gap:15px;">
+<div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;">
+<i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i>
+</div>
+<div>
+<div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div>
+<div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div>
+</div>
+</div>
+<div class="trans-amount">{amount}</div>
+</div>
+"""
 
 # --- CONNECTION ---
 @st.cache_resource
@@ -360,7 +362,6 @@ def add_transaction_modal():
     cat_en = st.selectbox("Category", list(form_cat_map.keys()))
     note = st.text_input("Note (Optional)")
     
-    # REMARQUE : Plus de type="primary", c'est ça qui bloquait le CSS !
     if st.button("CONFIRM EXPENSE", use_container_width=True):
         if lib and amt > 0:
             col_b = ws.col_values(2)
@@ -374,7 +375,7 @@ def add_transaction_modal():
             st.cache_resource.clear()
             st.rerun()
 
-# Floating Action Button trigger (Plus de type="primary" ici non plus)
+# Floating Action Button trigger
 if st.button("➕ ADD NEW EXPENSE", use_container_width=True):
     add_transaction_modal()
 
