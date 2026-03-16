@@ -7,14 +7,14 @@ from google.oauth2.service_account import Credentials
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- STYLE OBSIDIAN & EMERALD WITH DYNAMIC GLOW (LATO FONT) ---
+# --- STYLE OBSIDIAN & AZURE WITH DYNAMIC GLOW (LATO FONT) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap');
 
     .stApp { 
         background-color: #030712;
-        background-image: radial-gradient(circle at 50% -20%, #064e3b 0%, #030712 85%);
+        background-image: radial-gradient(circle at 50% -20%, #172554 0%, #030712 85%);
         color: #F8FAFC; 
         font-family: 'Lato', sans-serif;
     }
@@ -24,18 +24,18 @@ st.markdown("""
 
     h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-spacing: -0.5px; }
     
-    /* Metrics Top (Green Glow effect) */
+    /* Metrics Top (Blue Glow effect) */
     div[data-testid="stMetricValue"] { 
         font-family: 'Lato', sans-serif;
         font-size: 40px !important; 
         font-weight: 900 !important;
         color: #FFFFFF !important; 
-        text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 30px rgba(16, 185, 129, 0.3); 
+        text-shadow: 0 0 10px rgba(255,255,255,0.2), 0 0 30px rgba(59, 130, 246, 0.3); 
     }
     
     div[data-testid="stMetricLabel"] { 
         font-weight: 700;
-        color: #34d399 !important; /* Emerald Label */
+        color: #60A5FA !important; /* Azure Label */
         text-transform: uppercase; 
         letter-spacing: 1.5px;
         font-size: 11px;
@@ -46,15 +46,15 @@ st.markdown("""
         backdrop-filter: blur(15px);
         border-radius: 20px; 
         border: 1px solid rgba(255, 255, 255, 0.05) !important; 
-        border-top: 1.5px solid rgba(16, 185, 129, 0.4) !important;
+        border-top: 1.5px solid rgba(59, 130, 246, 0.4) !important;
         padding: 15px 20px !important;
     }
     
     .stMetric:hover {
         transform: translateY(-3px);
-        border-top: 1.5px solid rgba(16, 185, 129, 0.8) !important;
+        border-top: 1.5px solid rgba(59, 130, 246, 0.8) !important;
         background: rgba(15, 23, 42, 0.6) !important;
-        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.15);
+        box-shadow: 0 10px 30px rgba(59, 130, 246, 0.15);
     }
 
     /* PROGRESS BARS */
@@ -73,9 +73,9 @@ st.markdown("""
         cursor: pointer;
     }
     .cat-card:hover {
-        background: rgba(16, 185, 129, 0.08);
+        background: rgba(59, 130, 246, 0.08);
         transform: scale(1.02);
-        border: 1px solid rgba(16, 185, 129, 0.3);
+        border: 1px solid rgba(59, 130, 246, 0.3);
     }
 
     .cat-container {
@@ -96,10 +96,10 @@ st.markdown("""
         color: #FFFFFF !important;
         font-size: 16px;
         font-weight: 700;
-        text-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+        text-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
     }
 
-    /* --- RECENT ACTIVITY (TRANSACTION CARDS WITH GREEN GLOW) --- */
+    /* --- RECENT ACTIVITY (TRANSACTION CARDS WITH BLUE GLOW) --- */
     .transaction-card {
         background: rgba(15, 23, 42, 0.4); 
         border-radius: 18px; 
@@ -109,14 +109,14 @@ st.markdown("""
         justify-content: space-between; 
         align-items: center;
         border: 1px solid rgba(255,255,255,0.02);
-        box-shadow: 0 0 10px rgba(16, 185, 129, 0.05);
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.05);
         cursor: pointer;
     }
     .transaction-card:hover {
         transform: translateX(6px) scale(1.01);
-        background: rgba(16, 185, 129, 0.08);
-        border: 1px solid rgba(16, 185, 129, 0.4);
-        box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        background: rgba(59, 130, 246, 0.08);
+        border: 1px solid rgba(59, 130, 246, 0.4);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
     }
     
     .trans-amount {
@@ -130,22 +130,22 @@ st.markdown("""
     div[data-testid="stForm"] { 
         background: rgba(15, 23, 42, 0.3) !important;
         padding: 25px; border-radius: 25px; 
-        border: 1px solid rgba(16, 185, 129, 0.15) !important; 
+        border: 1px solid rgba(59, 130, 246, 0.15) !important; 
     }
     
     input, select { font-family: 'Lato', sans-serif !important; }
     
-    /* Green Button */
+    /* Blue Button */
     .stButton>button {
-        background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+        background: linear-gradient(90deg, #1D4ED8 0%, #3B82F6 100%);
         color: white !important;
         border-radius: 12px;
         font-weight: 700;
         border: none;
-        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
     }
     .stButton>button:hover {
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
         transform: scale(1.02);
     }
     </style>
@@ -163,13 +163,13 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     
-    # Logic: Green -> Orange (66%) -> Red (100%)
+    # Logic: Blue -> Orange (66%) -> Red (100%)
     if percent >= 1.0: 
         bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" 
     elif percent >= 0.66: 
         bar_color = "linear-gradient(90deg, #B45309, #F59E0B)"
     else: 
-        bar_color = "linear-gradient(90deg, #059669, #10B981)" 
+        bar_color = "linear-gradient(90deg, #1D4ED8, #3B82F6)" 
     
     cat_ui_map = {"Courses": "Groceries", "Sorties/Restos": "Dining", "Transport": "Transport", "Loisirs": "Leisure", "Imprévus": "Unexpected", "Shopping": "Shopping", "Hygiène": "Hygiene"}
     ui_name = cat_ui_map.get(name.strip(), name)
@@ -180,7 +180,7 @@ def get_progress_html(name, reel, prevu):
             <span class="cat-label">{ui_name}</span>
             <span class="cat-amount">{reel:.0f} / {prevu:.0f} CHF</span>
         </div>
-        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 12px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
+        <div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 14px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;">
             <div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>
         </div>
     </div>
@@ -280,7 +280,7 @@ with c2: st.metric("Budget Plan", f"{prevu_var:.0f} CHF")
 st.write("")
 st.markdown(f"**Total Spending:** <span style='color: #FFFFFF; font-weight: 800; font-size: 20px; text-shadow: 0 0 10px rgba(255,255,255,0.3);'>{reel_var:.2f} CHF</span>", unsafe_allow_html=True)
 
-main_bar_color = "#10B981"
+main_bar_color = "#3B82F6"
 if percent >= 1.0: main_bar_color = "#E11D48"
 elif percent >= 0.66: main_bar_color = "#F59E0B"
 
