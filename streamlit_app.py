@@ -394,30 +394,26 @@ with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
     
-    # Checkbox entirely in English
     show_capital = st.checkbox("💰 Show Real Capital & Fees", value=False)
     
     try:
-        # Recherche super-robuste de l'onglet (insensible à la casse et accepte "invest" ou "portfolio")
-        ws_inv = next((s for s in sh.worksheets() if any(keyword in s.title.lower() for keyword in ["invest", "portfolio"])), None)
+        # Lien corrigé spécifiquement pour cibler l'onglet nommé "Portfolio"
+        ws_inv = sh.worksheet("Portfolio")
+        all_inv_rows = ws_inv.get_all_values()
         
-        if ws_inv is not None:
-            all_inv_rows = ws_inv.get_all_values()
-            
-            header_row_idx = -1
-            # Recherche intelligente de la ligne des entêtes
-            for i, row in enumerate(all_inv_rows):
-                if any("Ticker" in str(cell) for cell in row) or any("Nom" in str(cell) for cell in row) or any("ISIN" in str(cell) for cell in row):
-                    header_row_idx = i
-                    break
-                    
-            if header_row_idx != -1:
-                # Nettoyage automatique de tous les titres (supprime les espaces cachés avant/après)
-                headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
-                data_rows = all_inv_rows[header_row_idx+1:]
-                df_inv = pd.DataFrame(data_rows, columns=headers)
-            else:
-                df_inv = pd.DataFrame()
+        header_row_idx = -1
+        # Recherche ultra tolérante pour la ligne d'en-tête (contourne les espaces cachés)
+        for i, row in enumerate(all_inv_rows):
+            row_str_lower = " ".join([str(c).lower() for c in row])
+            if "ticker" in row_str_lower or "isin" in row_str_lower:
+                header_row_idx = i
+                break
+                
+        if header_row_idx != -1:
+            # Nettoyage absolu de tous les titres de colonnes
+            headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
+            data_rows = all_inv_rows[header_row_idx+1:]
+            df_inv = pd.DataFrame(data_rows, columns=headers)
         else:
             df_inv = pd.DataFrame()
             
@@ -521,6 +517,6 @@ with tab_investments:
             <div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
         </div>
         """, unsafe_allow_html=True)
-        st.info("💡 The 'Investing' tab is missing or empty. Make sure columns 'Nom', 'Ticker / ISIN', 'Units', 'Fees', and 'Total Invested' are present.")
+        st.info("💡 The 'Portfolio' tab is missing or empty. Make sure columns 'Nom', 'Ticker / ISIN', 'Units', 'Fees', and 'Total Invested' are present.")
 
 st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
