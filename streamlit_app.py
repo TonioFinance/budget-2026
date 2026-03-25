@@ -398,19 +398,26 @@ with tab_investments:
     show_capital = st.checkbox("💰 Show Real Capital & Fees", value=False)
     
     try:
-        ws_inv = sh.worksheet("Investing")
-        all_inv_rows = ws_inv.get_all_values()
+        # Recherche super-robuste de l'onglet (insensible à la casse et accepte "invest" ou "portfolio")
+        ws_inv = next((s for s in sh.worksheets() if any(keyword in s.title.lower() for keyword in ["invest", "portfolio"])), None)
         
-        header_row_idx = -1
-        for i, row in enumerate(all_inv_rows):
-            if any("Ticker" in str(cell) for cell in row) or any("Nom" in str(cell) for cell in row):
-                header_row_idx = i
-                break
-                
-        if header_row_idx != -1:
-            headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
-            data_rows = all_inv_rows[header_row_idx+1:]
-            df_inv = pd.DataFrame(data_rows, columns=headers)
+        if ws_inv is not None:
+            all_inv_rows = ws_inv.get_all_values()
+            
+            header_row_idx = -1
+            # Recherche intelligente de la ligne des entêtes
+            for i, row in enumerate(all_inv_rows):
+                if any("Ticker" in str(cell) for cell in row) or any("Nom" in str(cell) for cell in row) or any("ISIN" in str(cell) for cell in row):
+                    header_row_idx = i
+                    break
+                    
+            if header_row_idx != -1:
+                # Nettoyage automatique de tous les titres (supprime les espaces cachés avant/après)
+                headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
+                data_rows = all_inv_rows[header_row_idx+1:]
+                df_inv = pd.DataFrame(data_rows, columns=headers)
+            else:
+                df_inv = pd.DataFrame()
         else:
             df_inv = pd.DataFrame()
             
@@ -450,7 +457,6 @@ with tab_investments:
                         total_invested += invested
                         total_fees += fees
                         
-                        # Performance calculations based on pure investment vs total outlay
                         perf = ((value - invested) / invested * 100) if invested > 0 else 0
                         pnl_chf = value - invested
                         
