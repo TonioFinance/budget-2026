@@ -4,21 +4,10 @@ from datetime import datetime
 import gspread
 from google.oauth2.service_account import Credentials
 import plotly.graph_objects as go
-import google.generativeai as genai
-from PIL import Image
-import json
 import time
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
-
-# --- AI CONFIGURATION ---
-if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    # Use Gemini 1.5 Flash for high-speed receipt processing
-    model = genai.GenerativeModel('gemini-1.5-flash')
-else:
-    st.warning("AI Scanner: Please add 'GEMINI_API_KEY' to Streamlit Secrets to enable receipt scanning.")
 
 # --- STYLE OBSIDIAN & AZURE (FULL SAAS PREMIUM EDITION) ---
 st.markdown("""
@@ -223,13 +212,21 @@ st.markdown("""
         margin-top: 20px;
     }
 
-    /* Scanner Dropzone */
+    /* Scanner/Uploader Dropzone */
     .scanner-zone {
         border: 2px dashed rgba(59, 130, 246, 0.3);
         border-radius: 28px;
         padding: 60px 20px;
         text-align: center;
         background: rgba(15, 23, 42, 0.2);
+        margin-bottom: 20px;
+    }
+    
+    /* Make dataframe look better in dark mode */
+    [data-testid="stDataFrame"] {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(59, 130, 246, 0.2);
     }
     </style>
 """, unsafe_allow_html=True)
