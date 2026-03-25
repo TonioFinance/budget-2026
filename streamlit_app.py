@@ -291,12 +291,10 @@ def get_asset_logo(ticker, asset_name):
     t_up = str(ticker).upper()
     n_up = str(asset_name).upper()
     
-    # 1. Hardcoded Cryptos for Instant HD Logos
     if "BTC" in t_up or "BITCOIN" in n_up: return "https://cryptologos.cc/logos/bitcoin-btc-logo.png"
     if "ETH" in t_up or "ETHEREUM" in n_up: return "https://cryptologos.cc/logos/ethereum-eth-logo.png"
     if "SOL" in t_up or "SOLANA" in n_up: return "https://cryptologos.cc/logos/solana-sol-logo.png"
     
-    # 2. Extract Real Company Domain via Yahoo Finance
     try:
         info = yf.Ticker(ticker).info
         website = info.get('website', '')
@@ -306,7 +304,6 @@ def get_asset_logo(ticker, asset_name):
     except:
         pass
         
-    # 3. Fallback to Initials
     clean_name = str(asset_name).replace(' ', '+')
     return f"https://ui-avatars.com/api/?name={clean_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
 
@@ -448,7 +445,7 @@ with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
     
-    # Only one clear toggle remaining for real amounts
+    # Just one toggle for real amounts to keep it simple and clean
     show_amounts = st.checkbox("👁️ Show Real Amounts", value=False)
     st.write("<br>", unsafe_allow_html=True)
     
@@ -488,7 +485,9 @@ with tab_investments:
                 qty_str = str(row.get("Units", "0")).replace(',', '.')
                 inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
                 fees_str = str(row.get("Fees", "0")).replace(',', '.')
-                amount_str = str(row.get("Amount", "0")).replace(',', '.')
+                
+                # Fetching the new Entry Price (fallback to 'Amount' if needed)
+                entry_price_str = str(row.get("Entry Price", row.get("Amount", "0"))).replace(',', '.')
                 
                 try: qty = float(qty_str)
                 except ValueError: qty = 0.0
@@ -499,7 +498,7 @@ with tab_investments:
                 try: fees = float(fees_str)
                 except ValueError: fees = 0.0
                 
-                try: entry_price = float(amount_str)
+                try: entry_price = float(entry_price_str)
                 except ValueError: entry_price = 0.0
                 
                 if ticker and qty > 0:
@@ -507,37 +506,46 @@ with tab_investments:
                         stock = yf.Ticker(ticker)
                         current_price = stock.fast_info['last_price']
                         
+                        # Value of the holding
                         value = current_price * qty
                         
-                        # Fees automatically included in the cost basis
+                        # Overall Portfolio logic (fees are always included in total calculations)
                         cost_basis = invested + fees
-                        
                         total_value += value
                         total_cost_basis += cost_basis
                         total_fees += fees
-                        
-                        perf = ((value - cost_basis) / cost_basis * 100) if cost_basis > 0 else 0
                         pnl_chf = value - cost_basis
                         
-                        perf_class = "text-green" if perf >= 0 else "text-red"
-                        perf_sign = "+" if perf >= 0 else ""
+                        # --- PURE UNIT PERFORMANCE LOGIC ---
+                        # Calculates ROI based purely on the price of 1 unit, avoiding quantity scaling or global fees
+                        if entry_price > 0:
+                            unit_perf = ((current_price - entry_price) / entry_price) * 100
+                        else:
+                            unit_perf = 0.0
+                            
+                        unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
+                        unit_perf_sign = "+" if unit_perf >= 0 else ""
                         
+                        # Logo configuration
                         logo_url = get_asset_logo(ticker, asset_name)
                         clean_fb_name = asset_name.replace("'", "").replace('"', '')[:2]
                         fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true"
-                        
                         img_tag = f"""<img src="{logo_url}" class="inv-logo" onerror="this.onerror=null; this.src='{fallback_url}';">"""
                         
-                        # Ticker - Prix Actuel - Prix d'Entrée
+                        # Format text under asset name: Ticker - [current price] - [perf %]
                         curr_disp = f" {currency}" if currency else ""
-                        ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - {format_chf(entry_price)}{curr_disp}"
+                        ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
                         
+                        # Right side dynamic display based on user privacy toggle
                         if show_amounts:
                             top_val = f"{format_chf(value)} CHF"
-                            bottom_val = f"<span class='{perf_class}'>{perf_sign}{perf:.2f}% ({perf_sign}{format_chf(pnl_chf)} CHF)</span>"
+                            # Total absolute position P&L in CHF on the bottom right
+                            pnl_sign = "+" if pnl_chf >= 0 else ""
+                            pnl_class = "text-green" if pnl_chf >= 0 else "text-red"
+                            bottom_val = f"<span class='{pnl_class}'>P&L: {pnl_sign}{format_chf(pnl_chf)} CHF</span>"
                         else:
                             top_val = "*** CHF"
-                            bottom_val = f"<span class='{perf_class}'>{perf_sign}{perf:.2f}%</span>"
+                            bottom_val = f"<span style='color: #94A3B8;'>P&L: *** CHF</span>"
                             
                         cards_html += f"""
                         <div class="inv-card">
@@ -558,6 +566,7 @@ with tab_investments:
                     except Exception:
                         pass
         
+        # Total Portfolio Calculations
         perf_total = ((total_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
         perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
         perf_sign = "+" if perf_total >= 0 else ""
@@ -580,6 +589,6 @@ with tab_investments:
 
     else:
         st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>TOTAL PORTFOLIO</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br><span style="color:#34D399; font-weight:700;">+0.00%</span></div></div><div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div></div>""", unsafe_allow_html=True)
-        st.info("💡 The 'Portfolio' tab is missing or empty. Make sure columns 'Nom', 'Ticker / ISIN', 'Amount', 'Units', 'Fees', and 'Total Invested' are present.")
+        st.info("💡 The 'Portfolio' tab is missing or empty. Make sure columns 'Nom', 'Ticker / ISIN', 'Amount' (or 'Entry Price'), 'Units', 'Fees', and 'Total Invested' are present.")
 
 st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
