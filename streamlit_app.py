@@ -191,7 +191,7 @@ st.markdown("""
         width: 48px; height: 48px; 
         border-radius: 50%; 
         object-fit: cover;
-        background-color: #FFFFFF; /* White background for transparent PNGs */
+        background-color: #FFFFFF; 
         border: 2px solid rgba(96, 165, 250, 0.4);
         box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         flex-shrink: 0;
@@ -285,28 +285,6 @@ def get_transaction_html(date, merchant, amount, category):
     cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""<div class="transaction-card"><div style="display:flex; align-items:center; gap:15px;"><div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i></div><div><div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div><div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div></div></div><div class="trans-amount">{amount}</div></div>"""
-
-# --- LOGO MATCHER (SMART CACHED) ---
-@st.cache_data(show_spinner=False, ttl=86400)
-def get_asset_logo(ticker, asset_name):
-    t_up = str(ticker).upper()
-    n_up = str(asset_name).upper()
-    
-    if "BTC" in t_up or "BITCOIN" in n_up: return "https://cryptologos.cc/logos/bitcoin-btc-logo.png"
-    if "ETH" in t_up or "ETHEREUM" in n_up: return "https://cryptologos.cc/logos/ethereum-eth-logo.png"
-    if "SOL" in t_up or "SOLANA" in n_up: return "https://cryptologos.cc/logos/solana-sol-logo.png"
-    
-    try:
-        info = yf.Ticker(ticker).info
-        website = info.get('website', '')
-        if website:
-            domain = website.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0]
-            return f"https://logo.clearbit.com/{domain}"
-    except:
-        pass
-        
-    clean_name = str(asset_name).replace(' ', '+')
-    return f"https://ui-avatars.com/api/?name={clean_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
 
 # --- CONNECTION ---
 @st.cache_resource
@@ -422,29 +400,36 @@ with tab_dashboard:
 
     st.divider()
     st.markdown("<div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
+    
+    # Trace the Spending Trend plot
+    fig = go.Figure()
+    
+    # 1. Always trace the Ideal Burn Rate (Prevu) across the whole month
+    try:
+        curr_y = now.year
+        curr_m = list(months_map.values()).index(selected_month) + 1
+        start_d = datetime(curr_y, curr_m, 1)
+        _, last_day = calendar.monthrange(curr_y, curr_m)
+        end_d = datetime(curr_y, curr_m, last_day)
+        
+        if prevu_var > 0:
+            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Burn Rate', line=dict(color='#94A3B8', width=2, dash='dash')))
+    except Exception:
+        pass
+
+    # 2. Trace the Actual Spend (if expenses exist)
     if raw_expenses:
         df_trends = pd.DataFrame(raw_expenses)
-        df_trends['Date'] = pd.to_datetime(df_trends['Date'], dayfirst=True, errors='coerce')
+        df_trends['Date'] = pd.to_datetime(df_trends['Date'], errors='coerce')
         df_trends = df_trends.dropna(subset=['Date'])
         if not df_trends.empty:
             daily = df_trends.groupby('Date')['Amount'].sum().reset_index().sort_values('Date')
             daily['Cumulative'] = daily['Amount'].cumsum()
-            
-            fig = go.Figure()
-            # Tracer la ligne de dépenses réelles
             fig.add_trace(go.Scatter(x=daily['Date'], y=daily['Cumulative'], mode='lines', fill='tozeroy', name='Actual Spend', line=dict(color='#60A5FA', width=4), fillcolor='rgba(96, 165, 250, 0.1)'))
             
-            # Nouveau : Tracer la ligne du Burn Rate idéal (Prévisionnel)
-            start_date = daily['Date'].min().replace(day=1)
-            _, last_day = calendar.monthrange(start_date.year, start_date.month)
-            end_date = start_date.replace(day=last_day)
-            
-            if prevu_var > 0:
-                fig.add_trace(go.Scatter(x=[start_date, end_date], y=[0, prevu_var], mode='lines', name='Ideal Burn Rate', line=dict(color='#94A3B8', width=2, dash='dash')))
-            
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-            
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    
     st.markdown("</div><div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
     if category_progress:
         labels = [c["name"] for c in category_progress if c["reel"] > 0]
@@ -456,13 +441,12 @@ with tab_dashboard:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with tab_investments:
-    st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; margin-top: 20px; margin-bottom: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2></div>", unsafe_allow_html=True)
     
-    # Création d'un container dédié pour l'affichage visuel (il sera rendu AU DESSUS de la checkbox)
+    # We define the visual container FIRST so cards render above the checkbox
     main_inv_container = st.container()
     
-    # La checkbox est écrite après le container dans le flux Python, donc elle apparaîtra physiquement en-dessous sur la page Web.
+    # Checkbox placed aligned to the left, below the portfolio visuals
     st.write("<br>", unsafe_allow_html=True)
     show_amounts = st.checkbox("Show Real Amounts", value=False)
     
@@ -494,7 +478,6 @@ with tab_investments:
             total_fees = 0.0
             cards_html = ""
             
-            # Extraction du nom de la colonne du logo (s'il y en a un de défini dans ton fichier "Portfolio")
             logo_col = next((col for col in df_inv.columns if "logo" in col.lower() or "image" in col.lower()), None)
             
             with st.spinner("Syncing live market data..."):
@@ -522,7 +505,7 @@ with tab_investments:
                     
                     if ticker and qty > 0:
                         try:
-                            # Robustesse absolue pour Bitcoin et actifs lents via Yahoo Finance
+                            # 1. Reliable Data Fetching (Fallback to 5-day history if fast_info is down, critical for BTC)
                             stock = yf.Ticker(ticker)
                             current_price = 0.0
                             
@@ -532,13 +515,14 @@ with tab_investments:
                                 pass
                                 
                             if current_price <= 0.0:
-                                hist = stock.history(period="1d")
+                                hist = stock.history(period="5d")
                                 if not hist.empty:
                                     current_price = float(hist['Close'].iloc[-1])
-                            
+                                    
                             if current_price <= 0.0:
-                                continue # On skip seulement si c'est vraiment impossible de trouver le prix
+                                continue # Skip strictly if asset price cannot be found anywhere
                             
+                            # 2. Portfolio Calculations
                             value = current_price * qty
                             cost_basis = invested + fees
                             
@@ -555,16 +539,24 @@ with tab_investments:
                             unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
                             unit_perf_sign = "+" if unit_perf >= 0 else ""
                             
-                            # Logique d'affichage du logo importé depuis ton Google Sheet
+                            # 3. Handle custom user Logos or Fallback
                             custom_logo = str(row[logo_col]).strip() if logo_col else ""
+                            
                             if custom_logo.startswith("http"):
-                                logo_url = custom_logo
+                                # Automatic parsing for Google Drive custom image links
+                                if "drive.google.com/file/d/" in custom_logo:
+                                    try:
+                                        file_id = custom_logo.split("/d/")[1].split("/")[0]
+                                        logo_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+                                    except:
+                                        logo_url = custom_logo
+                                else:
+                                    logo_url = custom_logo
                             else:
-                                logo_url = get_asset_logo(ticker, asset_name)
+                                clean_fb_name = asset_name.replace("'", "").replace('"', '').replace(' ', '+')
+                                logo_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
                                 
-                            clean_fb_name = asset_name.replace("'", "").replace('"', '')[:2]
-                            fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true"
-                            img_tag = f"""<img src="{logo_url}" class="inv-logo" onerror="this.onerror=null; this.src='{fallback_url}';">"""
+                            img_tag = f'<img src="{logo_url}" class="inv-logo">'
                             
                             curr_disp = f" {currency}" if currency else ""
                             ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
@@ -578,7 +570,7 @@ with tab_investments:
                                 pnl_class = "text-green" if pnl_chf >= 0 else "text-red"
                                 bottom_val = f"<span class='{pnl_class}'>P&L: {pnl_sign}{format_chf(pnl_chf)} CHF</span>"
                                 
-                                ticker_display += qty_display # On affiche la quantité de manière discrète
+                                ticker_display += qty_display
                             else:
                                 top_val = "*** CHF"
                                 bottom_val = f"<span style='color: #94A3B8;'>P&L: *** CHF</span>"
