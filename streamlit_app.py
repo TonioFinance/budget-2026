@@ -394,24 +394,20 @@ with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
     
-    # Case à cocher pour basculer l'affichage (Masqué par défaut)
-    show_capital = st.checkbox("💰 Afficher le capital réel", value=False)
+    # Checkbox entirely in English
+    show_capital = st.checkbox("💰 Show Real Capital & Fees", value=False)
     
     try:
-        # Ligne modifiée : Connexion à ton onglet exact "Portfolio"
-        ws_inv = sh.worksheet("Portfolio")
+        ws_inv = sh.worksheet("Investing")
         all_inv_rows = ws_inv.get_all_values()
         
         header_row_idx = -1
-        # On cherche dynamiquement la ligne qui contient les bonnes colonnes
         for i, row in enumerate(all_inv_rows):
-            # On cherche des mots-clés de colonnes sans se soucier des espaces cachés
             if any("Ticker" in str(cell) for cell in row) or any("Nom" in str(cell) for cell in row):
                 header_row_idx = i
                 break
                 
         if header_row_idx != -1:
-            # On nettoie automatiquement les espaces cachés des titres de colonnes ("Ticker / ISIN ")
             headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
             data_rows = all_inv_rows[header_row_idx+1:]
             df_inv = pd.DataFrame(data_rows, columns=headers)
@@ -424,20 +420,25 @@ with tab_investments:
     if not df_inv.empty and "Ticker / ISIN" in df_inv.columns:
         total_value = 0.0
         total_invested = 0.0
+        total_fees = 0.0
         portfolio_items = []
         
-        with st.spinner("Synchronisation des marchés en cours..."):
+        with st.spinner("Syncing live market data..."):
             for index, row in df_inv.iterrows():
                 ticker = str(row.get("Ticker / ISIN", "")).strip()
-                # Extraction sécurisée : On lit bien 'Units' (comme dans ton fichier) et 'Total Invested'
+                
                 qty_str = str(row.get("Units", "0")).replace(',', '.')
                 inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
+                fees_str = str(row.get("Fees", "0")).replace(',', '.')
                 
                 try: qty = float(qty_str)
                 except ValueError: qty = 0.0
                 
                 try: invested = float(inv_str)
                 except ValueError: invested = 0.0
+                
+                try: fees = float(fees_str)
+                except ValueError: fees = 0.0
                 
                 if ticker and qty > 0:
                     try:
@@ -447,16 +448,19 @@ with tab_investments:
                         value = current_price * qty 
                         total_value += value
                         total_invested += invested
+                        total_fees += fees
                         
+                        # Performance calculations based on pure investment vs total outlay
                         perf = ((value - invested) / invested * 100) if invested > 0 else 0
                         pnl_chf = value - invested
                         
                         portfolio_items.append({
-                            "Actif": row.get("Nom", ticker),
+                            "Asset": row.get("Nom", ticker),
                             "Ticker": ticker,
-                            "Quantité": round(qty, 4),
-                            "Investi (CHF)": f"{invested:.2f}",
-                            "Valeur (CHF)": f"{value:.2f}",
+                            "Quantity": round(qty, 4),
+                            "Invested (CHF)": f"{invested:.2f}",
+                            "Fees (CHF)": f"{fees:.2f}",
+                            "Value (CHF)": f"{value:.2f}",
                             "P&L (CHF)": f"{'+' if pnl_chf >= 0 else ''}{pnl_chf:.2f}",
                             "Performance (%)": f"{'+' if perf >= 0 else ''}{perf:.2f}%"
                         })
@@ -466,27 +470,26 @@ with tab_investments:
         perf_total = ((total_value - total_invested) / total_invested * 100) if total_invested > 0 else 0.0
         perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
         perf_sign = "+" if perf_total >= 0 else ""
-        
-        pnl_total_chf = total_value - total_invested
-        pnl_sign = "+" if pnl_total_chf >= 0 else ""
 
-        # Affichage conditionnel de la Hero Card
         if show_capital:
             main_metric_label = "TOTAL PORTFOLIO"
             main_metric_value = f"{format_chf(total_value)} <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
-            sub_metric_label = "PERFORMANCE"
-            sub_metric_value = f"{perf_sign}{perf_total:.2f}%"
+            sub_metric_html = f"""
+                <span style="color:{perf_color}; font-weight:700;">{perf_sign}{perf_total:.2f}%</span><br>
+                <span style="font-size: 11px; color: #94A3B8; text-transform: uppercase;">Total Fees: {format_chf(total_fees)} CHF</span>
+            """
         else:
-            main_metric_label = "P&L TOTAL (%)"
+            main_metric_label = "TOTAL P&L (%)"
             main_metric_value = f"{perf_sign}{perf_total:.2f} <span style='font-size:24px; color:{perf_color};'>%</span>"
-            sub_metric_label = " "
-            sub_metric_value = "Montants masqués"
+            sub_metric_html = f"""<span style="color:#94A3B8; font-weight:500;">Amounts hidden</span>"""
 
         st.markdown(f"""
         <div class="hero-card">
             <div class="hero-top-metrics">
                 <div><span>{main_metric_label}</span></div>
-                <div><span>{sub_metric_label}</span> <span style="color:{perf_color}; font-weight:700;">{sub_metric_value}</span></div>
+                <div style="text-align: right;">
+                    <span>PERFORMANCE</span> {sub_metric_html}
+                </div>
             </div>
             <div class="hero-main-value">{main_metric_value}</div>
         </div>
@@ -495,13 +498,10 @@ with tab_investments:
         if portfolio_items:
             df_display = pd.DataFrame(portfolio_items)
             
-            # Affichage conditionnel du tableau de bord des actifs
             if not show_capital:
-                # Vue "Discrète" : Juste l'actif, le ticker et le pourcentage
-                df_display = df_display[["Actif", "Ticker", "Performance (%)"]]
+                df_display = df_display[["Asset", "Ticker", "Performance (%)"]]
             else:
-                # Vue "Complète" : Toutes les colonnes avec les montants
-                df_display = df_display[["Actif", "Ticker", "Quantité", "Investi (CHF)", "Valeur (CHF)", "P&L (CHF)", "Performance (%)"]]
+                df_display = df_display[["Asset", "Ticker", "Quantity", "Invested (CHF)", "Fees (CHF)", "Value (CHF)", "P&L (CHF)", "Performance (%)"]]
                 
             st.dataframe(df_display, use_container_width=True)
 
@@ -515,6 +515,6 @@ with tab_investments:
             <div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
         </div>
         """, unsafe_allow_html=True)
-        st.info("💡 L'onglet 'Portfolio' est introuvable ou vide. Assure-toi que les colonnes 'Nom', 'Ticker / ISIN', 'Units' et 'Total Invested' sont bien présentes.")
+        st.info("💡 The 'Investing' tab is missing or empty. Make sure columns 'Nom', 'Ticker / ISIN', 'Units', 'Fees', and 'Total Invested' are present.")
 
 st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
