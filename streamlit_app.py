@@ -423,37 +423,45 @@ with tab_dashboard:
     st.divider()
     st.markdown("<div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
     
-    # Trace the Spending Trend plot
+    # Trace the Spending Trend plot (Mountain / Area chart for daily expenses)
     fig = go.Figure()
     
-    # 1. Tracer la ligne du Burn Rate idéal (du 15 du mois au 15 du mois suivant)
     try:
         curr_y = now.year
         curr_m = list(months_map.values()).index(selected_month) + 1
         
-        # Date de début: Le 15 du mois sélectionné
         start_d = datetime(curr_y, curr_m, 15)
-        
-        # Date de fin: Le 15 du mois suivant
         end_m = curr_m + 1 if curr_m < 12 else 1
         end_y = curr_y if curr_m < 12 else curr_y + 1
         end_d = datetime(end_y, end_m, 15)
         
-        if prevu_var > 0:
-            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Burn Rate', line=dict(color='#94A3B8', width=2, dash='dash')))
+        # Ligne droite de budget journalier idéal
+        days_in_period = (end_d - start_d).days
+        daily_limit = prevu_var / days_in_period if days_in_period > 0 else 0
+        
+        if daily_limit > 0:
+            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[daily_limit, daily_limit], mode='lines', name='Daily Budget Limit', line=dict(color='#94A3B8', width=2, dash='dash')))
     except Exception:
         pass
 
-    # 2. Tracer les dépenses réelles
     if raw_expenses:
         df_trends = pd.DataFrame(raw_expenses)
-        # Correction MAJEURE de la lecture des dates (force la lecture des formats européens JJ/MM/AAAA)
         df_trends['Date'] = pd.to_datetime(df_trends['Date'].astype(str).str.replace('.', '/'), dayfirst=True, errors='coerce')
         df_trends = df_trends.dropna(subset=['Date'])
         if not df_trends.empty:
+            # Groupement par total quotidien (Dépenses totales par jour)
             daily = df_trends.groupby('Date')['Amount'].sum().reset_index().sort_values('Date')
-            daily['Cumulative'] = daily['Amount'].cumsum()
-            fig.add_trace(go.Scatter(x=daily['Date'], y=daily['Cumulative'], mode='lines', fill='tozeroy', name='Actual Spend', line=dict(color='#60A5FA', width=4), fillcolor='rgba(96, 165, 250, 0.1)'))
+            
+            # Tracé en montagne avec une ligne courbe lisse (spline) et remplissage vers le bas (tozeroy)
+            fig.add_trace(go.Scatter(
+                x=daily['Date'], 
+                y=daily['Amount'], 
+                mode='lines', 
+                fill='tozeroy', 
+                name='Daily Spend', 
+                line=dict(color='#60A5FA', width=3, shape='spline'), 
+                fillcolor='rgba(96, 165, 250, 0.4)'
+            ))
             
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
@@ -474,9 +482,7 @@ with tab_investments:
     main_inv_container = st.container()
     
     st.write("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1.5, 3, 1.5])
-    with col2:
-        show_amounts = st.checkbox("Show Real Amounts", value=False)
+    show_amounts = st.checkbox("Show Real Amounts", value=False)
     
     with main_inv_container:
         try:
