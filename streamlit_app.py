@@ -442,8 +442,7 @@ with tab_dashboard:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with tab_investments:
-    st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 PORTFOLIO MONITORING</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 PORTFOLIO MONITORING</h2>", unsafe_allow_html=True
     
     # Just one toggle for real amounts to keep it simple and clean
     show_amounts = st.checkbox("Show Real Amounts", value=False)
