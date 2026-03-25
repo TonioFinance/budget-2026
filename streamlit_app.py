@@ -286,6 +286,28 @@ def get_transaction_html(date, merchant, amount, category):
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""<div class="transaction-card"><div style="display:flex; align-items:center; gap:15px;"><div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i></div><div><div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div><div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div></div></div><div class="trans-amount">{amount}</div></div>"""
 
+# --- LOGO MATCHER (SMART CACHED) ---
+@st.cache_data(show_spinner=False, ttl=86400)
+def get_asset_logo(ticker, asset_name):
+    t_up = str(ticker).upper()
+    n_up = str(asset_name).upper()
+    
+    if "BTC" in t_up or "BITCOIN" in n_up: return "https://cryptologos.cc/logos/bitcoin-btc-logo.png"
+    if "ETH" in t_up or "ETHEREUM" in n_up: return "https://cryptologos.cc/logos/ethereum-eth-logo.png"
+    if "SOL" in t_up or "SOLANA" in n_up: return "https://cryptologos.cc/logos/solana-sol-logo.png"
+    
+    try:
+        info = yf.Ticker(ticker).info
+        website = info.get('website', '')
+        if website:
+            domain = website.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0]
+            return f"https://logo.clearbit.com/{domain}"
+    except:
+        pass
+        
+    clean_name = str(asset_name).replace(' ', '+')
+    return f"https://ui-avatars.com/api/?name={clean_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
+
 # --- CONNECTION ---
 @st.cache_resource
 def get_gsheet_client():
@@ -404,23 +426,29 @@ with tab_dashboard:
     # Trace the Spending Trend plot
     fig = go.Figure()
     
-    # 1. Always trace the Ideal Burn Rate (Prevu) across the whole month
+    # 1. Tracer la ligne du Burn Rate idéal (du 15 du mois au 15 du mois suivant)
     try:
         curr_y = now.year
         curr_m = list(months_map.values()).index(selected_month) + 1
-        start_d = datetime(curr_y, curr_m, 1)
-        _, last_day = calendar.monthrange(curr_y, curr_m)
-        end_d = datetime(curr_y, curr_m, last_day)
+        
+        # Date de début: Le 15 du mois sélectionné
+        start_d = datetime(curr_y, curr_m, 15)
+        
+        # Date de fin: Le 15 du mois suivant
+        end_m = curr_m + 1 if curr_m < 12 else 1
+        end_y = curr_y if curr_m < 12 else curr_y + 1
+        end_d = datetime(end_y, end_m, 15)
         
         if prevu_var > 0:
             fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Burn Rate', line=dict(color='#94A3B8', width=2, dash='dash')))
     except Exception:
         pass
 
-    # 2. Trace the Actual Spend (if expenses exist)
+    # 2. Tracer les dépenses réelles
     if raw_expenses:
         df_trends = pd.DataFrame(raw_expenses)
-        df_trends['Date'] = pd.to_datetime(df_trends['Date'], errors='coerce')
+        # Correction MAJEURE de la lecture des dates (force la lecture des formats européens JJ/MM/AAAA)
+        df_trends['Date'] = pd.to_datetime(df_trends['Date'].astype(str).str.replace('.', '/'), dayfirst=True, errors='coerce')
         df_trends = df_trends.dropna(subset=['Date'])
         if not df_trends.empty:
             daily = df_trends.groupby('Date')['Amount'].sum().reset_index().sort_values('Date')
@@ -443,12 +471,12 @@ with tab_dashboard:
 with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px; margin-bottom: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2></div>", unsafe_allow_html=True)
     
-    # We define the visual container FIRST so cards render above the checkbox
     main_inv_container = st.container()
     
-    # Checkbox placed aligned to the left, below the portfolio visuals
     st.write("<br>", unsafe_allow_html=True)
-    show_amounts = st.checkbox("Show Real Amounts", value=False)
+    col1, col2, col3 = st.columns([1.5, 3, 1.5])
+    with col2:
+        show_amounts = st.checkbox("Show Real Amounts", value=False)
     
     with main_inv_container:
         try:
@@ -553,10 +581,11 @@ with tab_investments:
                                 else:
                                     logo_url = custom_logo
                             else:
-                                clean_fb_name = asset_name.replace("'", "").replace('"', '').replace(' ', '+')
-                                logo_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
+                                logo_url = get_asset_logo(ticker, asset_name)
                                 
-                            img_tag = f'<img src="{logo_url}" class="inv-logo">'
+                            clean_fb_name = asset_name.replace("'", "").replace('"', '').replace(' ', '+')
+                            fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
+                            img_tag = f'<img src="{logo_url}" class="inv-logo" onerror="this.onerror=null; this.src=\'{fallback_url}\';">'
                             
                             curr_disp = f" {currency}" if currency else ""
                             ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
