@@ -165,7 +165,7 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- INVESTMENT CARDS (NEW DESIGN) --- */
+    /* --- INVESTMENT CARDS (REAL LOGOS DESIGN) --- */
     .inv-card {
         background: rgba(255, 255, 255, 0.02); 
         border-radius: 18px; 
@@ -184,13 +184,18 @@ st.markdown("""
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
     }
     .inv-left { display: flex; align-items: center; gap: 16px; }
+    
+    /* Actual Real Image Styling */
     .inv-logo { 
         width: 48px; height: 48px; 
         border-radius: 50%; 
-        object-fit: cover; 
+        object-fit: cover;
+        background-color: #FFFFFF; /* White background for transparent PNGs */
         border: 2px solid rgba(96, 165, 250, 0.4);
         box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        flex-shrink: 0;
     }
+    
     .inv-name { color: #FFFFFF; font-weight: 800; font-size: 17px; letter-spacing: -0.2px; }
     .inv-ticker { color: #94A3B8; font-size: 13px; margin-top:3px; font-weight: 600; }
     .inv-right { text-align: right; }
@@ -246,8 +251,8 @@ st.markdown("""
         padding: 20px;
         margin-top: 20px;
     }
-
-    /* Make dataframe look better in dark mode (if needed) */
+    
+    /* Make dataframe look better in dark mode */
     [data-testid="stDataFrame"] {
         border-radius: 12px;
         overflow: hidden;
@@ -279,6 +284,31 @@ def get_transaction_html(date, merchant, amount, category):
     cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""<div class="transaction-card"><div style="display:flex; align-items:center; gap:15px;"><div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i></div><div><div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div><div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div></div></div><div class="trans-amount">{amount}</div></div>"""
+
+# --- LOGO MATCHER (SMART CACHED) ---
+@st.cache_data(show_spinner=False, ttl=86400)
+def get_asset_logo(ticker, asset_name):
+    t_up = str(ticker).upper()
+    n_up = str(asset_name).upper()
+    
+    # 1. Hardcoded Cryptos for Instant HD Logos
+    if "BTC" in t_up or "BITCOIN" in n_up: return "https://cryptologos.cc/logos/bitcoin-btc-logo.png"
+    if "ETH" in t_up or "ETHEREUM" in n_up: return "https://cryptologos.cc/logos/ethereum-eth-logo.png"
+    if "SOL" in t_up or "SOLANA" in n_up: return "https://cryptologos.cc/logos/solana-sol-logo.png"
+    
+    # 2. Extract Real Company Domain via Yahoo Finance
+    try:
+        info = yf.Ticker(ticker).info
+        website = info.get('website', '')
+        if website:
+            domain = website.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0]
+            return f"https://logo.clearbit.com/{domain}"
+    except:
+        pass
+        
+    # 3. Fallback to Initials (if domain is missing or logo doesn't exist)
+    clean_name = str(asset_name).replace(' ', '+')
+    return f"https://ui-avatars.com/api/?name={clean_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
 
 # --- CONNECTION ---
 @st.cache_resource
@@ -418,7 +448,6 @@ with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
     
-    # Séparation des options de visibilité en 2 colonnes bien propres
     col_opt1, col_opt2 = st.columns(2)
     with col_opt1:
         show_amounts = st.checkbox("👁️ Show Real Amounts", value=False)
@@ -490,10 +519,14 @@ with tab_investments:
                         perf_class = "text-green" if perf >= 0 else "text-red"
                         perf_sign = "+" if perf >= 0 else ""
                         
-                        # Génération du logo (pastille colorée avec la ou les 1ères lettres)
-                        avatar_url = f"https://ui-avatars.com/api/?name={asset_name.replace(' ', '+')}&background=0F172A&color=60A5FA&rounded=true&bold=true&font-size=0.4"
+                        # 1. On va chercher le vrai logo ou on génère le secours d'erreur (onerror)
+                        logo_url = get_asset_logo(ticker, asset_name)
+                        clean_fb_name = asset_name.replace("'", "").replace('"', '')[:2]
+                        fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true"
                         
-                        # Logique d'affichage selon "Show Real Amounts"
+                        # 2. Sécurité HTML onerror intégrée pour qu'aucun logo ne paraisse brisé
+                        img_tag = f"""<img src="{logo_url}" class="inv-logo" onerror="this.onerror=null; this.src='{fallback_url}';">"""
+                        
                         if show_amounts:
                             qty_display = f" • {round(qty, 4)} Units"
                             top_val = f"{format_chf(value)} CHF"
@@ -503,11 +536,10 @@ with tab_investments:
                             top_val = f"Price: {format_chf(current_price)}"
                             bottom_val = f"<span class='{perf_class}'>{perf_sign}{perf:.2f}%</span>"
                             
-                        # Création de la carte CSS
                         cards_html += f"""
                         <div class="inv-card">
                             <div class="inv-left">
-                                <img src="{avatar_url}" class="inv-logo">
+                                {img_tag}
                                 <div>
                                     <div class="inv-name">{asset_name}</div>
                                     <div class="inv-ticker">{ticker}{qty_display}</div>
@@ -523,12 +555,10 @@ with tab_investments:
                     except Exception:
                         pass
         
-        # Calcul Global
         perf_total = ((total_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
         perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
         perf_sign = "+" if perf_total >= 0 else ""
 
-        # Gestion de l'affichage de la Card Principale (EN UNE SEULE LIGNE pour éviter les bugs Streamlit/Markdown)
         if show_amounts:
             main_metric_label = "TOTAL PORTFOLIO"
             main_metric_value = f"{format_chf(total_value)} <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
@@ -540,10 +570,8 @@ with tab_investments:
             
         sub_metric_html = f"<span style='color:{perf_color}; font-weight:700;'>{perf_sign}{perf_total:.2f}%</span><br><span style='font-size: 11px; color: #94A3B8; text-transform: uppercase;'>{fees_label}</span>"
 
-        # Le HTML compressé répare le bug d'affichage que tu m'as envoyé en screenshot
         st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>{main_metric_label}</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br>{sub_metric_html}</div></div><div class="hero-main-value">{main_metric_value}</div></div>""", unsafe_allow_html=True)
         
-        # Affichage de toutes nos nouvelles cartes de design en dessous !
         if cards_html:
             st.markdown(cards_html, unsafe_allow_html=True)
 
