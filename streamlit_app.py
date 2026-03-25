@@ -9,7 +9,7 @@ import yfinance as yf
 import calendar
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="wide", initial_sidebar_state="collapsed")
 
 # --- STYLE OBSIDIAN & AZURE (FULL SAAS PREMIUM EDITION) ---
 st.markdown("""
@@ -40,6 +40,9 @@ st.markdown("""
         margin-bottom: 50px;
         justify-content: center;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
     }
     
     .stTabs [data-baseweb="tab"] {
@@ -93,6 +96,9 @@ st.markdown("""
         backdrop-filter: blur(15px);
         margin-bottom: 25px;
         text-align: center;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
     }
     .hero-top-metrics {
         display: flex;
@@ -166,42 +172,65 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- INVESTMENT CARDS (REAL LOGOS DESIGN) --- */
-    .inv-card {
-        background: rgba(255, 255, 255, 0.02); 
-        border-radius: 18px; 
-        padding: 18px 22px; 
-        margin-bottom: 14px; 
-        display: flex; 
-        justify-content: space-between; 
+    /* --- INVESTMENT GRID (NEW UI) --- */
+    .inv-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-top: 15px;
+    }
+    .inv-card-grid {
+        background: linear-gradient(145deg, rgba(15, 23, 42, 0.6) 0%, rgba(3, 7, 18, 0.8) 100%);
+        border-radius: 20px;
+        padding: 24px;
+        border: 1px solid rgba(255,255,255,0.05);
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
         align-items: center;
-        border: 1px solid rgba(255,255,255,0.04);
-        transition: all 0.2s ease;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
     }
-    .inv-card:hover {
-        transform: translateY(-2px);
-        background: rgba(59, 130, 246, 0.08);
+    .inv-card-grid::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 3px;
+        background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.5), transparent);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .inv-card-grid:hover {
+        transform: translateY(-5px);
+        background: linear-gradient(145deg, rgba(30, 58, 138, 0.15) 0%, rgba(3, 7, 18, 0.9) 100%);
         border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
     }
-    .inv-left { display: flex; align-items: center; gap: 16px; }
+    .inv-card-grid:hover::before { opacity: 1; }
     
-    /* Actual Real Image Styling */
-    .inv-logo { 
-        width: 48px; height: 48px; 
-        border-radius: 50%; 
+    .inv-logo-wrapper {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        padding: 4px;
+        background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%); /* Neon Halo Effect */
+        display: flex; align-items: center; justify-content: center;
+        margin-bottom: 20px;
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+    }
+    .inv-logo-grid {
+        width: 100%; height: 100%;
+        border-radius: 50%;
         object-fit: cover;
-        background-color: #FFFFFF; 
-        border: 2px solid rgba(96, 165, 250, 0.4);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        flex-shrink: 0;
+        background-color: #0F172A;
+        border: 3px solid #030712;
     }
+    .inv-info-grid { width: 100%; text-align: left; }
+    .inv-name-grid { color: #FFFFFF; font-weight: 800; font-size: 19px; margin-bottom: 2px; }
+    .inv-ticker-grid { color: #94A3B8; font-size: 13px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;}
+    .inv-stats-row { display: flex; justify-content: space-between; align-items: flex-end; }
+    .inv-price-grid { color: #FFFFFF; font-weight: 800; font-size: 18px; }
+    .inv-perf-grid { font-weight: 800; font-size: 16px; text-align: right; }
     
-    .inv-name { color: #FFFFFF; font-weight: 800; font-size: 17px; letter-spacing: -0.2px; }
-    .inv-ticker { color: #94A3B8; font-size: 13px; margin-top:3px; font-weight: 600; }
-    .inv-right { text-align: right; }
-    .inv-top-val { color: #FFFFFF; font-weight: 800; font-size: 17px; }
-    .inv-bottom-val { margin-top: 4px; font-size: 14px; font-weight: 800; }
     .text-green { color: #34D399; }
     .text-red { color: #FB7185; }
 
@@ -253,12 +282,6 @@ st.markdown("""
         margin-top: 20px;
     }
     
-    /* Make dataframe look better in dark mode */
-    [data-testid="stDataFrame"] {
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid rgba(59, 130, 246, 0.2);
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -332,7 +355,9 @@ ws = sh.worksheet(next((s for s in [s.title for s in sh.worksheets()] if selecte
 
 # --- DATA EXTRACTION ---
 all_rows = ws.get_all_values()
-category_progress, raw_expenses = [], []
+category_progress, raw_expenses, daily_summary_data = [], [], []
+
+# 1. Extraction Charges Variables
 col_var, col_prevu, col_actuel, row_var_start = -1, -1, -1, -1
 for i, row in enumerate(all_rows):
     if i >= 65: break
@@ -359,19 +384,38 @@ if col_var != -1:
 
 prevu_var, reel_var = sum(c["prevu"] for c in category_progress), sum(c["reel"] for c in category_progress)
 
+# 2. Extraction Transactions et Tableau Journalier
 row_history_start = -1
-for i, row in enumerate(all_rows):
-    if any(str(cell).strip().lower() == "date" for cell in row):
-        row_history_start = i + 1
-        break
+row_daily_start = -1
 
+for i, row in enumerate(all_rows):
+    if len(row) > 1 and str(row[0]).strip().lower() == "date":
+        row_str_lower = " ".join([str(c).lower() for c in row])
+        if "lieu" in row_str_lower or "merchant" in row_str_lower:
+            row_history_start = i + 1
+        elif "dépense" in row_str_lower or "depense" in row_str_lower:
+            row_daily_start = i + 1
+
+# Extract Recent Transactions
 if row_history_start != -1:
     for i in range(row_history_start, len(all_rows)):
         row = all_rows[i]
+        if str(row[0]).strip().lower() == "date": break # Arrêt si on croise un autre tableau
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
             if "total" in str(row[0]).lower(): continue
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
+
+# Extract Daily Summary for Trends
+if row_daily_start != -1:
+    for i in range(row_daily_start, len(all_rows)):
+        row = all_rows[i]
+        if str(row[0]).strip() in ["", "nan"]: continue
+        if "total" in str(row[0]).lower(): continue
+        
+        date_val = str(row[0]).strip()
+        amt_val = parse_amount(row[1] if len(row) > 1 else 0)
+        daily_summary_data.append({"Date": date_val, "Amount": amt_val})
 
 # --- TABS SYSTEM ---
 tab_dashboard, tab_investments = st.tabs(["Dashboard", "Investments"])
@@ -423,7 +467,7 @@ with tab_dashboard:
     st.divider()
     st.markdown("<div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
     
-    # Trace the Spending Trend plot (Mountain / Area chart for daily expenses)
+    # Trace the Spending Trend plot (Using the specific daily summary table)
     fig = go.Figure()
     
     try:
@@ -435,7 +479,6 @@ with tab_dashboard:
         end_y = curr_y if curr_m < 12 else curr_y + 1
         end_d = datetime(end_y, end_m, 15)
         
-        # Ligne droite de budget journalier idéal
         days_in_period = (end_d - start_d).days
         daily_limit = prevu_var / days_in_period if days_in_period > 0 else 0
         
@@ -444,15 +487,14 @@ with tab_dashboard:
     except Exception:
         pass
 
-    if raw_expenses:
-        df_trends = pd.DataFrame(raw_expenses)
+    if daily_summary_data:
+        df_trends = pd.DataFrame(daily_summary_data)
         df_trends['Date'] = pd.to_datetime(df_trends['Date'].astype(str).str.replace('.', '/'), dayfirst=True, errors='coerce')
         df_trends = df_trends.dropna(subset=['Date'])
+        
         if not df_trends.empty:
-            # Groupement par total quotidien (Dépenses totales par jour)
             daily = df_trends.groupby('Date')['Amount'].sum().reset_index().sort_values('Date')
             
-            # Tracé en montagne avec une ligne courbe lisse (spline) et remplissage vers le bas (tozeroy)
             fig.add_trace(go.Scatter(
                 x=daily['Date'], 
                 y=daily['Amount'], 
@@ -482,7 +524,9 @@ with tab_investments:
     main_inv_container = st.container()
     
     st.write("<br>", unsafe_allow_html=True)
-    show_amounts = st.checkbox("Show Real Amounts", value=False)
+    col1, col2, col3 = st.columns([1.5, 3, 1.5])
+    with col2:
+        show_amounts = st.checkbox("Show Real Amounts", value=False)
     
     with main_inv_container:
         try:
@@ -510,7 +554,7 @@ with tab_investments:
             total_value = 0.0
             total_cost_basis = 0.0
             total_fees = 0.0
-            cards_html = ""
+            cards_html = "<div class='inv-grid'>"
             
             logo_col = next((col for col in df_inv.columns if "logo" in col.lower() or "image" in col.lower()), None)
             
@@ -554,9 +598,8 @@ with tab_investments:
                                     current_price = float(hist['Close'].iloc[-1])
                                     
                             if current_price <= 0.0:
-                                continue # Skip strictly if asset price cannot be found anywhere
+                                continue 
                             
-                            # 2. Portfolio Calculations
                             value = current_price * qty
                             cost_basis = invested + fees
                             
@@ -573,11 +616,9 @@ with tab_investments:
                             unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
                             unit_perf_sign = "+" if unit_perf >= 0 else ""
                             
-                            # 3. Handle custom user Logos or Fallback
                             custom_logo = str(row[logo_col]).strip() if logo_col else ""
                             
                             if custom_logo.startswith("http"):
-                                # Automatic parsing for Google Drive custom image links
                                 if "drive.google.com/file/d/" in custom_logo:
                                     try:
                                         file_id = custom_logo.split("/d/")[1].split("/")[0]
@@ -591,43 +632,41 @@ with tab_investments:
                                 
                             clean_fb_name = asset_name.replace("'", "").replace('"', '').replace(' ', '+')
                             fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
-                            img_tag = f'<img src="{logo_url}" class="inv-logo" onerror="this.onerror=null; this.src=\'{fallback_url}\';">'
                             
+                            qty_formatted = f"{qty:.6f}".rstrip('0').rstrip('.') if qty < 1 else f"{qty:.4f}".rstrip('0').rstrip('.')
                             curr_disp = f" {currency}" if currency else ""
-                            ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
                             
                             if show_amounts:
-                                qty_formatted = f"{qty:.6f}".rstrip('0').rstrip('.') if qty < 1 else f"{qty:.4f}".rstrip('0').rstrip('.')
-                                qty_display = f" • {qty_formatted} Units"
-                                
-                                top_val = f"{format_chf(value)} CHF"
+                                price_display = f"{format_chf(value)} CHF"
+                                sub_price_display = f"Avg: {format_chf(entry_price)}{curr_disp}"
                                 pnl_sign = "+" if pnl_chf >= 0 else ""
-                                pnl_class = "text-green" if pnl_chf >= 0 else "text-red"
-                                bottom_val = f"<span class='{pnl_class}'>P&L: {pnl_sign}{format_chf(pnl_chf)} CHF</span>"
-                                
-                                ticker_display += qty_display
+                                perf_display = f"{unit_perf_sign}{unit_perf:.2f}%<br>{pnl_sign}{format_chf(pnl_chf)} CHF"
                             else:
-                                top_val = "*** CHF"
-                                bottom_val = f"<span style='color: #94A3B8;'>P&L: *** CHF</span>"
-                                
+                                price_display = f"{format_chf(current_price)}{curr_disp}"
+                                sub_price_display = "Current Price"
+                                perf_display = f"{unit_perf_sign}{unit_perf:.2f}%"
+
+                            # Grid Card UI Generation
                             cards_html += f"""
-                            <div class="inv-card">
-                                <div class="inv-left">
-                                    {img_tag}
-                                    <div>
-                                        <div class="inv-name">{asset_name}</div>
-                                        <div class="inv-ticker">{ticker_display}</div>
-                                    </div>
+                            <div class="inv-card-grid">
+                                <div class="inv-logo-wrapper">
+                                    <img src="{logo_url}" class="inv-logo-grid" onerror="this.onerror=null; this.src='{fallback_url}';">
                                 </div>
-                                <div class="inv-right">
-                                    <div class="inv-top-val">{top_val}</div>
-                                    <div class="inv-bottom-val">{bottom_val}</div>
+                                <div class="inv-info-grid">
+                                    <div class="inv-name-grid">{asset_name}</div>
+                                    <div class="inv-ticker-grid">{ticker} • {qty_formatted} Units</div>
+                                    <div class="inv-stats-row">
+                                        <div class="inv-price-grid">{price_display}<br><span style="font-size:12px; color:#94A3B8; font-weight:400;">{sub_price_display}</span></div>
+                                        <div class="inv-perf-grid {unit_perf_class}">{perf_display}</div>
+                                    </div>
                                 </div>
                             </div>
                             """
                             
                         except Exception:
                             pass
+            
+            cards_html += "</div>" # Close Grid
             
             perf_total = ((total_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
             perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
@@ -646,7 +685,7 @@ with tab_investments:
 
             st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>{main_metric_label}</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br>{sub_metric_html}</div></div><div class="hero-main-value">{main_metric_value}</div></div>""", unsafe_allow_html=True)
             
-            if cards_html:
+            if cards_html != "<div class='inv-grid'></div>":
                 st.markdown(cards_html, unsafe_allow_html=True)
 
         else:
