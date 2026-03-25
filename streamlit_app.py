@@ -9,7 +9,7 @@ import yfinance as yf
 import calendar
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
 # --- STYLE OBSIDIAN & AZURE (FULL SAAS PREMIUM EDITION) ---
 st.markdown("""
@@ -40,9 +40,6 @@ st.markdown("""
         margin-bottom: 50px;
         justify-content: center;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        max-width: 600px;
-        margin-left: auto;
-        margin-right: auto;
     }
     
     .stTabs [data-baseweb="tab"] {
@@ -96,9 +93,6 @@ st.markdown("""
         backdrop-filter: blur(15px);
         margin-bottom: 25px;
         text-align: center;
-        max-width: 800px;
-        margin-left: auto;
-        margin-right: auto;
     }
     .hero-top-metrics {
         display: flex;
@@ -212,7 +206,7 @@ st.markdown("""
         width: 80px; height: 80px;
         border-radius: 50%;
         padding: 4px;
-        background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%); /* Neon Halo Effect */
+        background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%); 
         display: flex; align-items: center; justify-content: center;
         margin-bottom: 20px;
         box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
@@ -225,8 +219,8 @@ st.markdown("""
         border: 3px solid #030712;
     }
     .inv-info-grid { width: 100%; text-align: left; }
-    .inv-name-grid { color: #FFFFFF; font-weight: 800; font-size: 19px; margin-bottom: 2px; }
-    .inv-ticker-grid { color: #94A3B8; font-size: 13px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px;}
+    .inv-name-grid { color: #FFFFFF; font-weight: 800; font-size: 19px; margin-bottom: 2px; text-align: center; }
+    .inv-ticker-grid { color: #94A3B8; font-size: 13px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; text-align: center;}
     .inv-stats-row { display: flex; justify-content: space-between; align-items: flex-end; }
     .inv-price-grid { color: #FFFFFF; font-weight: 800; font-size: 18px; }
     .inv-perf-grid { font-weight: 800; font-size: 16px; text-align: right; }
@@ -282,6 +276,12 @@ st.markdown("""
         margin-top: 20px;
     }
     
+    /* Make dataframe look better in dark mode */
+    [data-testid="stDataFrame"] {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -400,7 +400,7 @@ for i, row in enumerate(all_rows):
 if row_history_start != -1:
     for i in range(row_history_start, len(all_rows)):
         row = all_rows[i]
-        if str(row[0]).strip().lower() == "date": break # Arrêt si on croise un autre tableau
+        if str(row[0]).strip().lower() == "date": break 
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
             if "total" in str(row[0]).lower(): continue
             amt_val = parse_amount(row[2])
@@ -479,28 +479,34 @@ with tab_dashboard:
         end_y = curr_y if curr_m < 12 else curr_y + 1
         end_d = datetime(end_y, end_m, 15)
         
-        days_in_period = (end_d - start_d).days
-        daily_limit = prevu_var / days_in_period if days_in_period > 0 else 0
-        
-        if daily_limit > 0:
-            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[daily_limit, daily_limit], mode='lines', name='Daily Budget Limit', line=dict(color='#94A3B8', width=2, dash='dash')))
+        if prevu_var > 0:
+            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Burn Rate', line=dict(color='#94A3B8', width=2, dash='dash')))
     except Exception:
         pass
 
     if daily_summary_data:
         df_trends = pd.DataFrame(daily_summary_data)
-        df_trends['Date'] = pd.to_datetime(df_trends['Date'].astype(str).str.replace('.', '/'), dayfirst=True, errors='coerce')
+        # Parse mixed date formats safely to avoid dropping valid dates
+        df_trends['Date'] = pd.to_datetime(df_trends['Date'], format='mixed', errors='coerce')
         df_trends = df_trends.dropna(subset=['Date'])
         
         if not df_trends.empty:
             daily = df_trends.groupby('Date')['Amount'].sum().reset_index().sort_values('Date')
             
+            # Couper l'affichage des zéros futurs pour ne pas avoir une ligne plate moche
+            last_spend_date = daily[daily['Amount'] > 0]['Date'].max()
+            if pd.notna(last_spend_date):
+                daily = daily[daily['Date'] <= last_spend_date]
+            
+            # CUMULATIVE SUM REQUIRED for Burn Rate Mountain!
+            daily['Cumulative'] = daily['Amount'].cumsum()
+            
             fig.add_trace(go.Scatter(
                 x=daily['Date'], 
-                y=daily['Amount'], 
+                y=daily['Cumulative'], 
                 mode='lines', 
                 fill='tozeroy', 
-                name='Daily Spend', 
+                name='Cumulative Spend', 
                 line=dict(color='#60A5FA', width=3, shape='spline'), 
                 fillcolor='rgba(96, 165, 250, 0.4)'
             ))
