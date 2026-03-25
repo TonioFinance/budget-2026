@@ -251,7 +251,7 @@ st.markdown("""
         border-radius: 24px;
         padding: 20px;
         margin-top: 20px;
-        text-align: center; /* ALIGNEMENT CORRIGÉ DES TITRES */
+        text-align: center;
     }
     
     /* Make dataframe look better in dark mode */
@@ -310,20 +310,15 @@ def get_asset_logo(ticker, asset_name):
     return f"https://ui-avatars.com/api/?name={clean_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
 
 def convert_google_drive_link(url):
-    """
-    Robustly converts Google Drive 'open?id=' or 'file/d/' links into direct download links.
-    Returns the original URL if no conversion pattern matches.
-    """
+    """Robustly converts Google Drive 'open?id=' or 'file/d/' links into direct download links."""
     if not isinstance(url, str): return url
     if "drive.google.com" not in url: return url
 
-    # Case 1: URL with 'open?id='
     open_match = re.search(r"open\?id=([a-zA-Z0-9_-]+)", url)
     if open_match:
         file_id = open_match.group(1)
         return f"https://drive.google.com/uc?export=view&id={file_id}"
 
-    # Case 2: URL with 'file/d/.../view'
     file_match = re.search(r"file/d/([a-zA-Z0-9_-]+)", url)
     if file_match:
         file_id = file_match.group(1)
@@ -336,11 +331,8 @@ def is_valid_custom_logo(url):
     if not isinstance(url, str): return False
     url = url.strip()
     if not url: return False
-    # If it's not a direct Drive uc? export link, and it doesn't look like a direct image extension, be wary
-    # This prevents the broken image icon seen in images from drive 'open' links
     if "drive.google.com" in url:
         return "uc?export=view" in url
-    # Simple check for direct image patterns or CLEARBIT
     return url.startswith("http") and (any(ext in url.lower() for ext in [".png", ".jpg", ".jpeg", ".svg"]) or "clearbit" in url)
 
 # --- CONNECTION ---
@@ -411,7 +403,6 @@ if row_history_start != -1:
 # Extraction PLAGE EXACTA A100:B133 pour le Spending Trend
 daily_summary_data = []
 if len(all_rows) >= 99:
-    # A100 = index 99, B133 = index 132
     trend_rows = all_rows[99:133] 
     for row in trend_rows:
         if len(row) >= 2:
@@ -476,33 +467,27 @@ with tab_dashboard:
     if daily_summary_data:
         df_trends = pd.DataFrame(daily_summary_data)
         curr_y = now.year
-        # Nettoyage des points en slash pour forcer la lecture Jour/Mois/Année
         clean_dates = df_trends['Date'].astype(str).str.replace('.', '/')
         df_trends['DateObj'] = pd.to_datetime(clean_dates + '/' + str(curr_y), format='%d/%m/%Y', errors='coerce')
         df_trends = df_trends.dropna(subset=['DateObj']).sort_values('DateObj')
         
         if not df_trends.empty:
-            # Setup base limits (for ideal line)
             curr_m = list(months_map.values()).index(selected_month) + 1
             start_d = datetime(curr_y, curr_m, 15)
             end_m = curr_m + 1 if curr_m < 12 else 1
             end_y = curr_y if curr_m < 12 else curr_y + 1
             end_d = datetime(end_y, end_m, 15)
             
-            # Cumulative Spend
             df_trends['Cumulative'] = df_trends['Amount'].cumsum()
             
-            # Dynamic Ideal Line mapping per row
             ideal_daily = prevu_var / 30 if prevu_var > 0 else 0
             df_trends['Days_Passed'] = (df_trends['DateObj'] - start_d).dt.days + 1
             df_trends['Days_Passed'] = df_trends['Days_Passed'].clip(lower=0) 
             df_trends['Ideal'] = df_trends['Days_Passed'] * ideal_daily
             
-            # Split for Pro Green/Red Design (Correcting previous state)
             df_trends['Safe'] = df_trends.apply(lambda row: min(row['Cumulative'], row['Ideal']), axis=1)
             df_trends['Over'] = df_trends.apply(lambda row: max(row['Cumulative'] - row['Ideal'], 0), axis=1)
             
-            # Cut off empty future dates
             last_valid_idx = df_trends[df_trends['Amount'] > 0].index.max()
             if pd.notna(last_valid_idx):
                 df_plot = df_trends.loc[:last_valid_idx]
@@ -520,7 +505,7 @@ with tab_dashboard:
                 stackgroup='one',
                 name='On Track', 
                 line=dict(color='#10B981', width=0), 
-                fillcolor='rgba(16, 185, 129, 0.3)' # Pro Emerald
+                fillcolor='rgba(16, 185, 129, 0.3)' 
             ))
             
             # 3. Red Area (Overbudget Spend - Pro Burgundy/Carmin)
@@ -531,7 +516,7 @@ with tab_dashboard:
                 stackgroup='one',
                 name='Overbudget', 
                 line=dict(color='#E11D48', width=0), 
-                fillcolor='rgba(225, 29, 72, 0.4)' # Pro Carmin
+                fillcolor='rgba(225, 29, 72, 0.4)' 
             ))
             
             # 4. Clean white top line for visual pop
@@ -564,13 +549,13 @@ with tab_dashboard:
         if values:
             fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']))])
             fig_pie.update_layout(
-                showlegend=True, # LÉGENDES RENDUES VISIBLES
+                showlegend=True, 
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)', 
                 height=400, 
                 margin=dict(t=0, b=0, l=0, r=0), 
                 annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False)],
-                legend=dict(color="#F8FAFC", font=dict(color="#F8FAFC")) # Légende visible sur fond sombre
+                legend=dict(color="#F8FAFC", font=dict(color="#F8FAFC")) 
             )
             st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
@@ -581,6 +566,7 @@ with tab_investments:
     main_inv_container = st.container()
     
     st.write("<br>", unsafe_allow_html=True)
+    # Checkbox parfaitement alignée à gauche pour un rendu pro
     show_amounts = st.checkbox("Show Real Amounts", value=False)
     
     with main_inv_container:
@@ -653,9 +639,8 @@ with tab_investments:
                                     current_price = float(hist['Close'].iloc[-1])
                                     
                             if current_price <= 0.0:
-                                continue # Skip strictly if asset price cannot be found anywhere
+                                continue 
                             
-                            # 2. Portfolio Calculations
                             value = current_price * qty
                             cost_basis = invested + fees
                             
@@ -672,22 +657,15 @@ with tab_investments:
                             unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
                             unit_perf_sign = "+" if unit_perf >= 0 else ""
                             
-                            # 3. Handle custom user Logos or Fallback (CORRECTION ROBUSTE DES LOGOS)
+                            # 3. Handle custom user Logos or Fallback (CORRECTION ROBUSTE DES LOGOS SANS SYNTAX ERROR)
                             raw_logo_url = str(row[logo_col]).strip() if logo_col else ""
                             custom_logo_url = convert_google_drive_link(raw_logo_url)
                             
-                            # On ne génère le tag image QUE si le logo est détecté comme potentiellement valide
-                            if is_valid_custom_logo(custom_logo_url):
-                                img_tag = f'<img src="{custom_logo_url}" class="inv-logo" onerror="this.style.display=\'none\';">'
-                            else:
-                                # SINON: On n'affiche rien, et le fallback CSS (avatar) prendra le relais
-                                img_tag = ''
-                                
                             clean_fb_name = asset_name.replace("'", "").replace('"', '').replace(' ', '+')
                             fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
                             
-                            # Restauration du tag image avec fallback automatique
-                            img_tag = f'<img src="{custom_logo_url if is_valid_custom_logo(custom_logo_url) else \'\'}" class="inv-logo" onerror="this.onerror=null; this.src=\'{fallback_url}\';">'
+                            final_logo_src = custom_logo_url if is_valid_custom_logo(custom_logo_url) else ""
+                            img_tag = f'<img src="{final_logo_src}" class="inv-logo" onerror="this.onerror=null; this.src=\'{fallback_url}\';">'
                             
                             curr_disp = f" {currency}" if currency else ""
                             ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
