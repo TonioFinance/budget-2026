@@ -388,7 +388,7 @@ with tab_dashboard:
 
     form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
     
-    with st.expander("➕ ADD NEW EXPENSE", expanded=False):
+    with st.expander("ADD NEW EXPENSE", expanded=False):
         with st.form("add_expense_form", clear_on_submit=True):
             lib = st.text_input("Merchant", placeholder="Apple, Migros...")
             amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
@@ -446,7 +446,7 @@ with tab_investments:
     st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
     
     # Just one toggle for real amounts to keep it simple and clean
-    show_amounts = st.checkbox("👁️ Show Real Amounts", value=False)
+    show_amounts = st.checkbox("Show Real Amounts", value=False)
     st.write("<br>", unsafe_allow_html=True)
     
     try:
