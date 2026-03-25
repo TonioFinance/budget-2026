@@ -6,6 +6,7 @@ from google.oauth2.service_account import Credentials
 import plotly.graph_objects as go
 import time
 import yfinance as yf
+import calendar
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
@@ -165,65 +166,42 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- INVESTMENT GRID (NEW UI) --- */
-    .inv-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 20px;
-        margin-top: 15px;
-    }
-    .inv-card-grid {
-        background: linear-gradient(145deg, rgba(15, 23, 42, 0.6) 0%, rgba(3, 7, 18, 0.8) 100%);
-        border-radius: 20px;
-        padding: 24px;
-        border: 1px solid rgba(255,255,255,0.05);
-        transition: all 0.3s ease;
-        display: flex;
-        flex-direction: column;
+    /* --- INVESTMENT CARDS (REAL LOGOS DESIGN) --- */
+    .inv-card {
+        background: rgba(255, 255, 255, 0.02); 
+        border-radius: 18px; 
+        padding: 18px 22px; 
+        margin-bottom: 14px; 
+        display: flex; 
+        justify-content: space-between; 
         align-items: center;
-        justify-content: space-between;
-        position: relative;
-        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.04);
+        transition: all 0.2s ease;
     }
-    .inv-card-grid::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0; height: 3px;
-        background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.5), transparent);
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-    .inv-card-grid:hover {
-        transform: translateY(-5px);
-        background: linear-gradient(145deg, rgba(30, 58, 138, 0.15) 0%, rgba(3, 7, 18, 0.9) 100%);
+    .inv-card:hover {
+        transform: translateY(-2px);
+        background: rgba(59, 130, 246, 0.08);
         border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
     }
-    .inv-card-grid:hover::before { opacity: 1; }
+    .inv-left { display: flex; align-items: center; gap: 16px; }
     
-    .inv-logo-wrapper {
-        width: 80px; height: 80px;
-        border-radius: 50%;
-        padding: 4px;
-        background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%);
-        display: flex; align-items: center; justify-content: center;
-        margin-bottom: 20px;
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
-    }
-    .inv-logo-grid {
-        width: 100%; height: 100%;
-        border-radius: 50%;
+    /* Actual Real Image Styling */
+    .inv-logo { 
+        width: 48px; height: 48px; 
+        border-radius: 50%; 
         object-fit: cover;
-        background-color: #0F172A;
-        border: 3px solid #030712;
+        background-color: #FFFFFF; 
+        border: 2px solid rgba(96, 165, 250, 0.4);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        flex-shrink: 0;
     }
-    .inv-info-grid { width: 100%; text-align: left; }
-    .inv-name-grid { color: #FFFFFF; font-weight: 800; font-size: 19px; margin-bottom: 2px; text-align: center; }
-    .inv-ticker-grid { color: #94A3B8; font-size: 13px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; text-align: center;}
-    .inv-stats-row { display: flex; justify-content: space-between; align-items: flex-end; }
-    .inv-price-grid { color: #FFFFFF; font-weight: 800; font-size: 18px; }
-    .inv-perf-grid { font-weight: 800; font-size: 16px; text-align: right; }
     
+    .inv-name { color: #FFFFFF; font-weight: 800; font-size: 17px; letter-spacing: -0.2px; }
+    .inv-ticker { color: #94A3B8; font-size: 13px; margin-top:3px; font-weight: 600; }
+    .inv-right { text-align: right; }
+    .inv-top-val { color: #FFFFFF; font-weight: 800; font-size: 17px; }
+    .inv-bottom-val { margin-top: 4px; font-size: 14px; font-weight: 800; }
     .text-green { color: #34D399; }
     .text-red { color: #FB7185; }
 
@@ -264,6 +242,15 @@ st.markdown("""
         font-weight: 900 !important;
         text-transform: uppercase !important;
         letter-spacing: 1.5px;
+    }
+
+    /* --- CHART GLASS CONTAINER --- */
+    .chart-container {
+        background: rgba(15, 23, 42, 0.3);
+        border: 1px solid rgba(59, 130, 246, 0.15);
+        border-radius: 24px;
+        padding: 20px;
+        margin-top: 20px;
     }
     
     /* Make dataframe look better in dark mode */
@@ -345,9 +332,7 @@ ws = sh.worksheet(next((s for s in [s.title for s in sh.worksheets()] if selecte
 
 # --- DATA EXTRACTION ---
 all_rows = ws.get_all_values()
-category_progress, raw_expenses, daily_summary_data = [], [], []
-
-# 1. Extraction Charges Variables
+category_progress, raw_expenses = [], []
 col_var, col_prevu, col_actuel, row_var_start = -1, -1, -1, -1
 for i, row in enumerate(all_rows):
     if i >= 65: break
@@ -374,50 +359,25 @@ if col_var != -1:
 
 prevu_var, reel_var = sum(c["prevu"] for c in category_progress), sum(c["reel"] for c in category_progress)
 
-# 2. Extraction Transactions (Activités récentes)
 row_history_start = -1
 for i, row in enumerate(all_rows):
-    if len(row) > 1 and str(row[0]).strip().lower() == "date":
-        row_str_lower = " ".join([str(c).lower() for c in row])
-        if "lieu" in row_str_lower or "merchant" in row_str_lower:
-            row_history_start = i + 1
-            break
+    if any(str(cell).strip().lower() == "date" for cell in row):
+        row_history_start = i + 1
+        break
 
 if row_history_start != -1:
     for i in range(row_history_start, len(all_rows)):
         row = all_rows[i]
-        if str(row[0]).strip().lower() == "date": break 
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
             if "total" in str(row[0]).lower(): continue
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# 3. Extraction de ton TABLEAU Date/Dépenses EXACT (pour le graphique)
-row_daily_start = -1
-for i, row in enumerate(all_rows):
-    if len(row) >= 2:
-        c0 = str(row[0]).strip().lower()
-        c1 = str(row[1]).strip().lower()
-        if c0 == "date" and ("dépense" in c1 or "depense" in c1):
-            row_daily_start = i + 1
-            break
-
-if row_daily_start != -1:
-    for i in range(row_daily_start, len(all_rows)):
-        row = all_rows[i]
-        if len(row) < 2: continue
-        date_val = str(row[0]).strip()
-        
-        if not date_val: continue
-        if "total" in date_val.lower() or "dépense" in date_val.lower(): continue
-        
-        amt_val = parse_amount(row[1])
-        daily_summary_data.append({"Date": date_val, "Amount": amt_val})
-
 # --- TABS SYSTEM ---
 tab_dashboard, tab_investments = st.tabs(["Dashboard", "Investments"])
 
 with tab_dashboard:
+    # --- DASHBOARD LOGIC ---
     restant = prevu_var - reel_var
     percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% consumed</div>" if percent >= 0.80 else f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% consumed</div>" if percent >= 0.66 else f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> On track</div>"
@@ -461,58 +421,52 @@ with tab_dashboard:
                 for exp in raw_expenses[::-1]: st.markdown(get_transaction_html(exp["Date"], exp["Merchant"], format_chf(exp["Amount"]) + " CHF", exp["Category"]), unsafe_allow_html=True)
 
     st.divider()
+    st.markdown("<div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
     
-    # GRAPHIQUE 100% CORRIGÉ (Hors des balises div HTML)
-    st.markdown("<h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:15px; margin-top:30px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
-    
+    # Trace the Spending Trend plot (Mountain / Area chart for daily expenses)
     fig = go.Figure()
     
-    if daily_summary_data:
-        df_trends = pd.DataFrame(daily_summary_data)
-        # Parse les dates (format '2026-03-13' de ton tableau)
-        df_trends['Date'] = pd.to_datetime(df_trends['Date'], errors='coerce')
-        df_trends = df_trends.dropna(subset=['Date'])
+    try:
+        curr_y = now.year
+        curr_m = list(months_map.values()).index(selected_month) + 1
         
+        start_d = datetime(curr_y, curr_m, 15)
+        end_m = curr_m + 1 if curr_m < 12 else 1
+        end_y = curr_y if curr_m < 12 else curr_y + 1
+        end_d = datetime(end_y, end_m, 15)
+        
+        # Ligne droite de budget journalier idéal
+        days_in_period = (end_d - start_d).days
+        daily_limit = prevu_var / days_in_period if days_in_period > 0 else 0
+        
+        if daily_limit > 0:
+            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[daily_limit, daily_limit], mode='lines', name='Daily Budget Limit', line=dict(color='#94A3B8', width=2, dash='dash')))
+    except Exception:
+        pass
+
+    if raw_expenses:
+        df_trends = pd.DataFrame(raw_expenses)
+        df_trends['Date'] = pd.to_datetime(df_trends['Date'].astype(str).str.replace('.', '/'), dayfirst=True, errors='coerce')
+        df_trends = df_trends.dropna(subset=['Date'])
         if not df_trends.empty:
-            df_trends = df_trends.sort_values('Date')
+            # Groupement par total quotidien (Dépenses totales par jour)
+            daily = df_trends.groupby('Date')['Amount'].sum().reset_index().sort_values('Date')
             
-            start_d = df_trends['Date'].min()
-            end_d = df_trends['Date'].max()
-            
-            # 1. Dessine la ligne de Burn Rate du début à la fin du tableau
-            if prevu_var > 0:
-                fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Burn Rate', line=dict(color='#94A3B8', width=2, dash='dash')))
-            
-            # 2. Cumul exact de tes dépenses
-            df_trends['Cumulative'] = df_trends['Amount'].cumsum()
-            
-            # On cherche la dernière date avec une dépense > 0 pour arrêter le dessin (et ne pas tracer de ligne plate à la fin)
-            last_expense_idx = df_trends[df_trends['Amount'] > 0].index.max()
-            today = pd.to_datetime(datetime.now().date())
-            
-            if pd.notna(last_expense_idx):
-                last_expense_date = df_trends.loc[last_expense_idx, 'Date']
-                cutoff = max(today, last_expense_date)
-            else:
-                cutoff = today
-                
-            df_plot = df_trends[df_trends['Date'] <= cutoff]
-            
-            # 3. Dessine la montagne cumulée
+            # Tracé en montagne avec une ligne courbe lisse (spline) et remplissage vers le bas (tozeroy)
             fig.add_trace(go.Scatter(
-                x=df_plot['Date'], 
-                y=df_plot['Cumulative'], 
+                x=daily['Date'], 
+                y=daily['Amount'], 
                 mode='lines', 
                 fill='tozeroy', 
-                name='Cumulative Spend', 
+                name='Daily Spend', 
                 line=dict(color='#60A5FA', width=3, shape='spline'), 
                 fillcolor='rgba(96, 165, 250, 0.4)'
             ))
             
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     
-    st.markdown("<br><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
+    st.markdown("</div><div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
     if category_progress:
         labels = [c["name"] for c in category_progress if c["reel"] > 0]
         values = [c["reel"] for c in category_progress if c["reel"] > 0]
@@ -520,6 +474,7 @@ with tab_dashboard:
             fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']))])
             fig_pie.update_layout(showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=0, b=0, l=0, r=0), annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False)])
             st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
+    st.markdown("</div>", unsafe_allow_html=True)
 
 with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px; margin-bottom: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2></div>", unsafe_allow_html=True)
@@ -527,9 +482,7 @@ with tab_investments:
     main_inv_container = st.container()
     
     st.write("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1.5, 3, 1.5])
-    with col2:
-        show_amounts = st.checkbox("Show Real Amounts", value=False)
+    show_amounts = st.checkbox("Show Real Amounts", value=False)
     
     with main_inv_container:
         try:
@@ -557,7 +510,7 @@ with tab_investments:
             total_value = 0.0
             total_cost_basis = 0.0
             total_fees = 0.0
-            cards_html = "<div class='inv-grid'>"
+            cards_html = ""
             
             logo_col = next((col for col in df_inv.columns if "logo" in col.lower() or "image" in col.lower()), None)
             
@@ -586,7 +539,7 @@ with tab_investments:
                     
                     if ticker and qty > 0:
                         try:
-                            # 1. Reliable Data Fetching
+                            # 1. Reliable Data Fetching (Fallback to 5-day history if fast_info is down, critical for BTC)
                             stock = yf.Ticker(ticker)
                             current_price = 0.0
                             
@@ -601,8 +554,9 @@ with tab_investments:
                                     current_price = float(hist['Close'].iloc[-1])
                                     
                             if current_price <= 0.0:
-                                continue 
+                                continue # Skip strictly if asset price cannot be found anywhere
                             
+                            # 2. Portfolio Calculations
                             value = current_price * qty
                             cost_basis = invested + fees
                             
@@ -619,9 +573,11 @@ with tab_investments:
                             unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
                             unit_perf_sign = "+" if unit_perf >= 0 else ""
                             
+                            # 3. Handle custom user Logos or Fallback
                             custom_logo = str(row[logo_col]).strip() if logo_col else ""
                             
                             if custom_logo.startswith("http"):
+                                # Automatic parsing for Google Drive custom image links
                                 if "drive.google.com/file/d/" in custom_logo:
                                     try:
                                         file_id = custom_logo.split("/d/")[1].split("/")[0]
@@ -635,41 +591,43 @@ with tab_investments:
                                 
                             clean_fb_name = asset_name.replace("'", "").replace('"', '').replace(' ', '+')
                             fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
+                            img_tag = f'<img src="{logo_url}" class="inv-logo" onerror="this.onerror=null; this.src=\'{fallback_url}\';">'
                             
-                            qty_formatted = f"{qty:.6f}".rstrip('0').rstrip('.') if qty < 1 else f"{qty:.4f}".rstrip('0').rstrip('.')
                             curr_disp = f" {currency}" if currency else ""
+                            ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
                             
                             if show_amounts:
-                                price_display = f"{format_chf(value)} CHF"
-                                sub_price_display = f"Avg: {format_chf(entry_price)}{curr_disp}"
+                                qty_formatted = f"{qty:.6f}".rstrip('0').rstrip('.') if qty < 1 else f"{qty:.4f}".rstrip('0').rstrip('.')
+                                qty_display = f" • {qty_formatted} Units"
+                                
+                                top_val = f"{format_chf(value)} CHF"
                                 pnl_sign = "+" if pnl_chf >= 0 else ""
-                                perf_display = f"{unit_perf_sign}{unit_perf:.2f}%<br>{pnl_sign}{format_chf(pnl_chf)} CHF"
+                                pnl_class = "text-green" if pnl_chf >= 0 else "text-red"
+                                bottom_val = f"<span class='{pnl_class}'>P&L: {pnl_sign}{format_chf(pnl_chf)} CHF</span>"
+                                
+                                ticker_display += qty_display
                             else:
-                                price_display = f"{format_chf(current_price)}{curr_disp}"
-                                sub_price_display = "Current Price"
-                                perf_display = f"{unit_perf_sign}{unit_perf:.2f}%"
-
-                            # Grid Card UI Generation
+                                top_val = "*** CHF"
+                                bottom_val = f"<span style='color: #94A3B8;'>P&L: *** CHF</span>"
+                                
                             cards_html += f"""
-                            <div class="inv-card-grid">
-                                <div class="inv-logo-wrapper">
-                                    <img src="{logo_url}" class="inv-logo-grid" onerror="this.onerror=null; this.src='{fallback_url}';">
-                                </div>
-                                <div class="inv-info-grid">
-                                    <div class="inv-name-grid">{asset_name}</div>
-                                    <div class="inv-ticker-grid">{ticker} • {qty_formatted} Units</div>
-                                    <div class="inv-stats-row">
-                                        <div class="inv-price-grid">{price_display}<br><span style="font-size:12px; color:#94A3B8; font-weight:400;">{sub_price_display}</span></div>
-                                        <div class="inv-perf-grid {unit_perf_class}">{perf_display}</div>
+                            <div class="inv-card">
+                                <div class="inv-left">
+                                    {img_tag}
+                                    <div>
+                                        <div class="inv-name">{asset_name}</div>
+                                        <div class="inv-ticker">{ticker_display}</div>
                                     </div>
+                                </div>
+                                <div class="inv-right">
+                                    <div class="inv-top-val">{top_val}</div>
+                                    <div class="inv-bottom-val">{bottom_val}</div>
                                 </div>
                             </div>
                             """
                             
                         except Exception:
                             pass
-            
-            cards_html += "</div>" # Close Grid
             
             perf_total = ((total_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
             perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
@@ -688,7 +646,7 @@ with tab_investments:
 
             st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>{main_metric_label}</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br>{sub_metric_html}</div></div><div class="hero-main-value">{main_metric_value}</div></div>""", unsafe_allow_html=True)
             
-            if cards_html != "<div class='inv-grid'></div>":
+            if cards_html:
                 st.markdown(cards_html, unsafe_allow_html=True)
 
         else:
