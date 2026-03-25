@@ -400,10 +400,10 @@ if row_history_start != -1:
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# Extraction PLAGE EXACTA A100:B133 pour le Spending Trend
+# Extraction PLAGE EXACTA A150 pour le Spending Trend
 daily_summary_data = []
-if len(all_rows) >= 99:
-    trend_rows = all_rows[99:133] 
+if len(all_rows) > 149:
+    trend_rows = all_rows[149:190] 
     for row in trend_rows:
         if len(row) >= 2:
             date_val = str(row[0]).strip()
@@ -438,7 +438,7 @@ with tab_dashboard:
             if submitted:
                 if lib and amt > 0:
                     col_b = ws.col_values(2); target = 60
-                    for r in range(60, 150):
+                    for r in range(60, 149):
                         if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
                     new_data = [[datetime.now().strftime("%d/%m/%Y"), lib, amt, note, form_cat_map[cat_en]]]
                     ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
@@ -639,8 +639,9 @@ with tab_investments:
                                     current_price = float(hist['Close'].iloc[-1])
                                     
                             if current_price <= 0.0:
-                                continue 
+                                continue # Skip strictly if asset price cannot be found anywhere
                             
+                            # 2. Portfolio Calculations
                             value = current_price * qty
                             cost_basis = invested + fees
                             
@@ -657,7 +658,7 @@ with tab_investments:
                             unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
                             unit_perf_sign = "+" if unit_perf >= 0 else ""
                             
-                            # 3. Handle custom user Logos or Fallback (CORRECTION ROBUSTE DES LOGOS SANS SYNTAX ERROR)
+                            # 3. Handle custom user Logos or Fallback
                             raw_logo_url = str(row[logo_col]).strip() if logo_col else ""
                             custom_logo_url = convert_google_drive_link(raw_logo_url)
                             
