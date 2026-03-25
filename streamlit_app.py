@@ -388,7 +388,7 @@ with tab_dashboard:
 
     form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
     
-    with st.expander("ADD NEW EXPENSE", expanded=False):
+    with st.expander("➕ ADD NEW EXPENSE", expanded=False):
         with st.form("add_expense_form", clear_on_submit=True):
             lib = st.text_input("Merchant", placeholder="Apple, Migros...")
             amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
@@ -442,152 +442,151 @@ with tab_dashboard:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with tab_investments:
-    st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 PORTFOLIO MONITORING</h2>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
     
-    # Just one toggle for real amounts to keep it simple and clean
-    show_amounts = st.checkbox("Show Real Amounts", value=False)
+    # 1. On encapsule les visuels d'investissement dans un "Container"
+    main_inv_container = st.container()
+    
+    # 2. La case à cocher s'affiche ici, à la suite (donc sous les cartes)
     st.write("<br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([3, 2, 3])
+    with col2:
+        show_amounts = st.checkbox("👁️ Show Real Amounts", value=False)
     
-    try:
-        ws_inv = sh.worksheet("Portfolio")
-        all_inv_rows = ws_inv.get_all_values()
-        
-        header_row_idx = -1
-        for i, row in enumerate(all_inv_rows):
-            row_str_lower = " ".join([str(c).lower() for c in row])
-            if "ticker" in row_str_lower or "isin" in row_str_lower:
-                header_row_idx = i
-                break
-                
-        if header_row_idx != -1:
-            headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
-            data_rows = all_inv_rows[header_row_idx+1:]
-            df_inv = pd.DataFrame(data_rows, columns=headers)
-        else:
-            df_inv = pd.DataFrame()
+    # 3. Toute la logique d'extraction et d'affichage HTML va se projeter DANS le container (au-dessus de la case)
+    with main_inv_container:
+        try:
+            ws_inv = sh.worksheet("Portfolio")
+            all_inv_rows = ws_inv.get_all_values()
             
-    except Exception as e:
-        df_inv = pd.DataFrame()
+            header_row_idx = -1
+            for i, row in enumerate(all_inv_rows):
+                row_str_lower = " ".join([str(c).lower() for c in row])
+                if "ticker" in row_str_lower or "isin" in row_str_lower:
+                    header_row_idx = i
+                    break
+                    
+            if header_row_idx != -1:
+                headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
+                data_rows = all_inv_rows[header_row_idx+1:]
+                df_inv = pd.DataFrame(data_rows, columns=headers)
+            else:
+                df_inv = pd.DataFrame()
+                
+        except Exception as e:
+            df_inv = pd.DataFrame()
 
-    if not df_inv.empty and "Ticker / ISIN" in df_inv.columns:
-        total_value = 0.0
-        total_cost_basis = 0.0
-        total_fees = 0.0
-        cards_html = ""
-        
-        with st.spinner("Syncing live market data..."):
-            for index, row in df_inv.iterrows():
-                ticker = str(row.get("Ticker / ISIN", "")).strip()
-                asset_name = str(row.get("Nom", ticker))
-                currency = str(row.get("Currency", "")).strip()
-                
-                qty_str = str(row.get("Units", "0")).replace(',', '.')
-                inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
-                fees_str = str(row.get("Fees", "0")).replace(',', '.')
-                
-                # Fetching the new Entry Price (fallback to 'Amount' if needed)
-                entry_price_str = str(row.get("Entry Price", row.get("Amount", "0"))).replace(',', '.')
-                
-                try: qty = float(qty_str)
-                except ValueError: qty = 0.0
-                
-                try: invested = float(inv_str)
-                except ValueError: invested = 0.0
-                
-                try: fees = float(fees_str)
-                except ValueError: fees = 0.0
-                
-                try: entry_price = float(entry_price_str)
-                except ValueError: entry_price = 0.0
-                
-                if ticker and qty > 0:
-                    try:
-                        stock = yf.Ticker(ticker)
-                        current_price = stock.fast_info['last_price']
-                        
-                        # Value of the holding
-                        value = current_price * qty
-                        
-                        # Overall Portfolio logic (fees are always included in total calculations)
-                        cost_basis = invested + fees
-                        total_value += value
-                        total_cost_basis += cost_basis
-                        total_fees += fees
-                        pnl_chf = value - cost_basis
-                        
-                        # --- PURE UNIT PERFORMANCE LOGIC ---
-                        # Calculates ROI based purely on the price of 1 unit, avoiding quantity scaling or global fees
-                        if entry_price > 0:
-                            unit_perf = ((current_price - entry_price) / entry_price) * 100
-                        else:
-                            unit_perf = 0.0
+        if not df_inv.empty and "Ticker / ISIN" in df_inv.columns:
+            total_value = 0.0
+            total_cost_basis = 0.0
+            total_fees = 0.0
+            cards_html = ""
+            
+            with st.spinner("Syncing live market data..."):
+                for index, row in df_inv.iterrows():
+                    ticker = str(row.get("Ticker / ISIN", "")).strip()
+                    asset_name = str(row.get("Nom", ticker))
+                    currency = str(row.get("Currency", "")).strip()
+                    
+                    qty_str = str(row.get("Units", "0")).replace(',', '.')
+                    inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
+                    fees_str = str(row.get("Fees", "0")).replace(',', '.')
+                    
+                    entry_price_str = str(row.get("Entry Price", row.get("Amount", "0"))).replace(',', '.')
+                    
+                    try: qty = float(qty_str)
+                    except ValueError: qty = 0.0
+                    
+                    try: invested = float(inv_str)
+                    except ValueError: invested = 0.0
+                    
+                    try: fees = float(fees_str)
+                    except ValueError: fees = 0.0
+                    
+                    try: entry_price = float(entry_price_str)
+                    except ValueError: entry_price = 0.0
+                    
+                    if ticker and qty > 0:
+                        try:
+                            stock = yf.Ticker(ticker)
+                            current_price = stock.fast_info['last_price']
                             
-                        unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
-                        unit_perf_sign = "+" if unit_perf >= 0 else ""
-                        
-                        # Logo configuration
-                        logo_url = get_asset_logo(ticker, asset_name)
-                        clean_fb_name = asset_name.replace("'", "").replace('"', '')[:2]
-                        fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true"
-                        img_tag = f"""<img src="{logo_url}" class="inv-logo" onerror="this.onerror=null; this.src='{fallback_url}';">"""
-                        
-                        # Format text under asset name: Ticker - [current price] - [perf %]
-                        curr_disp = f" {currency}" if currency else ""
-                        ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
-                        
-                        # Right side dynamic display based on user privacy toggle
-                        if show_amounts:
-                            top_val = f"{format_chf(value)} CHF"
-                            # Total absolute position P&L in CHF on the bottom right
-                            pnl_sign = "+" if pnl_chf >= 0 else ""
-                            pnl_class = "text-green" if pnl_chf >= 0 else "text-red"
-                            bottom_val = f"<span class='{pnl_class}'>P&L: {pnl_sign}{format_chf(pnl_chf)} CHF</span>"
-                        else:
-                            top_val = "*** CHF"
-                            bottom_val = f"<span style='color: #94A3B8;'>P&L: *** CHF</span>"
+                            value = current_price * qty
+                            cost_basis = invested + fees
                             
-                        cards_html += f"""
-                        <div class="inv-card">
-                            <div class="inv-left">
-                                {img_tag}
-                                <div>
-                                    <div class="inv-name">{asset_name}</div>
-                                    <div class="inv-ticker">{ticker_display}</div>
+                            total_value += value
+                            total_cost_basis += cost_basis
+                            total_fees += fees
+                            
+                            pnl_chf = value - cost_basis
+                            
+                            if entry_price > 0:
+                                unit_perf = ((current_price - entry_price) / entry_price) * 100
+                            else:
+                                unit_perf = 0.0
+                                
+                            unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
+                            unit_perf_sign = "+" if unit_perf >= 0 else ""
+                            
+                            logo_url = get_asset_logo(ticker, asset_name)
+                            clean_fb_name = asset_name.replace("'", "").replace('"', '')[:2]
+                            fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true"
+                            img_tag = f"""<img src="{logo_url}" class="inv-logo" onerror="this.onerror=null; this.src='{fallback_url}';">"""
+                            
+                            curr_disp = f" {currency}" if currency else ""
+                            ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
+                            
+                            if show_amounts:
+                                top_val = f"{format_chf(value)} CHF"
+                                pnl_sign = "+" if pnl_chf >= 0 else ""
+                                pnl_class = "text-green" if pnl_chf >= 0 else "text-red"
+                                bottom_val = f"<span class='{pnl_class}'>P&L: {pnl_sign}{format_chf(pnl_chf)} CHF</span>"
+                            else:
+                                top_val = "*** CHF"
+                                bottom_val = f"<span style='color: #94A3B8;'>P&L: *** CHF</span>"
+                                
+                            cards_html += f"""
+                            <div class="inv-card">
+                                <div class="inv-left">
+                                    {img_tag}
+                                    <div>
+                                        <div class="inv-name">{asset_name}</div>
+                                        <div class="inv-ticker">{ticker_display}</div>
+                                    </div>
+                                </div>
+                                <div class="inv-right">
+                                    <div class="inv-top-val">{top_val}</div>
+                                    <div class="inv-bottom-val">{bottom_val}</div>
                                 </div>
                             </div>
-                            <div class="inv-right">
-                                <div class="inv-top-val">{top_val}</div>
-                                <div class="inv-bottom-val">{bottom_val}</div>
-                            </div>
-                        </div>
-                        """
-                        
-                    except Exception:
-                        pass
-        
-        # Total Portfolio Calculations
-        perf_total = ((total_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
-        perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
-        perf_sign = "+" if perf_total >= 0 else ""
-
-        if show_amounts:
-            main_metric_label = "TOTAL PORTFOLIO"
-            main_metric_value = f"{format_chf(total_value)} <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
-            fees_label = f"Total Fees: {format_chf(total_fees)} CHF"
-        else:
-            main_metric_label = "TOTAL PORTFOLIO"
-            main_metric_value = f"*** <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
-            fees_label = "Total Fees: *** CHF"
+                            """
+                            
+                        except Exception:
+                            pass
             
-        sub_metric_html = f"<span style='color:{perf_color}; font-weight:700;'>{perf_sign}{perf_total:.2f}%</span><br><span style='font-size: 11px; color: #94A3B8; text-transform: uppercase;'>{fees_label}</span>"
+            perf_total = ((total_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
+            perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
+            perf_sign = "+" if perf_total >= 0 else ""
 
-        st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>{main_metric_label}</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br>{sub_metric_html}</div></div><div class="hero-main-value">{main_metric_value}</div></div>""", unsafe_allow_html=True)
-        
-        if cards_html:
-            st.markdown(cards_html, unsafe_allow_html=True)
+            if show_amounts:
+                main_metric_label = "TOTAL PORTFOLIO"
+                main_metric_value = f"{format_chf(total_value)} <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
+                fees_label = f"Total Fees: {format_chf(total_fees)} CHF"
+            else:
+                main_metric_label = "TOTAL PORTFOLIO"
+                main_metric_value = f"*** <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
+                fees_label = "Total Fees: *** CHF"
+                
+            sub_metric_html = f"<span style='color:{perf_color}; font-weight:700;'>{perf_sign}{perf_total:.2f}%</span><br><span style='font-size: 11px; color: #94A3B8; text-transform: uppercase;'>{fees_label}</span>"
 
-    else:
-        st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>TOTAL PORTFOLIO</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br><span style="color:#34D399; font-weight:700;">+0.00%</span></div></div><div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div></div>""", unsafe_allow_html=True)
-        st.info("💡 The 'Portfolio' tab is missing or empty. Make sure columns 'Nom', 'Ticker / ISIN', 'Amount' (or 'Entry Price'), 'Units', 'Fees', and 'Total Invested' are present.")
+            st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>{main_metric_label}</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br>{sub_metric_html}</div></div><div class="hero-main-value">{main_metric_value}</div></div>""", unsafe_allow_html=True)
+            
+            if cards_html:
+                st.markdown(cards_html, unsafe_allow_html=True)
+
+        else:
+            st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>TOTAL PORTFOLIO</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br><span style="color:#34D399; font-weight:700;">+0.00%</span></div></div><div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div></div>""", unsafe_allow_html=True)
+            st.info("💡 The 'Portfolio' tab is missing or empty. Make sure columns 'Nom', 'Ticker / ISIN', 'Amount' (or 'Entry Price'), 'Units', 'Fees', and 'Total Invested' are present.")
 
 st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
