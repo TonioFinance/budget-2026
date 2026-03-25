@@ -293,7 +293,6 @@ def get_transaction_html(date, merchant, amount, category):
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""<div class="transaction-card"><div style="display:flex; align-items:center; gap:15px;"><div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i></div><div style="text-align: left;"><div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div><div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div></div></div><div class="trans-amount">{amount}</div></div>"""
 
-
 # --- CONNECTION ---
 @st.cache_resource
 def get_gsheet_client():
@@ -363,27 +362,16 @@ if row_history_start != -1:
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# Dynamic Extraction for Daily Spending Table (Trends)
-row_daily_start = -1
-for i, row in enumerate(all_rows):
-    if len(row) >= 2:
-        c0 = str(row[0]).strip().lower()
-        c1 = str(row[1]).strip().lower()
-        if c0 == "date" and ("dépense" in c1 or "depense" in c1 or "amount" in c1):
-            row_daily_start = i + 1
-            break
-
+# Extraction PLAGE EXACTE A150 pour le Spending Trend
 daily_summary_data = []
-if row_daily_start != -1:
-    for i in range(row_daily_start, len(all_rows)):
-        row = all_rows[i]
-        if len(row) < 2: continue
-        date_val = str(row[0]).strip()
-        if not date_val: continue
-        if date_val.lower() == "date" or "total" in date_val.lower() or "dépense" in date_val.lower(): continue
-        
-        amt_val = parse_amount(row[1])
-        daily_summary_data.append({"Date": date_val, "Amount": amt_val})
+if len(all_rows) > 149:
+    trend_rows = all_rows[149:190] 
+    for row in trend_rows:
+        if len(row) >= 2:
+            date_val = str(row[0]).strip()
+            amt_val = parse_amount(row[1])
+            if date_val and date_val.lower() != "date" and "total" not in date_val.lower() and "dépense" not in date_val.lower():
+                daily_summary_data.append({"Date": date_val, "Amount": amt_val})
 
 # --- TABS SYSTEM ---
 tab_dashboard, tab_investments = st.tabs(["Dashboard", "Investments"])
@@ -413,8 +401,7 @@ with tab_dashboard:
                 if lib and amt > 0:
                     col_b = ws.col_values(2)
                     target = 60
-                    max_row = row_daily_start - 1 if row_daily_start != -1 else 149
-                    for r in range(60, max_row):
+                    for r in range(60, 149):
                         if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
                     new_data = [[datetime.now().strftime("%d/%m/%Y"), lib, amt, note, form_cat_map[cat_en]]]
                     ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
@@ -442,15 +429,13 @@ with tab_dashboard:
     
     if daily_summary_data:
         df_trends = pd.DataFrame(daily_summary_data)
-        # Fixation ultime de la lecture des dates (lit les YYYY-MM-DD standard de Gsheets sans forcer)
+        # Parse natif robuste pour les dates YYYY-MM-DD
         df_trends['DateObj'] = pd.to_datetime(df_trends['Date'], errors='coerce')
         df_trends = df_trends.dropna(subset=['DateObj']).sort_values('DateObj')
         
         if not df_trends.empty:
             curr_y = now.year
             curr_m = list(months_map.values()).index(selected_month) + 1
-            
-            # Limites de l'axe X (du 15 au 15)
             start_d = datetime(curr_y, curr_m, 15)
             end_m = curr_m + 1 if curr_m < 12 else 1
             end_y = curr_y if curr_m < 12 else curr_y + 1
@@ -458,7 +443,6 @@ with tab_dashboard:
             
             df_trends['Cumulative'] = df_trends['Amount'].cumsum()
             
-            # Tracé Ideal (Ligne grise en pointillés de 0 au plafond max)
             ideal_daily = prevu_var / 30 if prevu_var > 0 else 0
             df_trends['Days_Passed'] = (df_trends['DateObj'] - start_d).dt.days + 1
             df_trends['Days_Passed'] = df_trends['Days_Passed'].clip(lower=0) 
@@ -467,7 +451,6 @@ with tab_dashboard:
             df_trends['Safe'] = df_trends.apply(lambda row: min(row['Cumulative'], row['Ideal']), axis=1)
             df_trends['Over'] = df_trends.apply(lambda row: max(row['Cumulative'] - row['Ideal'], 0), axis=1)
             
-            # Ne dessiner la montagne que jusqu'au dernier jour renseigné > 0
             last_valid_idx = df_trends[df_trends['Amount'] > 0].index.max()
             if pd.notna(last_valid_idx):
                 df_plot = df_trends.loc[:last_valid_idx]
@@ -517,7 +500,7 @@ with tab_dashboard:
         xaxis=dict(showgrid=False, color="#94A3B8"), 
         yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), 
         showlegend=True, 
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#F8FAFC"))
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
@@ -527,23 +510,22 @@ with tab_dashboard:
         labels = [c["name"] for c in category_progress if c["reel"] > 0]
         values = [c["reel"] for c in category_progress if c["reel"] > 0]
         if values:
-            # DONUT CHART PARFAIT : Labels accrochés aux parts (plus de légende coupée en bas)
-            fig_pie = go.Figure(data=[go.Pie(
-                labels=labels, 
-                values=values, 
-                hole=.75, 
-                marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']),
-                textinfo='label+percent', # Remplace la légende qui bug
-                textfont=dict(color='#FFFFFF', size=12),
-                hoverinfo='label+value'
-            )])
+            fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']))])
             fig_pie.update_layout(
-                showlegend=False, # Désactivation de la légende séparée
+                showlegend=True, 
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)', 
-                height=350, 
-                margin=dict(t=20, b=20, l=20, r=20), 
-                annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font=dict(color="#FFFFFF"))]
+                height=450, 
+                margin=dict(t=20, b=80, l=20, r=20), 
+                annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font=dict(color="#FFFFFF"))],
+                legend=dict(
+                    orientation="h",
+                    yanchor="top",
+                    y=-0.1, 
+                    xanchor="center",
+                    x=0.5,
+                    font=dict(color="#F8FAFC")
+                ) 
             )
             st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
@@ -554,7 +536,8 @@ with tab_investments:
     main_inv_container = st.container()
     
     st.write("<br>", unsafe_allow_html=True)
-    # Checkbox parfaitement alignée à gauche pour un rendu pro
+    
+    # Checkbox parfaitement alignée à gauche
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
         show_amounts = st.checkbox("Show Real Amounts", value=False)
@@ -652,23 +635,22 @@ with tab_investments:
                             img_tag = f'<img src="{logo_url}" class="inv-logo">'
                             
                             curr_disp = f" {currency}" if currency else ""
-                            ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
                             
                             if show_amounts:
                                 qty_formatted = f"{qty:.6f}".rstrip('0').rstrip('.') if qty < 1 else f"{qty:.4f}".rstrip('0').rstrip('.')
-                                qty_display = f" • {qty_formatted} Units"
-                                
-                                top_val = f"{format_chf(value)} CHF"
+                                price_display = f"{format_chf(value)} CHF"
+                                sub_price_display = f"Avg: {format_chf(entry_price)}{curr_disp}"
                                 pnl_sign = "+" if pnl_chf >= 0 else ""
                                 pnl_class = "text-green" if pnl_chf >= 0 else "text-red"
-                                bottom_val = f"<span class='{pnl_class}'>P&L: {pnl_sign}{format_chf(pnl_chf)} CHF</span>"
-                                
-                                ticker_display += qty_display
+                                perf_display = f"{unit_perf_sign}{unit_perf:.2f}%<br>{pnl_sign}{format_chf(pnl_chf)} CHF"
+                                ticker_display = f"{ticker} • {qty_formatted} Units"
                             else:
-                                top_val = "*** CHF"
-                                bottom_val = f"<span style='color: #94A3B8;'>P&L: *** CHF</span>"
-                                
-                            # LISTE CENTRÉE (Design Classique)
+                                price_display = f"{format_chf(current_price)}{curr_disp}"
+                                sub_price_display = "Current Price"
+                                perf_display = f"{unit_perf_sign}{unit_perf:.2f}%"
+                                ticker_display = f"{ticker}"
+
+                            # Card UI Generation (Design Classique Centré)
                             cards_html += f"""
                             <div class="inv-card">
                                 <div class="inv-left">
@@ -679,8 +661,8 @@ with tab_investments:
                                     </div>
                                 </div>
                                 <div class="inv-right">
-                                    <div class="inv-top-val">{top_val}</div>
-                                    <div class="inv-bottom-val">{bottom_val}</div>
+                                    <div class="inv-top-val">{price_display}</div>
+                                    <div class="inv-bottom-val" style="margin-top: 4px;"><span class='{unit_perf_class}'>{perf_display}</span></div>
                                 </div>
                             </div>
                             """
