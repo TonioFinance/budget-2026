@@ -206,7 +206,7 @@ st.markdown("""
         width: 80px; height: 80px;
         border-radius: 50%;
         padding: 4px;
-        background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%); 
+        background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%); /* Neon Halo Effect */
         display: flex; align-items: center; justify-content: center;
         margin-bottom: 20px;
         box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
@@ -265,15 +265,6 @@ st.markdown("""
         font-weight: 900 !important;
         text-transform: uppercase !important;
         letter-spacing: 1.5px;
-    }
-
-    /* --- CHART GLASS CONTAINER --- */
-    .chart-container {
-        background: rgba(15, 23, 42, 0.3);
-        border: 1px solid rgba(59, 130, 246, 0.15);
-        border-radius: 24px;
-        padding: 20px;
-        margin-top: 20px;
     }
     
     /* Make dataframe look better in dark mode */
@@ -384,19 +375,15 @@ if col_var != -1:
 
 prevu_var, reel_var = sum(c["prevu"] for c in category_progress), sum(c["reel"] for c in category_progress)
 
-# 2. Extraction Transactions et Tableau Journalier
+# 2. Extraction Transactions
 row_history_start = -1
-row_daily_start = -1
-
 for i, row in enumerate(all_rows):
     if len(row) > 1 and str(row[0]).strip().lower() == "date":
         row_str_lower = " ".join([str(c).lower() for c in row])
         if "lieu" in row_str_lower or "merchant" in row_str_lower:
             row_history_start = i + 1
-        elif "dépense" in row_str_lower or "depense" in row_str_lower:
-            row_daily_start = i + 1
+            break
 
-# Extract Recent Transactions
 if row_history_start != -1:
     for i in range(row_history_start, len(all_rows)):
         row = all_rows[i]
@@ -406,22 +393,31 @@ if row_history_start != -1:
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# Extract Daily Summary for Trends
+# 3. Extraction Tableau Dépenses Quotidiennes (La fameuse liste 'Date | Dépenses')
+row_daily_start = -1
+for i, row in enumerate(all_rows):
+    if len(row) >= 2:
+        c0 = str(row[0]).strip().lower()
+        c1 = str(row[1]).strip().lower()
+        if c0 == "date" and ("dépense" in c1 or "depense" in c1):
+            row_daily_start = i + 1
+            break
+
 if row_daily_start != -1:
     for i in range(row_daily_start, len(all_rows)):
         row = all_rows[i]
-        if str(row[0]).strip() in ["", "nan"]: continue
-        if "total" in str(row[0]).lower(): continue
-        
+        if len(row) < 2: continue
         date_val = str(row[0]).strip()
-        amt_val = parse_amount(row[1] if len(row) > 1 else 0)
+        if not date_val: continue
+        if "total" in date_val.lower() or "dépense" in date_val.lower(): continue
+        
+        amt_val = parse_amount(row[1])
         daily_summary_data.append({"Date": date_val, "Amount": amt_val})
 
 # --- TABS SYSTEM ---
 tab_dashboard, tab_investments = st.tabs(["Dashboard", "Investments"])
 
 with tab_dashboard:
-    # --- DASHBOARD LOGIC ---
     restant = prevu_var - reel_var
     percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% consumed</div>" if percent >= 0.80 else f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% consumed</div>" if percent >= 0.66 else f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> On track</div>"
@@ -465,9 +461,12 @@ with tab_dashboard:
                 for exp in raw_expenses[::-1]: st.markdown(get_transaction_html(exp["Date"], exp["Merchant"], format_chf(exp["Amount"]) + " CHF", exp["Category"]), unsafe_allow_html=True)
 
     st.divider()
-    st.markdown("<div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
     
-    # Trace the Spending Trend plot (Using the specific daily summary table)
+    # ---------------------------------------------------------
+    # CORRECTION D'AFFICHAGE: Plus de div autour de Plotly !
+    # ---------------------------------------------------------
+    st.markdown("<h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
+    
     fig = go.Figure()
     
     try:
@@ -486,24 +485,23 @@ with tab_dashboard:
 
     if daily_summary_data:
         df_trends = pd.DataFrame(daily_summary_data)
-        # Parse mixed date formats safely to avoid dropping valid dates
-        df_trends['Date'] = pd.to_datetime(df_trends['Date'], format='mixed', errors='coerce')
+        df_trends['Date'] = pd.to_datetime(df_trends['Date'], errors='coerce')
         df_trends = df_trends.dropna(subset=['Date'])
         
         if not df_trends.empty:
-            daily = df_trends.groupby('Date')['Amount'].sum().reset_index().sort_values('Date')
+            df_trends = df_trends.sort_values('Date')
             
-            # Couper l'affichage des zéros futurs pour ne pas avoir une ligne plate moche
-            last_spend_date = daily[daily['Amount'] > 0]['Date'].max()
+            # Ne garder que les jours où il y a eu une dépense ou stopper aux zéros
+            last_spend_date = df_trends[df_trends['Amount'] > 0]['Date'].max()
             if pd.notna(last_spend_date):
-                daily = daily[daily['Date'] <= last_spend_date]
+                df_trends = df_trends[df_trends['Date'] <= last_spend_date]
             
-            # CUMULATIVE SUM REQUIRED for Burn Rate Mountain!
-            daily['Cumulative'] = daily['Amount'].cumsum()
+            # CUMUL DES DEPENSES pour faire la "montagne"
+            df_trends['Cumulative'] = df_trends['Amount'].cumsum()
             
             fig.add_trace(go.Scatter(
-                x=daily['Date'], 
-                y=daily['Cumulative'], 
+                x=df_trends['Date'], 
+                y=df_trends['Cumulative'], 
                 mode='lines', 
                 fill='tozeroy', 
                 name='Cumulative Spend', 
@@ -514,7 +512,7 @@ with tab_dashboard:
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     
-    st.markdown("</div><div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
+    st.markdown("<br><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
     if category_progress:
         labels = [c["name"] for c in category_progress if c["reel"] > 0]
         values = [c["reel"] for c in category_progress if c["reel"] > 0]
@@ -522,7 +520,6 @@ with tab_dashboard:
             fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']))])
             fig_pie.update_layout(showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=400, margin=dict(t=0, b=0, l=0, r=0), annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False)])
             st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
-    st.markdown("</div>", unsafe_allow_html=True)
 
 with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px; margin-bottom: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2></div>", unsafe_allow_html=True)
@@ -589,7 +586,7 @@ with tab_investments:
                     
                     if ticker and qty > 0:
                         try:
-                            # 1. Reliable Data Fetching (Fallback to 5-day history if fast_info is down, critical for BTC)
+                            # 1. Reliable Data Fetching
                             stock = yf.Ticker(ticker)
                             current_price = 0.0
                             
