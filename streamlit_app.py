@@ -398,8 +398,8 @@ with tab_investments:
     show_capital = st.checkbox("💰 Afficher le capital réel", value=False)
     
     try:
-        # Ligne modifiée : Analyse intelligente de tout le tableau pour contourner les titres en haut
-        ws_inv = sh.worksheet("Investment Details")
+        # Ligne modifiée : Analyse intelligente de tout le tableau depuis le nouvel onglet "Investing"
+        ws_inv = sh.worksheet("Investing")
         all_inv_rows = ws_inv.get_all_values()
         
         header_row_idx = -1
@@ -513,6 +513,6 @@ with tab_investments:
             <div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
         </div>
         """, unsafe_allow_html=True)
-        st.info("💡 L'onglet 'Investment Details' est introuvable ou vide. Assure-toi que les colonnes 'Nom', 'Ticker / ISIN', 'Quantity' et 'Total Invested' sont bien présentes.")
+        st.info("💡 L'onglet 'Investing' est introuvable ou vide. Assure-toi que les colonnes 'Nom', 'Ticker / ISIN', 'Quantity' et 'Total Invested' sont bien présentes.")
 
 st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
