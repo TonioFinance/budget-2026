@@ -165,6 +165,40 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
+    /* --- INVESTMENT CARDS (NEW DESIGN) --- */
+    .inv-card {
+        background: rgba(255, 255, 255, 0.02); 
+        border-radius: 18px; 
+        padding: 18px 22px; 
+        margin-bottom: 14px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        border: 1px solid rgba(255,255,255,0.04);
+        transition: all 0.2s ease;
+    }
+    .inv-card:hover {
+        transform: translateY(-2px);
+        background: rgba(59, 130, 246, 0.08);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+    }
+    .inv-left { display: flex; align-items: center; gap: 16px; }
+    .inv-logo { 
+        width: 48px; height: 48px; 
+        border-radius: 50%; 
+        object-fit: cover; 
+        border: 2px solid rgba(96, 165, 250, 0.4);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .inv-name { color: #FFFFFF; font-weight: 800; font-size: 17px; letter-spacing: -0.2px; }
+    .inv-ticker { color: #94A3B8; font-size: 13px; margin-top:3px; font-weight: 600; }
+    .inv-right { text-align: right; }
+    .inv-top-val { color: #FFFFFF; font-weight: 800; font-size: 17px; }
+    .inv-bottom-val { margin-top: 4px; font-size: 14px; font-weight: 800; }
+    .text-green { color: #34D399; }
+    .text-red { color: #FB7185; }
+
     /* --- EXPANDER & FORM PREMIUM --- */
     .stExpander {
         background: rgba(15, 23, 42, 0.2) !important;
@@ -213,17 +247,7 @@ st.markdown("""
         margin-top: 20px;
     }
 
-    /* Scanner/Uploader Dropzone */
-    .scanner-zone {
-        border: 2px dashed rgba(59, 130, 246, 0.3);
-        border-radius: 28px;
-        padding: 60px 20px;
-        text-align: center;
-        background: rgba(15, 23, 42, 0.2);
-        margin-bottom: 20px;
-    }
-    
-    /* Make dataframe look better in dark mode */
+    /* Make dataframe look better in dark mode (if needed) */
     [data-testid="stDataFrame"] {
         border-radius: 12px;
         overflow: hidden;
@@ -394,15 +418,20 @@ with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
     
-    show_capital = st.checkbox("💰 Show Real Capital & Fees", value=False)
+    # Séparation des options de visibilité en 2 colonnes bien propres
+    col_opt1, col_opt2 = st.columns(2)
+    with col_opt1:
+        show_amounts = st.checkbox("👁️ Show Real Amounts", value=False)
+    with col_opt2:
+        include_fees = st.checkbox("📉 Include Fees in Performance", value=False)
+    
+    st.write("<br>", unsafe_allow_html=True)
     
     try:
-        # Lien corrigé spécifiquement pour cibler l'onglet nommé "Portfolio"
         ws_inv = sh.worksheet("Portfolio")
         all_inv_rows = ws_inv.get_all_values()
         
         header_row_idx = -1
-        # Recherche ultra tolérante pour la ligne d'en-tête (contourne les espaces cachés)
         for i, row in enumerate(all_inv_rows):
             row_str_lower = " ".join([str(c).lower() for c in row])
             if "ticker" in row_str_lower or "isin" in row_str_lower:
@@ -410,7 +439,6 @@ with tab_investments:
                 break
                 
         if header_row_idx != -1:
-            # Nettoyage absolu de tous les titres de colonnes
             headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
             data_rows = all_inv_rows[header_row_idx+1:]
             df_inv = pd.DataFrame(data_rows, columns=headers)
@@ -422,13 +450,14 @@ with tab_investments:
 
     if not df_inv.empty and "Ticker / ISIN" in df_inv.columns:
         total_value = 0.0
-        total_invested = 0.0
+        total_cost_basis = 0.0
         total_fees = 0.0
-        portfolio_items = []
+        cards_html = ""
         
         with st.spinner("Syncing live market data..."):
             for index, row in df_inv.iterrows():
                 ticker = str(row.get("Ticker / ISIN", "")).strip()
+                asset_name = str(row.get("Nom", ticker))
                 
                 qty_str = str(row.get("Units", "0")).replace(',', '.')
                 inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
@@ -448,75 +477,78 @@ with tab_investments:
                         stock = yf.Ticker(ticker)
                         current_price = stock.fast_info['last_price']
                         
-                        value = current_price * qty 
+                        value = current_price * qty
+                        cost_basis = (invested + fees) if include_fees else invested
+                        
                         total_value += value
-                        total_invested += invested
+                        total_cost_basis += cost_basis
                         total_fees += fees
                         
-                        perf = ((value - invested) / invested * 100) if invested > 0 else 0
-                        pnl_chf = value - invested
+                        perf = ((value - cost_basis) / cost_basis * 100) if cost_basis > 0 else 0
+                        pnl_chf = value - cost_basis
                         
-                        portfolio_items.append({
-                            "Asset": row.get("Nom", ticker),
-                            "Ticker": ticker,
-                            "Quantity": round(qty, 4),
-                            "Invested (CHF)": f"{invested:.2f}",
-                            "Fees (CHF)": f"{fees:.2f}",
-                            "Value (CHF)": f"{value:.2f}",
-                            "P&L (CHF)": f"{'+' if pnl_chf >= 0 else ''}{pnl_chf:.2f}",
-                            "Performance (%)": f"{'+' if perf >= 0 else ''}{perf:.2f}%"
-                        })
+                        perf_class = "text-green" if perf >= 0 else "text-red"
+                        perf_sign = "+" if perf >= 0 else ""
+                        
+                        # Génération du logo (pastille colorée avec la ou les 1ères lettres)
+                        avatar_url = f"https://ui-avatars.com/api/?name={asset_name.replace(' ', '+')}&background=0F172A&color=60A5FA&rounded=true&bold=true&font-size=0.4"
+                        
+                        # Logique d'affichage selon "Show Real Amounts"
+                        if show_amounts:
+                            qty_display = f" • {round(qty, 4)} Units"
+                            top_val = f"{format_chf(value)} CHF"
+                            bottom_val = f"<span class='{perf_class}'>{perf_sign}{perf:.2f}% ({perf_sign}{format_chf(pnl_chf)} CHF)</span>"
+                        else:
+                            qty_display = ""
+                            top_val = f"Price: {format_chf(current_price)}"
+                            bottom_val = f"<span class='{perf_class}'>{perf_sign}{perf:.2f}%</span>"
+                            
+                        # Création de la carte CSS
+                        cards_html += f"""
+                        <div class="inv-card">
+                            <div class="inv-left">
+                                <img src="{avatar_url}" class="inv-logo">
+                                <div>
+                                    <div class="inv-name">{asset_name}</div>
+                                    <div class="inv-ticker">{ticker}{qty_display}</div>
+                                </div>
+                            </div>
+                            <div class="inv-right">
+                                <div class="inv-top-val">{top_val}</div>
+                                <div class="inv-bottom-val">{bottom_val}</div>
+                            </div>
+                        </div>
+                        """
+                        
                     except Exception:
                         pass
         
-        perf_total = ((total_value - total_invested) / total_invested * 100) if total_invested > 0 else 0.0
+        # Calcul Global
+        perf_total = ((total_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
         perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
         perf_sign = "+" if perf_total >= 0 else ""
 
-        if show_capital:
+        # Gestion de l'affichage de la Card Principale (EN UNE SEULE LIGNE pour éviter les bugs Streamlit/Markdown)
+        if show_amounts:
             main_metric_label = "TOTAL PORTFOLIO"
             main_metric_value = f"{format_chf(total_value)} <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
-            sub_metric_html = f"""
-                <span style="color:{perf_color}; font-weight:700;">{perf_sign}{perf_total:.2f}%</span><br>
-                <span style="font-size: 11px; color: #94A3B8; text-transform: uppercase;">Total Fees: {format_chf(total_fees)} CHF</span>
-            """
+            fees_label = f"Total Fees: {format_chf(total_fees)} CHF"
         else:
-            main_metric_label = "TOTAL P&L (%)"
-            main_metric_value = f"{perf_sign}{perf_total:.2f} <span style='font-size:24px; color:{perf_color};'>%</span>"
-            sub_metric_html = f"""<span style="color:#94A3B8; font-weight:500;">Amounts hidden</span>"""
-
-        st.markdown(f"""
-        <div class="hero-card">
-            <div class="hero-top-metrics">
-                <div><span>{main_metric_label}</span></div>
-                <div style="text-align: right;">
-                    <span>PERFORMANCE</span> {sub_metric_html}
-                </div>
-            </div>
-            <div class="hero-main-value">{main_metric_value}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if portfolio_items:
-            df_display = pd.DataFrame(portfolio_items)
+            main_metric_label = "TOTAL PORTFOLIO"
+            main_metric_value = f"*** <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
+            fees_label = "Total Fees: *** CHF"
             
-            if not show_capital:
-                df_display = df_display[["Asset", "Ticker", "Performance (%)"]]
-            else:
-                df_display = df_display[["Asset", "Ticker", "Quantity", "Invested (CHF)", "Fees (CHF)", "Value (CHF)", "P&L (CHF)", "Performance (%)"]]
-                
-            st.dataframe(df_display, use_container_width=True)
+        sub_metric_html = f"<span style='color:{perf_color}; font-weight:700;'>{perf_sign}{perf_total:.2f}%</span><br><span style='font-size: 11px; color: #94A3B8; text-transform: uppercase;'>{fees_label}</span>"
+
+        # Le HTML compressé répare le bug d'affichage que tu m'as envoyé en screenshot
+        st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>{main_metric_label}</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br>{sub_metric_html}</div></div><div class="hero-main-value">{main_metric_value}</div></div>""", unsafe_allow_html=True)
+        
+        # Affichage de toutes nos nouvelles cartes de design en dessous !
+        if cards_html:
+            st.markdown(cards_html, unsafe_allow_html=True)
 
     else:
-        st.markdown("""
-        <div class="hero-card">
-            <div class="hero-top-metrics">
-                <div><span>TOTAL PORTFOLIO</span></div>
-                <div><span>PERFORMANCE</span> <span style="color:#34D399; font-weight:700;">+0.00%</span></div>
-            </div>
-            <div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>TOTAL PORTFOLIO</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br><span style="color:#34D399; font-weight:700;">+0.00%</span></div></div><div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div></div>""", unsafe_allow_html=True)
         st.info("💡 The 'Portfolio' tab is missing or empty. Make sure columns 'Nom', 'Ticker / ISIN', 'Units', 'Fees', and 'Total Invested' are present.")
 
 st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
