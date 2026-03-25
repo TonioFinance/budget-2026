@@ -11,14 +11,6 @@ import json
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
-# --- AI CONFIGURATION ---
-if "GEMINI_API_KEY" in st.secrets:
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    # Use Gemini 1.5 Flash for high-speed receipt processing
-    model = genai.GenerativeModel('gemini-1.5-flash')
-else:
-    st.warning("AI Scanner: Please add 'GEMINI_API_KEY' to Streamlit Secrets to enable receipt scanning.")
-
 # --- STYLE OBSIDIAN & AZURE (FULL SAAS PREMIUM EDITION) ---
 st.markdown("""
     <style>
