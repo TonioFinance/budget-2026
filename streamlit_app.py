@@ -6,6 +6,7 @@ from google.oauth2.service_account import Credentials
 import plotly.graph_objects as go
 import time
 import yfinance as yf
+import calendar
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
@@ -428,9 +429,22 @@ with tab_dashboard:
         if not df_trends.empty:
             daily = df_trends.groupby('Date')['Amount'].sum().reset_index().sort_values('Date')
             daily['Cumulative'] = daily['Amount'].cumsum()
-            fig = go.Figure(go.Scatter(x=daily['Date'], y=daily['Cumulative'], mode='lines', fill='tozeroy', line=dict(color='#60A5FA', width=4), fillcolor='rgba(96, 165, 250, 0.1)'))
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"))
+            
+            fig = go.Figure()
+            # Tracer la ligne de dépenses réelles
+            fig.add_trace(go.Scatter(x=daily['Date'], y=daily['Cumulative'], mode='lines', fill='tozeroy', name='Actual Spend', line=dict(color='#60A5FA', width=4), fillcolor='rgba(96, 165, 250, 0.1)'))
+            
+            # Nouveau : Tracer la ligne du Burn Rate idéal (Prévisionnel)
+            start_date = daily['Date'].min().replace(day=1)
+            _, last_day = calendar.monthrange(start_date.year, start_date.month)
+            end_date = start_date.replace(day=last_day)
+            
+            if prevu_var > 0:
+                fig.add_trace(go.Scatter(x=[start_date, end_date], y=[0, prevu_var], mode='lines', name='Ideal Burn Rate', line=dict(color='#94A3B8', width=2, dash='dash')))
+            
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            
     st.markdown("</div><div class='chart-container'><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
     if category_progress:
         labels = [c["name"] for c in category_progress if c["reel"] > 0]
@@ -445,16 +459,13 @@ with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
     
-    # 1. On encapsule les visuels d'investissement dans un "Container"
+    # Création d'un container dédié pour l'affichage visuel (il sera rendu AU DESSUS de la checkbox)
     main_inv_container = st.container()
     
-    # 2. La case à cocher s'affiche ici, à la suite (donc sous les cartes)
+    # La checkbox est écrite après le container dans le flux Python, donc elle apparaîtra physiquement en-dessous sur la page Web.
     st.write("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([3, 2, 3])
-    with col2:
-        show_amounts = st.checkbox("👁️ Show Real Amounts", value=False)
+    show_amounts = st.checkbox("Show Real Amounts", value=False)
     
-    # 3. Toute la logique d'extraction et d'affichage HTML va se projeter DANS le container (au-dessus de la case)
     with main_inv_container:
         try:
             ws_inv = sh.worksheet("Portfolio")
@@ -483,6 +494,9 @@ with tab_investments:
             total_fees = 0.0
             cards_html = ""
             
+            # Extraction du nom de la colonne du logo (s'il y en a un de défini dans ton fichier "Portfolio")
+            logo_col = next((col for col in df_inv.columns if "logo" in col.lower() or "image" in col.lower()), None)
+            
             with st.spinner("Syncing live market data..."):
                 for index, row in df_inv.iterrows():
                     ticker = str(row.get("Ticker / ISIN", "")).strip()
@@ -492,7 +506,6 @@ with tab_investments:
                     qty_str = str(row.get("Units", "0")).replace(',', '.')
                     inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
                     fees_str = str(row.get("Fees", "0")).replace(',', '.')
-                    
                     entry_price_str = str(row.get("Entry Price", row.get("Amount", "0"))).replace(',', '.')
                     
                     try: qty = float(qty_str)
@@ -509,8 +522,22 @@ with tab_investments:
                     
                     if ticker and qty > 0:
                         try:
+                            # Robustesse absolue pour Bitcoin et actifs lents via Yahoo Finance
                             stock = yf.Ticker(ticker)
-                            current_price = stock.fast_info['last_price']
+                            current_price = 0.0
+                            
+                            try:
+                                current_price = float(stock.fast_info.get('last_price', 0.0))
+                            except:
+                                pass
+                                
+                            if current_price <= 0.0:
+                                hist = stock.history(period="1d")
+                                if not hist.empty:
+                                    current_price = float(hist['Close'].iloc[-1])
+                            
+                            if current_price <= 0.0:
+                                continue # On skip seulement si c'est vraiment impossible de trouver le prix
                             
                             value = current_price * qty
                             cost_basis = invested + fees
@@ -518,7 +545,6 @@ with tab_investments:
                             total_value += value
                             total_cost_basis += cost_basis
                             total_fees += fees
-                            
                             pnl_chf = value - cost_basis
                             
                             if entry_price > 0:
@@ -529,7 +555,13 @@ with tab_investments:
                             unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
                             unit_perf_sign = "+" if unit_perf >= 0 else ""
                             
-                            logo_url = get_asset_logo(ticker, asset_name)
+                            # Logique d'affichage du logo importé depuis ton Google Sheet
+                            custom_logo = str(row[logo_col]).strip() if logo_col else ""
+                            if custom_logo.startswith("http"):
+                                logo_url = custom_logo
+                            else:
+                                logo_url = get_asset_logo(ticker, asset_name)
+                                
                             clean_fb_name = asset_name.replace("'", "").replace('"', '')[:2]
                             fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true"
                             img_tag = f"""<img src="{logo_url}" class="inv-logo" onerror="this.onerror=null; this.src='{fallback_url}';">"""
@@ -538,10 +570,15 @@ with tab_investments:
                             ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
                             
                             if show_amounts:
+                                qty_formatted = f"{qty:.6f}".rstrip('0').rstrip('.') if qty < 1 else f"{qty:.4f}".rstrip('0').rstrip('.')
+                                qty_display = f" • {qty_formatted} Units"
+                                
                                 top_val = f"{format_chf(value)} CHF"
                                 pnl_sign = "+" if pnl_chf >= 0 else ""
                                 pnl_class = "text-green" if pnl_chf >= 0 else "text-red"
                                 bottom_val = f"<span class='{pnl_class}'>P&L: {pnl_sign}{format_chf(pnl_chf)} CHF</span>"
+                                
+                                ticker_display += qty_display # On affiche la quantité de manière discrète
                             else:
                                 top_val = "*** CHF"
                                 bottom_val = f"<span style='color: #94A3B8;'>P&L: *** CHF</span>"
