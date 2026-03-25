@@ -381,13 +381,11 @@ if row_history_start != -1:
 # 3. Extraction de LA PLAGE EXACTE A100:B133 pour le Spending Trend
 daily_summary_data = []
 if len(all_rows) >= 99:
-    # A100 = index 99, B133 = index 132
     trend_rows = all_rows[99:133] 
     for row in trend_rows:
         if len(row) >= 2:
             date_val = str(row[0]).strip()
             amt_val = parse_amount(row[1])
-            # On ignore l'en-tête "Date" et les lignes vides
             if date_val and date_val.lower() != "date" and "total" not in date_val.lower() and "dépense" not in date_val.lower():
                 daily_summary_data.append({"Date": date_val, "Amount": amt_val})
 
@@ -447,44 +445,71 @@ with tab_dashboard:
     if daily_summary_data:
         df_trends = pd.DataFrame(daily_summary_data)
         curr_y = now.year
-        # Nettoyage des points en slash pour forcer la lecture Jour/Mois/Année
         clean_dates = df_trends['Date'].astype(str).str.replace('.', '/')
         df_trends['DateObj'] = pd.to_datetime(clean_dates + '/' + str(curr_y), format='%d/%m/%Y', errors='coerce')
         df_trends = df_trends.dropna(subset=['DateObj']).sort_values('DateObj')
         
         if not df_trends.empty:
-            # Rendre les dépenses cumulatives (La montagne bleue)
+            # Setup base limits
+            curr_m = list(months_map.values()).index(selected_month) + 1
+            start_d = datetime(curr_y, curr_m, 15)
+            end_m = curr_m + 1 if curr_m < 12 else 1
+            end_y = curr_y if curr_m < 12 else curr_y + 1
+            end_d = datetime(end_y, end_m, 15)
+            
+            # Cumulative Spend
             df_trends['Cumulative'] = df_trends['Amount'].cumsum()
             
-            # Calcul de la ligne de budget idéal ("budget divisé par 30" -> ligne droite de 0 au Total Prévu)
+            # Dynamic Ideal Line mapping per row
             ideal_daily = prevu_var / 30 if prevu_var > 0 else 0
-            df_trends['Ideal'] = [ideal_daily * (i + 1) for i in range(len(df_trends))]
+            df_trends['Days_Passed'] = (df_trends['DateObj'] - start_d).dt.days + 1
+            df_trends['Days_Passed'] = df_trends['Days_Passed'].clip(lower=0) 
+            df_trends['Ideal'] = df_trends['Days_Passed'] * ideal_daily
             
-            # Trace 1: La ligne Ideal Spendings
-            fig.add_trace(go.Scatter(
-                x=df_trends['DateObj'], 
-                y=df_trends['Ideal'], 
-                mode='lines', 
-                name='Ideal Spendings', 
-                line=dict(color='#94A3B8', width=2, dash='dash')
-            ))
+            # Split for Pro Green/Red Design
+            df_trends['Safe'] = df_trends.apply(lambda row: min(row['Cumulative'], row['Ideal']), axis=1)
+            df_trends['Over'] = df_trends.apply(lambda row: max(row['Cumulative'] - row['Ideal'], 0), axis=1)
             
-            # Couper l'affichage après le dernier jour de dépense réel
+            # Cut off empty future dates so the chart doesn't flatline
             last_valid_idx = df_trends[df_trends['Amount'] > 0].index.max()
             if pd.notna(last_valid_idx):
                 df_plot = df_trends.loc[:last_valid_idx]
             else:
                 df_plot = df_trends
-                
-            # Trace 2: La Montagne des Dépenses Réelles (Cumulative)
+
+            # 1. Background Ideal Line
+            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Budget Limit', line=dict(color='#64748B', width=2, dash='dash')))
+            
+            # 2. Green Area (Safe Spend)
+            fig.add_trace(go.Scatter(
+                x=df_plot['DateObj'], 
+                y=df_plot['Safe'], 
+                mode='lines', 
+                stackgroup='one',
+                name='On Track', 
+                line=dict(color='#10B981', width=0), 
+                fillcolor='rgba(16, 185, 129, 0.4)'
+            ))
+            
+            # 3. Red Area (Overbudget Spend)
+            fig.add_trace(go.Scatter(
+                x=df_plot['DateObj'], 
+                y=df_plot['Over'], 
+                mode='lines', 
+                stackgroup='one',
+                name='Overbudget', 
+                line=dict(color='#E11D48', width=0), 
+                fillcolor='rgba(225, 29, 72, 0.4)'
+            ))
+            
+            # 4. Clean white top line for visual pop
             fig.add_trace(go.Scatter(
                 x=df_plot['DateObj'], 
                 y=df_plot['Cumulative'], 
                 mode='lines', 
-                fill='tozeroy', 
-                name='Cumulative Spend', 
-                line=dict(color='#60A5FA', width=3, shape='spline'), 
-                fillcolor='rgba(96, 165, 250, 0.4)'
+                name='Actual Spend', 
+                line=dict(color='#F8FAFC', width=2), 
+                showlegend=False
             ))
             
     fig.update_layout(
@@ -516,9 +541,8 @@ with tab_investments:
     main_inv_container = st.container()
     
     st.write("<br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1.5, 3, 1.5])
-    with col2:
-        show_amounts = st.checkbox("Show Real Amounts", value=False)
+    # Alignée proprement à gauche
+    show_amounts = st.checkbox("Show Real Amounts", value=False)
     
     with main_inv_container:
         try:
