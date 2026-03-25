@@ -162,65 +162,41 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- INVESTMENT GRID (NEW UI) --- */
-    .inv-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); /* Optimisé pour mobile */
-        gap: 20px;
-        margin-top: 15px;
-    }
-    .inv-card-grid {
-        background: linear-gradient(145deg, rgba(15, 23, 42, 0.6) 0%, rgba(3, 7, 18, 0.8) 100%);
-        border-radius: 20px;
-        padding: 24px;
-        border: 1px solid rgba(255,255,255,0.05);
-        transition: all 0.3s ease;
-        display: flex;
-        flex-direction: column;
+    /* --- INVESTMENT CARDS (CLASSIC CENTERED DESIGN) --- */
+    .inv-card {
+        background: rgba(255, 255, 255, 0.02); 
+        border-radius: 18px; 
+        padding: 18px 22px; 
+        margin-bottom: 14px; 
+        display: flex; 
+        justify-content: space-between; 
         align-items: center;
-        justify-content: space-between;
-        position: relative;
-        overflow: hidden;
+        border: 1px solid rgba(255,255,255,0.04);
+        transition: all 0.2s ease;
     }
-    .inv-card-grid::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0; height: 3px;
-        background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.5), transparent);
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-    .inv-card-grid:hover {
-        transform: translateY(-5px);
-        background: linear-gradient(145deg, rgba(30, 58, 138, 0.15) 0%, rgba(3, 7, 18, 0.9) 100%);
+    .inv-card:hover {
+        transform: translateY(-2px);
+        background: rgba(59, 130, 246, 0.08);
         border: 1px solid rgba(59, 130, 246, 0.3);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
     }
-    .inv-card-grid:hover::before { opacity: 1; }
+    .inv-left { display: flex; align-items: center; gap: 16px; }
     
-    .inv-logo-wrapper {
-        width: 80px; height: 80px;
-        border-radius: 50%;
-        padding: 4px;
-        background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%);
-        display: flex; align-items: center; justify-content: center;
-        margin-bottom: 20px;
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
-    }
-    .inv-logo-grid {
-        width: 100%; height: 100%;
-        border-radius: 50%;
+    .inv-logo { 
+        width: 48px; height: 48px; 
+        border-radius: 50%; 
         object-fit: cover;
-        background-color: #0F172A;
-        border: 3px solid #030712;
+        background-color: #030712; 
+        border: 2px solid rgba(96, 165, 250, 0.4);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        flex-shrink: 0;
     }
-    .inv-info-grid { width: 100%; text-align: left; }
-    .inv-name-grid { color: #FFFFFF; font-weight: 800; font-size: 19px; margin-bottom: 2px; text-align: center; }
-    .inv-ticker-grid { color: #94A3B8; font-size: 13px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; text-align: center;}
-    .inv-stats-row { display: flex; justify-content: space-between; align-items: flex-end; }
-    .inv-price-grid { color: #FFFFFF; font-weight: 800; font-size: 18px; }
-    .inv-perf-grid { font-weight: 800; font-size: 16px; text-align: right; }
     
+    .inv-name { color: #FFFFFF; font-weight: 800; font-size: 17px; letter-spacing: -0.2px; }
+    .inv-ticker { color: #94A3B8; font-size: 13px; margin-top:3px; font-weight: 600; }
+    .inv-right { text-align: right; }
+    .inv-top-val { color: #FFFFFF; font-weight: 800; font-size: 17px; }
+    .inv-bottom-val { margin-top: 4px; font-size: 14px; font-weight: 800; }
     .text-green { color: #34D399; }
     .text-red { color: #FB7185; }
 
@@ -239,7 +215,7 @@ st.markdown("""
         font-weight: 900 !important;
         letter-spacing: 1.5px !important;
         border-radius: 14px !important;
-        text-align: center; /* Centré pour mobile */
+        text-align: center;
     }
     
     /* Input Styling */
@@ -274,6 +250,13 @@ st.markdown("""
         text-align: center;
     }
     
+    /* Make dataframe look better in dark mode */
+    [data-testid="stDataFrame"] {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+    
     /* --- MOBILE OPTIMIZATIONS --- */
     @media (max-width: 768px) {
         .hero-main-value { font-size: 42px !important; }
@@ -281,7 +264,6 @@ st.markdown("""
         .stTabs [data-baseweb="tab-list"] { gap: 10px; padding: 5px 10px; }
         .stTabs [data-baseweb="tab"] { padding: 0 15px !important; font-size: 13px !important; }
         .stExpander details summary { font-size: 14px !important; }
-        /* Ajustement des graphiques pour laisser respirer sur mobile */
         .chart-container { padding: 15px 5px; } 
     }
     </style>
@@ -460,13 +442,15 @@ with tab_dashboard:
     
     if daily_summary_data:
         df_trends = pd.DataFrame(daily_summary_data)
-        curr_y = now.year
-        clean_dates = df_trends['Date'].astype(str).str.replace('.', '/')
-        df_trends['DateObj'] = pd.to_datetime(clean_dates + '/' + str(curr_y), format='%d/%m/%Y', errors='coerce')
+        # Fixation ultime de la lecture des dates (lit les YYYY-MM-DD standard de Gsheets sans forcer)
+        df_trends['DateObj'] = pd.to_datetime(df_trends['Date'], errors='coerce')
         df_trends = df_trends.dropna(subset=['DateObj']).sort_values('DateObj')
         
         if not df_trends.empty:
+            curr_y = now.year
             curr_m = list(months_map.values()).index(selected_month) + 1
+            
+            # Limites de l'axe X (du 15 au 15)
             start_d = datetime(curr_y, curr_m, 15)
             end_m = curr_m + 1 if curr_m < 12 else 1
             end_y = curr_y if curr_m < 12 else curr_y + 1
@@ -474,6 +458,7 @@ with tab_dashboard:
             
             df_trends['Cumulative'] = df_trends['Amount'].cumsum()
             
+            # Tracé Ideal (Ligne grise en pointillés de 0 au plafond max)
             ideal_daily = prevu_var / 30 if prevu_var > 0 else 0
             df_trends['Days_Passed'] = (df_trends['DateObj'] - start_d).dt.days + 1
             df_trends['Days_Passed'] = df_trends['Days_Passed'].clip(lower=0) 
@@ -482,6 +467,7 @@ with tab_dashboard:
             df_trends['Safe'] = df_trends.apply(lambda row: min(row['Cumulative'], row['Ideal']), axis=1)
             df_trends['Over'] = df_trends.apply(lambda row: max(row['Cumulative'] - row['Ideal'], 0), axis=1)
             
+            # Ne dessiner la montagne que jusqu'au dernier jour renseigné > 0
             last_valid_idx = df_trends[df_trends['Amount'] > 0].index.max()
             if pd.notna(last_valid_idx):
                 df_plot = df_trends.loc[:last_valid_idx]
@@ -531,7 +517,7 @@ with tab_dashboard:
         xaxis=dict(showgrid=False, color="#94A3B8"), 
         yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), 
         showlegend=True, 
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#F8FAFC"))
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
@@ -541,22 +527,23 @@ with tab_dashboard:
         labels = [c["name"] for c in category_progress if c["reel"] > 0]
         values = [c["reel"] for c in category_progress if c["reel"] > 0]
         if values:
-            fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']))])
+            # DONUT CHART PARFAIT : Labels accrochés aux parts (plus de légende coupée en bas)
+            fig_pie = go.Figure(data=[go.Pie(
+                labels=labels, 
+                values=values, 
+                hole=.75, 
+                marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']),
+                textinfo='label+percent', # Remplace la légende qui bug
+                textfont=dict(color='#FFFFFF', size=12),
+                hoverinfo='label+value'
+            )])
             fig_pie.update_layout(
-                showlegend=True, 
+                showlegend=False, # Désactivation de la légende séparée
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)', 
-                height=450, 
-                margin=dict(t=20, b=80, l=20, r=20), 
-                annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font=dict(color="#FFFFFF"))],
-                legend=dict(
-                    orientation="h",
-                    yanchor="top",
-                    y=-0.1, 
-                    xanchor="center",
-                    x=0.5,
-                    font=dict(color="#F8FAFC")
-                ) 
+                height=350, 
+                margin=dict(t=20, b=20, l=20, r=20), 
+                annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font=dict(color="#FFFFFF"))]
             )
             st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
@@ -567,8 +554,7 @@ with tab_investments:
     main_inv_container = st.container()
     
     st.write("<br>", unsafe_allow_html=True)
-    
-    # Checkbox ajustée et centrée sur mobile / à gauche sur desktop
+    # Checkbox parfaitement alignée à gauche pour un rendu pro
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
         show_amounts = st.checkbox("Show Real Amounts", value=False)
@@ -599,7 +585,7 @@ with tab_investments:
             total_value = 0.0
             total_cost_basis = 0.0
             total_fees = 0.0
-            cards_html = "<div class='inv-grid'>"
+            cards_html = ""
             
             with st.spinner("Syncing live market data..."):
                 for index, row in df_inv.iterrows():
@@ -660,47 +646,47 @@ with tab_investments:
                             unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
                             unit_perf_sign = "+" if unit_perf >= 0 else ""
                             
-                            # 3. Fast & Reliable Initial Avatars (No external logo fetching bugs)
+                            # 3. Simple UI Avatars (Initials Only - Aucun risque de bug d'image)
                             clean_fb_name = asset_name.replace("'", "").replace('"', '').replace(' ', '+')
                             logo_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true&font-size=0.4"
-                            img_tag = f'<img src="{logo_url}" class="inv-logo-grid">'
+                            img_tag = f'<img src="{logo_url}" class="inv-logo">'
                             
                             curr_disp = f" {currency}" if currency else ""
+                            ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
                             
                             if show_amounts:
                                 qty_formatted = f"{qty:.6f}".rstrip('0').rstrip('.') if qty < 1 else f"{qty:.4f}".rstrip('0').rstrip('.')
-                                price_display = f"{format_chf(value)} CHF"
-                                sub_price_display = f"Avg: {format_chf(entry_price)}{curr_disp}"
+                                qty_display = f" • {qty_formatted} Units"
+                                
+                                top_val = f"{format_chf(value)} CHF"
                                 pnl_sign = "+" if pnl_chf >= 0 else ""
-                                perf_display = f"{unit_perf_sign}{unit_perf:.2f}%<br>{pnl_sign}{format_chf(pnl_chf)} CHF"
-                                ticker_display = f"{ticker} • {qty_formatted} Units"
+                                pnl_class = "text-green" if pnl_chf >= 0 else "text-red"
+                                bottom_val = f"<span class='{pnl_class}'>P&L: {pnl_sign}{format_chf(pnl_chf)} CHF</span>"
+                                
+                                ticker_display += qty_display
                             else:
-                                price_display = f"{format_chf(current_price)}{curr_disp}"
-                                sub_price_display = "Current Price"
-                                perf_display = f"{unit_perf_sign}{unit_perf:.2f}%"
-                                ticker_display = f"{ticker}"
-
-                            # Grid Card UI Generation
+                                top_val = "*** CHF"
+                                bottom_val = f"<span style='color: #94A3B8;'>P&L: *** CHF</span>"
+                                
+                            # LISTE CENTRÉE (Design Classique)
                             cards_html += f"""
-                            <div class="inv-card-grid">
-                                <div class="inv-logo-wrapper">
+                            <div class="inv-card">
+                                <div class="inv-left">
                                     {img_tag}
-                                </div>
-                                <div class="inv-info-grid">
-                                    <div class="inv-name-grid">{asset_name}</div>
-                                    <div class="inv-ticker-grid">{ticker_display}</div>
-                                    <div class="inv-stats-row">
-                                        <div class="inv-price-grid">{price_display}<br><span style="font-size:12px; color:#94A3B8; font-weight:400;">{sub_price_display}</span></div>
-                                        <div class="inv-perf-grid {unit_perf_class}">{perf_display}</div>
+                                    <div style="text-align: left;">
+                                        <div class="inv-name">{asset_name}</div>
+                                        <div class="inv-ticker">{ticker_display}</div>
                                     </div>
+                                </div>
+                                <div class="inv-right">
+                                    <div class="inv-top-val">{top_val}</div>
+                                    <div class="inv-bottom-val">{bottom_val}</div>
                                 </div>
                             </div>
                             """
                             
                         except Exception:
                             pass
-            
-            cards_html += "</div>" # Close Grid
             
             perf_total = ((total_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
             perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
@@ -719,7 +705,7 @@ with tab_investments:
 
             st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>{main_metric_label}</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br>{sub_metric_html}</div></div><div class="hero-main-value">{main_metric_value}</div></div>""", unsafe_allow_html=True)
             
-            if cards_html != "<div class='inv-grid'></div>":
+            if cards_html:
                 st.markdown(cards_html, unsafe_allow_html=True)
 
         else:
