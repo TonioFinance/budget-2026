@@ -6,6 +6,7 @@ from google.oauth2.service_account import Credentials
 import plotly.graph_objects as go
 import time
 import yfinance as yf
+import re
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
@@ -279,6 +280,22 @@ def parse_amount(val):
 def format_chf(value):
     return f"{value:,.2f}".replace(",", "'")
 
+# Convertit intelligemment les dates JJ/MM ou JJ.MM avec ou sans année
+def parse_trend_date(d_str, year):
+    d_str = str(d_str).strip().replace('.', '/')
+    if not d_str: return pd.NaT
+    
+    # S'il y a déjà un format complet (ex: 2026-03-13 ou 13/03/2026)
+    if '-' in d_str or d_str.count('/') == 2:
+        return pd.to_datetime(d_str, dayfirst=True, errors='coerce')
+        
+    # Format "Jour/Mois" (ex: 14/03) -> on ajoute l'année dynamiquement
+    parts = d_str.split('/')
+    if len(parts) == 2:
+        return pd.to_datetime(f"{parts[0]}/{parts[1]}/{year}", format='%d/%m/%Y', errors='coerce')
+        
+    return pd.to_datetime(d_str, errors='coerce')
+
 def get_progress_html(name, reel, prevu):
     if prevu > 0: percent = reel / prevu
     else: percent = 1.0 if reel > 0 else 0.0
@@ -354,7 +371,7 @@ for i, row in enumerate(all_rows):
             break
 
 if row_history_start != -1:
-    for i in range(row_history_start, len(all_rows)):
+    for i in range(row_history_start, min(row_history_start + 50, len(all_rows))):
         row = all_rows[i]
         if len(row) > 0 and str(row[0]).strip().lower() == "date": break 
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
@@ -362,15 +379,15 @@ if row_history_start != -1:
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# Extraction PLAGE EXACTE A150 pour le Spending Trend
+# EXCTRACTION STRICTE DU TABLEAU JOURNALIER (À PARTIR DE LA LIGNE 150 -> Index 149)
 daily_summary_data = []
 if len(all_rows) > 149:
-    trend_rows = all_rows[149:190] 
+    trend_rows = all_rows[149:250] # On scanne large au cas où le tableau s'agrandisse
     for row in trend_rows:
         if len(row) >= 2:
             date_val = str(row[0]).strip()
             amt_val = parse_amount(row[1])
-            if date_val and date_val.lower() != "date" and "total" not in date_val.lower() and "dépense" not in date_val.lower():
+            if date_val and date_val.lower() != "date" and "total" not in date_val.lower() and "dépense" not in date_val.lower() and "depense" not in date_val.lower():
                 daily_summary_data.append({"Date": date_val, "Amount": amt_val})
 
 # --- TABS SYSTEM ---
@@ -401,6 +418,7 @@ with tab_dashboard:
                 if lib and amt > 0:
                     col_b = ws.col_values(2)
                     target = 60
+                    # Ne jamais dépasser la ligne 149 pour ne pas écraser ton tableau journalier
                     for r in range(60, 149):
                         if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
                     new_data = [[datetime.now().strftime("%d/%m/%Y"), lib, amt, note, form_cat_map[cat_en]]]
@@ -429,18 +447,20 @@ with tab_dashboard:
     
     if daily_summary_data:
         df_trends = pd.DataFrame(daily_summary_data)
-        # Parse natif robuste pour les dates YYYY-MM-DD
-        df_trends['DateObj'] = pd.to_datetime(df_trends['Date'], errors='coerce')
+        curr_y = now.year
+        
+        # Application du nouveau Parseur robuste (Gère les formats JJ/MM et YYYY-MM-DD natifs)
+        df_trends['DateObj'] = df_trends['Date'].apply(lambda x: parse_trend_date(x, curr_y))
         df_trends = df_trends.dropna(subset=['DateObj']).sort_values('DateObj')
         
         if not df_trends.empty:
-            curr_y = now.year
             curr_m = list(months_map.values()).index(selected_month) + 1
             start_d = datetime(curr_y, curr_m, 15)
             end_m = curr_m + 1 if curr_m < 12 else 1
             end_y = curr_y if curr_m < 12 else curr_y + 1
             end_d = datetime(end_y, end_m, 15)
             
+            # CUMUL DES DEPENSES
             df_trends['Cumulative'] = df_trends['Amount'].cumsum()
             
             ideal_daily = prevu_var / 30 if prevu_var > 0 else 0
@@ -457,10 +477,10 @@ with tab_dashboard:
             else:
                 df_plot = df_trends
 
-            # 1. Background Ideal Line (Neutral Dark Blue/Grey)
+            # 1. Ligne Idéale
             fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Budget Limit', line=dict(color='#64748B', width=2, dash='dash')))
             
-            # 2. Green Area (Safe Spend - Pro Emerald)
+            # 2. Zone Verte
             fig.add_trace(go.Scatter(
                 x=df_plot['DateObj'], 
                 y=df_plot['Safe'], 
@@ -471,7 +491,7 @@ with tab_dashboard:
                 fillcolor='rgba(16, 185, 129, 0.3)' 
             ))
             
-            # 3. Red Area (Overbudget Spend - Pro Burgundy/Carmin)
+            # 3. Zone Rouge
             fig.add_trace(go.Scatter(
                 x=df_plot['DateObj'], 
                 y=df_plot['Over'], 
@@ -482,7 +502,7 @@ with tab_dashboard:
                 fillcolor='rgba(225, 29, 72, 0.4)' 
             ))
             
-            # 4. Clean white top line for visual pop
+            # 4. Ligne de contour blanche
             fig.add_trace(go.Scatter(
                 x=df_plot['DateObj'], 
                 y=df_plot['Cumulative'], 
@@ -510,22 +530,23 @@ with tab_dashboard:
         labels = [c["name"] for c in category_progress if c["reel"] > 0]
         values = [c["reel"] for c in category_progress if c["reel"] > 0]
         if values:
-            fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.7, marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']))])
+            # Donut chart avec labels attachés directement aux parts
+            fig_pie = go.Figure(data=[go.Pie(
+                labels=labels, 
+                values=values, 
+                hole=.75, 
+                marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']),
+                textinfo='label+percent',
+                textfont=dict(color='#FFFFFF', size=12),
+                hoverinfo='label+value'
+            )])
             fig_pie.update_layout(
-                showlegend=True, 
+                showlegend=False, # Désactive la légende séparée en bas (plus de texte coupé !)
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)', 
-                height=450, 
-                margin=dict(t=20, b=80, l=20, r=20), 
-                annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font=dict(color="#FFFFFF"))],
-                legend=dict(
-                    orientation="h",
-                    yanchor="top",
-                    y=-0.1, 
-                    xanchor="center",
-                    x=0.5,
-                    font=dict(color="#F8FAFC")
-                ) 
+                height=350, 
+                margin=dict(t=20, b=20, l=20, r=20), 
+                annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font=dict(color="#FFFFFF"))]
             )
             st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
@@ -536,8 +557,6 @@ with tab_investments:
     main_inv_container = st.container()
     
     st.write("<br>", unsafe_allow_html=True)
-    
-    # Checkbox parfaitement alignée à gauche
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
         show_amounts = st.checkbox("Show Real Amounts", value=False)
@@ -629,7 +648,7 @@ with tab_investments:
                             unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
                             unit_perf_sign = "+" if unit_perf >= 0 else ""
                             
-                            # 3. Simple UI Avatars (Initials Only - Aucun risque de bug d'image)
+                            # 3. Simple UI Avatars (Initials Only)
                             clean_fb_name = asset_name.replace("'", "").replace('"', '').replace(' ', '+')
                             logo_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true&font-size=0.4"
                             img_tag = f'<img src="{logo_url}" class="inv-logo">'
@@ -650,7 +669,7 @@ with tab_investments:
                                 perf_display = f"{unit_perf_sign}{unit_perf:.2f}%"
                                 ticker_display = f"{ticker}"
 
-                            # Card UI Generation (Design Classique Centré)
+                            # Card UI Generation (Liste Classique Centrée)
                             cards_html += f"""
                             <div class="inv-card">
                                 <div class="inv-left">
