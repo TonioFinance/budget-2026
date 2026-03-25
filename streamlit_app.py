@@ -386,30 +386,45 @@ if col_var != -1:
 
 prevu_var, reel_var = sum(c["prevu"] for c in category_progress), sum(c["reel"] for c in category_progress)
 
+# Dynamic Extraction for Recent Transactions
 row_history_start = -1
 for i, row in enumerate(all_rows):
-    if any(str(cell).strip().lower() == "date" for cell in row):
-        row_history_start = i + 1
-        break
+    if len(row) > 1 and str(row[0]).strip().lower() == "date":
+        row_str_lower = " ".join([str(c).lower() for c in row])
+        if "lieu" in row_str_lower or "merchant" in row_str_lower:
+            row_history_start = i + 1
+            break
 
 if row_history_start != -1:
     for i in range(row_history_start, len(all_rows)):
         row = all_rows[i]
+        if len(row) > 0 and str(row[0]).strip().lower() == "date": break 
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
             if "total" in str(row[0]).lower(): continue
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# Extraction PLAGE EXACTA A150 pour le Spending Trend
+# Dynamic Extraction for Daily Spending Table (Trends)
+row_daily_start = -1
+for i, row in enumerate(all_rows):
+    if len(row) >= 2:
+        c0 = str(row[0]).strip().lower()
+        c1 = str(row[1]).strip().lower()
+        if c0 == "date" and ("dépense" in c1 or "depense" in c1 or "amount" in c1):
+            row_daily_start = i + 1
+            break
+
 daily_summary_data = []
-if len(all_rows) > 149:
-    trend_rows = all_rows[149:190] 
-    for row in trend_rows:
-        if len(row) >= 2:
-            date_val = str(row[0]).strip()
-            amt_val = parse_amount(row[1])
-            if date_val and date_val.lower() != "date" and "total" not in date_val.lower() and "dépense" not in date_val.lower():
-                daily_summary_data.append({"Date": date_val, "Amount": amt_val})
+if row_daily_start != -1:
+    for i in range(row_daily_start, len(all_rows)):
+        row = all_rows[i]
+        if len(row) < 2: continue
+        date_val = str(row[0]).strip()
+        if not date_val: continue
+        if date_val.lower() == "date" or "total" in date_val.lower() or "dépense" in date_val.lower(): continue
+        
+        amt_val = parse_amount(row[1])
+        daily_summary_data.append({"Date": date_val, "Amount": amt_val})
 
 # --- TABS SYSTEM ---
 tab_dashboard, tab_investments = st.tabs(["Dashboard", "Investments"])
@@ -437,8 +452,10 @@ with tab_dashboard:
             submitted = st.form_submit_button("CONFIRM TRANSACTION", use_container_width=True)
             if submitted:
                 if lib and amt > 0:
-                    col_b = ws.col_values(2); target = 60
-                    for r in range(60, 149):
+                    col_b = ws.col_values(2)
+                    target = 60
+                    max_row = row_daily_start - 1 if row_daily_start != -1 else 149
+                    for r in range(60, max_row):
                         if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
                     new_data = [[datetime.now().strftime("%d/%m/%Y"), lib, amt, note, form_cat_map[cat_en]]]
                     ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
@@ -537,7 +554,7 @@ with tab_dashboard:
         xaxis=dict(showgrid=False, color="#94A3B8"), 
         yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), 
         showlegend=True, 
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#F8FAFC"))
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
@@ -555,7 +572,7 @@ with tab_dashboard:
                 height=400, 
                 margin=dict(t=0, b=0, l=0, r=0), 
                 annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False)],
-                legend=dict(color="#F8FAFC", font=dict(color="#F8FAFC")) 
+                legend=dict(font=dict(color="#F8FAFC")) 
             )
             st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
@@ -566,7 +583,6 @@ with tab_investments:
     main_inv_container = st.container()
     
     st.write("<br>", unsafe_allow_html=True)
-    # Checkbox parfaitement alignée à gauche pour un rendu pro
     show_amounts = st.checkbox("Show Real Amounts", value=False)
     
     with main_inv_container:
@@ -639,9 +655,8 @@ with tab_investments:
                                     current_price = float(hist['Close'].iloc[-1])
                                     
                             if current_price <= 0.0:
-                                continue # Skip strictly if asset price cannot be found anywhere
+                                continue 
                             
-                            # 2. Portfolio Calculations
                             value = current_price * qty
                             cost_basis = invested + fees
                             
