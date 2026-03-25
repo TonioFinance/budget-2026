@@ -6,7 +6,6 @@ from google.oauth2.service_account import Credentials
 import plotly.graph_objects as go
 import time
 import yfinance as yf
-import calendar
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
@@ -206,7 +205,7 @@ st.markdown("""
         width: 80px; height: 80px;
         border-radius: 50%;
         padding: 4px;
-        background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%); /* Neon Halo Effect */
+        background: linear-gradient(135deg, #3B82F6 0%, #10B981 100%);
         display: flex; align-items: center; justify-content: center;
         margin-bottom: 20px;
         box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
@@ -375,7 +374,7 @@ if col_var != -1:
 
 prevu_var, reel_var = sum(c["prevu"] for c in category_progress), sum(c["reel"] for c in category_progress)
 
-# 2. Extraction Transactions
+# 2. Extraction Transactions (Activités récentes)
 row_history_start = -1
 for i, row in enumerate(all_rows):
     if len(row) > 1 and str(row[0]).strip().lower() == "date":
@@ -393,7 +392,7 @@ if row_history_start != -1:
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# 3. Extraction Tableau Dépenses Quotidiennes (La fameuse liste 'Date | Dépenses')
+# 3. Extraction de ton TABLEAU Date/Dépenses EXACT (pour le graphique)
 row_daily_start = -1
 for i, row in enumerate(all_rows):
     if len(row) >= 2:
@@ -408,6 +407,7 @@ if row_daily_start != -1:
         row = all_rows[i]
         if len(row) < 2: continue
         date_val = str(row[0]).strip()
+        
         if not date_val: continue
         if "total" in date_val.lower() or "dépense" in date_val.lower(): continue
         
@@ -462,46 +462,46 @@ with tab_dashboard:
 
     st.divider()
     
-    # ---------------------------------------------------------
-    # CORRECTION D'AFFICHAGE: Plus de div autour de Plotly !
-    # ---------------------------------------------------------
-    st.markdown("<h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
+    # GRAPHIQUE 100% CORRIGÉ (Hors des balises div HTML)
+    st.markdown("<h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:15px; margin-top:30px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
     
     fig = go.Figure()
     
-    try:
-        curr_y = now.year
-        curr_m = list(months_map.values()).index(selected_month) + 1
-        
-        start_d = datetime(curr_y, curr_m, 15)
-        end_m = curr_m + 1 if curr_m < 12 else 1
-        end_y = curr_y if curr_m < 12 else curr_y + 1
-        end_d = datetime(end_y, end_m, 15)
-        
-        if prevu_var > 0:
-            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Burn Rate', line=dict(color='#94A3B8', width=2, dash='dash')))
-    except Exception:
-        pass
-
     if daily_summary_data:
         df_trends = pd.DataFrame(daily_summary_data)
+        # Parse les dates (format '2026-03-13' de ton tableau)
         df_trends['Date'] = pd.to_datetime(df_trends['Date'], errors='coerce')
         df_trends = df_trends.dropna(subset=['Date'])
         
         if not df_trends.empty:
             df_trends = df_trends.sort_values('Date')
             
-            # Ne garder que les jours où il y a eu une dépense ou stopper aux zéros
-            last_spend_date = df_trends[df_trends['Amount'] > 0]['Date'].max()
-            if pd.notna(last_spend_date):
-                df_trends = df_trends[df_trends['Date'] <= last_spend_date]
+            start_d = df_trends['Date'].min()
+            end_d = df_trends['Date'].max()
             
-            # CUMUL DES DEPENSES pour faire la "montagne"
+            # 1. Dessine la ligne de Burn Rate du début à la fin du tableau
+            if prevu_var > 0:
+                fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Burn Rate', line=dict(color='#94A3B8', width=2, dash='dash')))
+            
+            # 2. Cumul exact de tes dépenses
             df_trends['Cumulative'] = df_trends['Amount'].cumsum()
             
+            # On cherche la dernière date avec une dépense > 0 pour arrêter le dessin (et ne pas tracer de ligne plate à la fin)
+            last_expense_idx = df_trends[df_trends['Amount'] > 0].index.max()
+            today = pd.to_datetime(datetime.now().date())
+            
+            if pd.notna(last_expense_idx):
+                last_expense_date = df_trends.loc[last_expense_idx, 'Date']
+                cutoff = max(today, last_expense_date)
+            else:
+                cutoff = today
+                
+            df_plot = df_trends[df_trends['Date'] <= cutoff]
+            
+            # 3. Dessine la montagne cumulée
             fig.add_trace(go.Scatter(
-                x=df_trends['Date'], 
-                y=df_trends['Cumulative'], 
+                x=df_plot['Date'], 
+                y=df_plot['Cumulative'], 
                 mode='lines', 
                 fill='tozeroy', 
                 name='Cumulative Spend', 
@@ -509,7 +509,7 @@ with tab_dashboard:
                 fillcolor='rgba(96, 165, 250, 0.4)'
             ))
             
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     
     st.markdown("<br><h3 style='color:#FFF; font-size:22px; text-align:center; margin-bottom:5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
