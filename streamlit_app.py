@@ -6,7 +6,6 @@ from google.oauth2.service_account import Credentials
 import plotly.graph_objects as go
 import time
 import yfinance as yf
-import re
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
@@ -166,7 +165,7 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- INVESTMENT CARDS (REAL LOGOS DESIGN) --- */
+    /* --- INVESTMENT CARDS (UI AVATARS ONLY) --- */
     .inv-card {
         background: rgba(255, 255, 255, 0.02); 
         border-radius: 18px; 
@@ -186,7 +185,6 @@ st.markdown("""
     }
     .inv-left { display: flex; align-items: center; gap: 16px; }
     
-    /* Actual Real Image Styling */
     .inv-logo { 
         width: 48px; height: 48px; 
         border-radius: 50%; 
@@ -287,54 +285,6 @@ def get_transaction_html(date, merchant, amount, category):
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""<div class="transaction-card"><div style="display:flex; align-items:center; gap:15px;"><div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i></div><div><div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div><div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div></div></div><div class="trans-amount">{amount}</div></div>"""
 
-# --- LOGO MATCHER (SMART CACHED) ---
-@st.cache_data(show_spinner=False, ttl=86400)
-def get_asset_logo(ticker, asset_name):
-    t_up = str(ticker).upper()
-    n_up = str(asset_name).upper()
-    
-    if "BTC" in t_up or "BITCOIN" in n_up: return "https://cryptologos.cc/logos/bitcoin-btc-logo.png"
-    if "ETH" in t_up or "ETHEREUM" in n_up: return "https://cryptologos.cc/logos/ethereum-eth-logo.png"
-    if "SOL" in t_up or "SOLANA" in n_up: return "https://cryptologos.cc/logos/solana-sol-logo.png"
-    
-    try:
-        info = yf.Ticker(ticker).info
-        website = info.get('website', '')
-        if website:
-            domain = website.replace('https://', '').replace('http://', '').replace('www.', '').split('/')[0]
-            return f"https://logo.clearbit.com/{domain}"
-    except:
-        pass
-        
-    clean_name = str(asset_name).replace(' ', '+')
-    return f"https://ui-avatars.com/api/?name={clean_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
-
-def convert_google_drive_link(url):
-    """Robustly converts Google Drive 'open?id=' or 'file/d/' links into direct download links."""
-    if not isinstance(url, str): return url
-    if "drive.google.com" not in url: return url
-
-    open_match = re.search(r"open\?id=([a-zA-Z0-9_-]+)", url)
-    if open_match:
-        file_id = open_match.group(1)
-        return f"https://drive.google.com/uc?export=view&id={file_id}"
-
-    file_match = re.search(r"file/d/([a-zA-Z0-9_-]+)", url)
-    if file_match:
-        file_id = file_match.group(1)
-        return f"https://drive.google.com/uc?export=view&id={file_id}"
-
-    return url
-
-def is_valid_custom_logo(url):
-    """Checks if a custom logo URL looks valid enough to try rendering."""
-    if not isinstance(url, str): return False
-    url = url.strip()
-    if not url: return False
-    if "drive.google.com" in url:
-        return "uc?export=view" in url
-    return url.startswith("http") and (any(ext in url.lower() for ext in [".png", ".jpg", ".jpeg", ".svg"]) or "clearbit" in url)
-
 # --- CONNECTION ---
 @st.cache_resource
 def get_gsheet_client():
@@ -386,7 +336,6 @@ if col_var != -1:
 
 prevu_var, reel_var = sum(c["prevu"] for c in category_progress), sum(c["reel"] for c in category_progress)
 
-# Dynamic Extraction for Recent Transactions
 row_history_start = -1
 for i, row in enumerate(all_rows):
     if len(row) > 1 and str(row[0]).strip().lower() == "date":
@@ -404,27 +353,16 @@ if row_history_start != -1:
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# Dynamic Extraction for Daily Spending Table (Trends)
-row_daily_start = -1
-for i, row in enumerate(all_rows):
-    if len(row) >= 2:
-        c0 = str(row[0]).strip().lower()
-        c1 = str(row[1]).strip().lower()
-        if c0 == "date" and ("dépense" in c1 or "depense" in c1 or "amount" in c1):
-            row_daily_start = i + 1
-            break
-
+# Extraction PLAGE EXACTE A150 pour le Spending Trend
 daily_summary_data = []
-if row_daily_start != -1:
-    for i in range(row_daily_start, len(all_rows)):
-        row = all_rows[i]
-        if len(row) < 2: continue
-        date_val = str(row[0]).strip()
-        if not date_val: continue
-        if date_val.lower() == "date" or "total" in date_val.lower() or "dépense" in date_val.lower(): continue
-        
-        amt_val = parse_amount(row[1])
-        daily_summary_data.append({"Date": date_val, "Amount": amt_val})
+if len(all_rows) > 149:
+    trend_rows = all_rows[149:190] 
+    for row in trend_rows:
+        if len(row) >= 2:
+            date_val = str(row[0]).strip()
+            amt_val = parse_amount(row[1])
+            if date_val and date_val.lower() != "date" and "total" not in date_val.lower() and "dépense" not in date_val.lower():
+                daily_summary_data.append({"Date": date_val, "Amount": amt_val})
 
 # --- TABS SYSTEM ---
 tab_dashboard, tab_investments = st.tabs(["Dashboard", "Investments"])
@@ -454,8 +392,7 @@ with tab_dashboard:
                 if lib and amt > 0:
                     col_b = ws.col_values(2)
                     target = 60
-                    max_row = row_daily_start - 1 if row_daily_start != -1 else 149
-                    for r in range(60, max_row):
+                    for r in range(60, 149):
                         if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
                     new_data = [[datetime.now().strftime("%d/%m/%Y"), lib, amt, note, form_cat_map[cat_en]]]
                     ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
@@ -511,10 +448,8 @@ with tab_dashboard:
             else:
                 df_plot = df_trends
 
-            # 1. Background Ideal Line (Neutral Dark Blue/Grey)
             fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Budget Limit', line=dict(color='#64748B', width=2, dash='dash')))
             
-            # 2. Green Area (Safe Spend - Pro Emerald)
             fig.add_trace(go.Scatter(
                 x=df_plot['DateObj'], 
                 y=df_plot['Safe'], 
@@ -525,7 +460,6 @@ with tab_dashboard:
                 fillcolor='rgba(16, 185, 129, 0.3)' 
             ))
             
-            # 3. Red Area (Overbudget Spend - Pro Burgundy/Carmin)
             fig.add_trace(go.Scatter(
                 x=df_plot['DateObj'], 
                 y=df_plot['Over'], 
@@ -536,7 +470,6 @@ with tab_dashboard:
                 fillcolor='rgba(225, 29, 72, 0.4)' 
             ))
             
-            # 4. Clean white top line for visual pop
             fig.add_trace(go.Scatter(
                 x=df_plot['DateObj'], 
                 y=df_plot['Cumulative'], 
@@ -569,10 +502,17 @@ with tab_dashboard:
                 showlegend=True, 
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)', 
-                height=400, 
-                margin=dict(t=0, b=0, l=0, r=0), 
-                annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False)],
-                legend=dict(font=dict(color="#F8FAFC")) 
+                height=450, # Height increased to fit the centered legend below
+                margin=dict(t=20, b=80, l=20, r=20), # Added bottom margin for legend
+                annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font=dict(color="#FFFFFF"))],
+                legend=dict(
+                    orientation="h",
+                    yanchor="top",
+                    y=-0.1, # Placed directly below the donut
+                    xanchor="center",
+                    x=0.5,
+                    font=dict(color="#F8FAFC")
+                ) 
             )
             st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
@@ -612,8 +552,6 @@ with tab_investments:
             total_cost_basis = 0.0
             total_fees = 0.0
             cards_html = ""
-            
-            logo_col = next((col for col in df_inv.columns if "logo" in col.lower() or "image" in col.lower()), None)
             
             with st.spinner("Syncing live market data..."):
                 for index, row in df_inv.iterrows():
@@ -657,6 +595,7 @@ with tab_investments:
                             if current_price <= 0.0:
                                 continue 
                             
+                            # 2. Portfolio Calculations
                             value = current_price * qty
                             cost_basis = invested + fees
                             
@@ -673,15 +612,10 @@ with tab_investments:
                             unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
                             unit_perf_sign = "+" if unit_perf >= 0 else ""
                             
-                            # 3. Handle custom user Logos or Fallback
-                            raw_logo_url = str(row[logo_col]).strip() if logo_col else ""
-                            custom_logo_url = convert_google_drive_link(raw_logo_url)
-                            
+                            # 3. Simple UI Avatars (Initials Only)
                             clean_fb_name = asset_name.replace("'", "").replace('"', '').replace(' ', '+')
-                            fallback_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true"
-                            
-                            final_logo_src = custom_logo_url if is_valid_custom_logo(custom_logo_url) else ""
-                            img_tag = f'<img src="{final_logo_src}" class="inv-logo" onerror="this.onerror=null; this.src=\'{fallback_url}\';">'
+                            logo_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true&font-size=0.4"
+                            img_tag = f'<img src="{logo_url}" class="inv-logo">'
                             
                             curr_disp = f" {currency}" if currency else ""
                             ticker_display = f"{ticker} - {format_chf(current_price)}{curr_disp} - <span class='{unit_perf_class}'>{unit_perf_sign}{unit_perf:.2f}%</span>"
