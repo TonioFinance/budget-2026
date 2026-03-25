@@ -398,11 +398,25 @@ with tab_investments:
     show_capital = st.checkbox("💰 Afficher le capital réel", value=False)
     
     try:
-        # Ligne modifiée : Connexion exacte à ton nouvel onglet
+        # Ligne modifiée : Analyse intelligente de tout le tableau pour contourner les titres en haut
         ws_inv = sh.worksheet("Investment Details")
-        inv_data = ws_inv.get_all_records()
-        df_inv = pd.DataFrame(inv_data)
-    except Exception:
+        all_inv_rows = ws_inv.get_all_values()
+        
+        header_row_idx = -1
+        # On cherche dynamiquement la ligne qui contient les bonnes colonnes
+        for i, row in enumerate(all_inv_rows):
+            if "Ticker / ISIN" in row or "Nom" in row:
+                header_row_idx = i
+                break
+                
+        if header_row_idx != -1:
+            headers = all_inv_rows[header_row_idx]
+            data_rows = all_inv_rows[header_row_idx+1:]
+            df_inv = pd.DataFrame(data_rows, columns=headers)
+        else:
+            df_inv = pd.DataFrame()
+            
+    except Exception as e:
         df_inv = pd.DataFrame()
 
     if not df_inv.empty and "Ticker / ISIN" in df_inv.columns:
@@ -413,7 +427,7 @@ with tab_investments:
         with st.spinner("Synchronisation des marchés en cours..."):
             for index, row in df_inv.iterrows():
                 ticker = str(row.get("Ticker / ISIN", "")).strip()
-                # Extraction avec les noms de colonnes exacts que tu m'as fournis
+                # Extraction sécurisée des colonnes
                 qty_str = str(row.get("Quantity", "0")).replace(',', '.')
                 inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
                 
