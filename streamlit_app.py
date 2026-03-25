@@ -5,6 +5,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import plotly.graph_objects as go
 import time
+import yfinance as yf
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
@@ -391,18 +392,113 @@ with tab_dashboard:
 
 with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Monitor your portfolio performance</p></div>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #94A3B8; font-size: 16px;'>Powered by Yahoo Finance Live Data</p></div>", unsafe_allow_html=True)
     
-    st.markdown("""
-    <div class="hero-card">
-        <div class="hero-top-metrics">
-            <div><span>TOTAL PORTFOLIO</span></div>
-            <div><span>24H CHANGE</span> <span style="color:#34D399; font-weight:700;">+0.00%</span></div>
-        </div>
-        <div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Case à cocher pour basculer l'affichage (Masqué par défaut)
+    show_capital = st.checkbox("💰 Afficher le capital réel", value=False)
+    
+    try:
+        # Ligne modifiée : Connexion exacte à ton nouvel onglet
+        ws_inv = sh.worksheet("Investment Details")
+        inv_data = ws_inv.get_all_records()
+        df_inv = pd.DataFrame(inv_data)
+    except Exception:
+        df_inv = pd.DataFrame()
 
-    st.info("💡 Portfolio tracking is ready to be configured. You can connect your brokerage API or allocate a specific Google Sheet tab to sync live investment data here.")
+    if not df_inv.empty and "Ticker / ISIN" in df_inv.columns:
+        total_value = 0.0
+        total_invested = 0.0
+        portfolio_items = []
+        
+        with st.spinner("Synchronisation des marchés en cours..."):
+            for index, row in df_inv.iterrows():
+                ticker = str(row.get("Ticker / ISIN", "")).strip()
+                # Extraction avec les noms de colonnes exacts que tu m'as fournis
+                qty_str = str(row.get("Quantity", "0")).replace(',', '.')
+                inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
+                
+                try: qty = float(qty_str)
+                except ValueError: qty = 0.0
+                
+                try: invested = float(inv_str)
+                except ValueError: invested = 0.0
+                
+                if ticker and qty > 0:
+                    try:
+                        stock = yf.Ticker(ticker)
+                        current_price = stock.fast_info['last_price']
+                        
+                        value = current_price * qty 
+                        total_value += value
+                        total_invested += invested
+                        
+                        perf = ((value - invested) / invested * 100) if invested > 0 else 0
+                        pnl_chf = value - invested
+                        
+                        portfolio_items.append({
+                            "Actif": row.get("Nom", ticker),
+                            "Ticker": ticker,
+                            "Quantité": round(qty, 4),
+                            "Investi (CHF)": f"{invested:.2f}",
+                            "Valeur (CHF)": f"{value:.2f}",
+                            "P&L (CHF)": f"{'+' if pnl_chf >= 0 else ''}{pnl_chf:.2f}",
+                            "Performance (%)": f"{'+' if perf >= 0 else ''}{perf:.2f}%"
+                        })
+                    except Exception:
+                        pass
+        
+        perf_total = ((total_value - total_invested) / total_invested * 100) if total_invested > 0 else 0.0
+        perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
+        perf_sign = "+" if perf_total >= 0 else ""
+        
+        pnl_total_chf = total_value - total_invested
+        pnl_sign = "+" if pnl_total_chf >= 0 else ""
+
+        # Affichage conditionnel de la Hero Card
+        if show_capital:
+            main_metric_label = "TOTAL PORTFOLIO"
+            main_metric_value = f"{format_chf(total_value)} <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
+            sub_metric_label = "PERFORMANCE"
+            sub_metric_value = f"{perf_sign}{perf_total:.2f}%"
+        else:
+            main_metric_label = "P&L TOTAL (%)"
+            main_metric_value = f"{perf_sign}{perf_total:.2f} <span style='font-size:24px; color:{perf_color};'>%</span>"
+            sub_metric_label = " "
+            sub_metric_value = "Montants masqués"
+
+        st.markdown(f"""
+        <div class="hero-card">
+            <div class="hero-top-metrics">
+                <div><span>{main_metric_label}</span></div>
+                <div><span>{sub_metric_label}</span> <span style="color:{perf_color}; font-weight:700;">{sub_metric_value}</span></div>
+            </div>
+            <div class="hero-main-value">{main_metric_value}</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if portfolio_items:
+            df_display = pd.DataFrame(portfolio_items)
+            
+            # Affichage conditionnel du tableau de bord des actifs
+            if not show_capital:
+                # Vue "Discrète" : Juste l'actif, le ticker et le pourcentage
+                df_display = df_display[["Actif", "Ticker", "Performance (%)"]]
+            else:
+                # Vue "Complète" : Toutes les colonnes avec les montants
+                df_display = df_display[["Actif", "Ticker", "Quantité", "Investi (CHF)", "Valeur (CHF)", "P&L (CHF)", "Performance (%)"]]
+                
+            st.dataframe(df_display, use_container_width=True)
+
+    else:
+        st.markdown("""
+        <div class="hero-card">
+            <div class="hero-top-metrics">
+                <div><span>TOTAL PORTFOLIO</span></div>
+                <div><span>PERFORMANCE</span> <span style="color:#34D399; font-weight:700;">+0.00%</span></div>
+            </div>
+            <div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.info("💡 L'onglet 'Investment Details' est introuvable ou vide. Assure-toi que les colonnes 'Nom', 'Ticker / ISIN', 'Quantity' et 'Total Invested' sont bien présentes.")
 
 st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
