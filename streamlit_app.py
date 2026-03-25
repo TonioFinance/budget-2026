@@ -552,7 +552,7 @@ with tab_dashboard:
     st.markdown("</div>", unsafe_allow_html=True)
 
 with tab_investments:
-    st.markdown("<div style='text-align: center; margin-top: 20px; margin-bottom: 20px;'><h2 style='font-size: 32px;'>📈 INVESTMENTS TRACKING</h2></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; margin-top: 20px; margin-bottom: 20px;'><h2 style='font-size: 32px;'>📈 PORTFOLIO TRACKING</h2></div>", unsafe_allow_html=True)
     
     main_inv_container = st.container()
     
