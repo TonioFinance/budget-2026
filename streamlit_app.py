@@ -406,7 +406,7 @@ with tab_dashboard:
 
     form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
     
-    with st.expander("➕ ADD NEW EXPENSE", expanded=False):
+    with st.expander("ADD NEW EXPENSE", expanded=False):
         with st.form("add_expense_form", clear_on_submit=True):
             lib = st.text_input("Merchant", placeholder="Apple, Migros...")
             amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
