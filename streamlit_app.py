@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import gspread
 from google.oauth2.service_account import Credentials
 import plotly.graph_objects as go
@@ -204,22 +204,19 @@ st.markdown("""
     /* --- NET WORTH SECTION --- */
     .networth-container {
         display: flex;
-        gap: 15px;
-        margin-top: 20px;
+        gap: 12px;
+        margin-top: 25px;
     }
     .nw-card {
         flex: 1;
-        background: rgba(15, 23, 42, 0.4);
+        background: rgba(15, 23, 42, 0.5);
         border: 1px solid rgba(59, 130, 246, 0.2);
-        border-radius: 20px;
-        padding: 20px;
+        border-radius: 16px;
+        padding: 15px;
         text-align: center;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
     }
-    .nw-title { font-size: 13px; color: #94A3B8; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px;}
-    .nw-value { font-size: 26px; font-weight: 900; color: #FFFFFF; }
-    .nw-net { background: linear-gradient(160deg, rgba(16, 185, 129, 0.2) 0%, rgba(3, 7, 18, 0.8) 100%); border-color: rgba(16, 185, 129, 0.4); }
-    .nw-net .nw-value { color: #34D399; text-shadow: 0 0 15px rgba(52, 211, 153, 0.4); }
+    .nw-title { font-size: 12px; color: #94A3B8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 5px;}
+    .nw-value { font-size: 18px; font-weight: 900; }
 
     /* --- EXPANDER & FORM PREMIUM --- */
     .stExpander {
@@ -286,7 +283,8 @@ st.markdown("""
         .stTabs [data-baseweb="tab"] { padding: 0 15px !important; font-size: 13px !important; }
         .stExpander details summary { font-size: 14px !important; }
         .chart-container { padding: 15px 5px; } 
-        .networth-container { flex-direction: column; gap: 10px; }
+        .networth-container { flex-wrap: wrap; }
+        .nw-card { flex-basis: 40%; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -411,54 +409,8 @@ if len(all_rows) > 149:
             if date_val and date_val.lower() != "date" and "total" not in date_val.lower() and "dépense" not in date_val.lower() and "depense" not in date_val.lower():
                 daily_summary_data.append({"Date": date_val, "Amount": amt_val})
 
-# --- NET WORTH EXTRACTION ---
-total_liquidity = 0.0
-total_debts = 0.0
 
-# 1. Extraction des Liquidités ("Répartition du Patrimoine")
-patrimoine_start = -1
-col_prevu_patrimoine = -1
-for i, row in enumerate(all_rows):
-    row_str = " ".join([str(x).lower() for x in row])
-    if "répartition du patrimoine" in row_str or "repartition du patrimoine" in row_str:
-        patrimoine_start = i
-        break
-
-if patrimoine_start != -1:
-    for j, cell in enumerate(all_rows[patrimoine_start+1] if len(all_rows) > patrimoine_start+1 else []):
-        if "prévu" in str(cell).lower() or "prevu" in str(cell).lower() or "fin mois" in str(cell).lower():
-            col_prevu_patrimoine = j
-            break
-    if col_prevu_patrimoine == -1: col_prevu_patrimoine = 2 # Fallback
-    
-    for i in range(patrimoine_start + 2, min(patrimoine_start + 15, len(all_rows))):
-        col_name = str(all_rows[i][0]).strip().lower()
-        if "total" in col_name:
-            total_liquidity = parse_amount(all_rows[i][col_prevu_patrimoine])
-            break
-
-# 2. Extraction des Dettes ("Remboursement")
-dettes_start = -1
-col_reste_dettes = -1
-for i, row in enumerate(all_rows):
-    if len(row) > 0 and str(row[0]).strip().lower() == "remboursement":
-        dettes_start = i
-        break
-
-if dettes_start != -1:
-    for j, cell in enumerate(all_rows[dettes_start]):
-        if "reste" in str(cell).lower():
-            col_reste_dettes = j
-            break
-    if col_reste_dettes == -1: col_reste_dettes = 3 # Fallback
-
-    for i in range(dettes_start + 1, min(dettes_start + 15, len(all_rows))):
-        col_name = str(all_rows[i][0]).strip().lower()
-        if "total" in col_name:
-            total_debts = parse_amount(all_rows[i][col_reste_dettes])
-            break
-
-# --- PORTFOLIO GLOBAL EXTRACTION (Hoist pour le Net Worth) ---
+# --- PORTFOLIO GLOBAL EXTRACTION ---
 total_portfolio_value = 0.0
 total_cost_basis = 0.0
 total_fees = 0.0
@@ -522,7 +474,6 @@ try:
                     if entry_price > 0: unit_perf = ((current_price - entry_price) / entry_price) * 100
                     else: unit_perf = 0.0
                         
-                    # Stocker les données calculées pour générer l'UI plus bas sans refaire l'appel API
                     enriched_portfolio_data.append({
                         "asset_name": asset_name, "ticker": ticker, "currency": currency,
                         "qty": qty, "current_price": current_price, "value": value, 
@@ -532,6 +483,26 @@ try:
                     pass
 except Exception:
     pass
+
+# --- NET WORTH EXTRACTION (DIRECT TARGETING) ---
+# 1. Cash Remaining (J42) -> Row 41, Col 9
+cash_remaining = 0.0
+if len(all_rows) > 41 and len(all_rows[41]) > 9:
+    cash_remaining = parse_amount(all_rows[41][9])
+
+# 2. Emergency Fund (C10) -> Row 9, Col 2
+emergency_fund = 0.0
+if len(all_rows) > 9 and len(all_rows[9]) > 2:
+    emergency_fund = parse_amount(all_rows[9][2])
+
+# 3. Debts (J59) -> Row 58, Col 9
+total_debts = 0.0
+if len(all_rows) > 58 and len(all_rows[58]) > 9:
+    total_debts = parse_amount(all_rows[58][9])
+
+# 4. Total Net Worth
+total_net_worth = cash_remaining + emergency_fund + total_portfolio_value - total_debts
+
 
 # --- TABS SYSTEM ---
 tab_dashboard, tab_investments = st.tabs(["Dashboard", "Investments"])
@@ -695,28 +666,71 @@ with tab_dashboard:
     st.markdown("</div>", unsafe_allow_html=True)
 
     # --- NET WORTH SNAPSHOT RENDER ---
-    st.markdown("<h3 style='font-size: 22px; color: #FFF; margin-top: 40px; margin-bottom: 10px; text-align: center;'><i class='ph ph-scales'></i> Net Worth Snapshot</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='font-size: 22px; color: #FFF; margin-top: 50px; margin-bottom: 20px; text-align: center;'><i class='ph ph-scales'></i> Net Worth Snapshot</h3>", unsafe_allow_html=True)
     
-    total_assets = total_liquidity + total_portfolio_value
-    net_worth = total_assets - total_debts
-
     nw_html = f"""
-    <div class="networth-container">
-        <div class="nw-card">
-            <div class="nw-title">Assets (Cash + Inv)</div>
-            <div class="nw-value" style="color:#60A5FA;">{format_chf(total_assets)} <span style="font-size:16px;">CHF</span></div>
+    <div class="hero-card" style="margin-bottom: 10px; border-color: rgba(16, 185, 129, 0.4); background: linear-gradient(160deg, rgba(16, 185, 129, 0.1) 0%, rgba(3, 7, 18, 0.8) 100%);">
+        <div class="hero-top-metrics" style="justify-content: center; margin-bottom: 15px;">
+            <span style="color:#34D399; letter-spacing: 2px;">TOTAL NET WORTH</span>
         </div>
-        <div class="nw-card">
-            <div class="nw-title">Liabilities (Debts)</div>
-            <div class="nw-value" style="color:#FB7185;">{format_chf(total_debts)} <span style="font-size:16px;">CHF</span></div>
+        <div class="hero-main-value" style="color:#FFFFFF; margin-bottom: 30px;">
+            {format_chf(total_net_worth)} <span style="font-size:20px; color:#34D399;">CHF</span>
         </div>
-        <div class="nw-card nw-net">
-            <div class="nw-title">Total Equity</div>
-            <div class="nw-value">{format_chf(net_worth)} <span style="font-size:16px;">CHF</span></div>
+        
+        <div class="networth-container">
+            <div class="nw-card">
+                <div class="nw-title">Cash (Rem.)</div>
+                <div class="nw-value" style="color:#38BDF8;">{format_chf(cash_remaining)}</div>
+            </div>
+            <div class="nw-card">
+                <div class="nw-title">Emergency</div>
+                <div class="nw-value" style="color:#818CF8;">{format_chf(emergency_fund)}</div>
+            </div>
+            <div class="nw-card">
+                <div class="nw-title">Investments</div>
+                <div class="nw-value" style="color:#A78BFA;">{format_chf(total_portfolio_value)}</div>
+            </div>
+            <div class="nw-card">
+                <div class="nw-title">Debts</div>
+                <div class="nw-value" style="color:#FB7185;">{format_chf(total_debts)}</div>
+            </div>
         </div>
     </div>
     """
     st.markdown(nw_html, unsafe_allow_html=True)
+
+    # --- EVOLUTION TRACKER (Mock Data for Visual Demonstration) ---
+    st.markdown("<div class='chart-container' style='margin-top: 15px;'><h3 style='color:#FFF; font-size:18px; margin-bottom:5px;'><i class='ph ph-chart-line-up'></i> Evolution Tracker</h3><p style='font-size: 12px; color: #64748B;'>Simulated data based on current net worth. Connect to a history tab later.</p>", unsafe_allow_html=True)
+    
+    # Generate 6 months of mock dates ending today
+    mock_dates = [(now.replace(day=1) - timedelta(days=30 * i)).strftime('%b %Y') for i in range(5, -1, -1)]
+    # Create a nice looking upward curve ending at the current real net worth
+    mock_values = [total_net_worth * 0.75, total_net_worth * 0.78, total_net_worth * 0.85, total_net_worth * 0.82, total_net_worth * 0.93, total_net_worth]
+    
+    fig_nw = go.Figure()
+    fig_nw.add_trace(go.Scatter(
+        x=mock_dates, 
+        y=mock_values, 
+        mode='lines+markers',
+        name='Net Worth',
+        line=dict(color='#34D399', width=3, shape='spline'),
+        marker=dict(size=8, color='#FFFFFF', line=dict(width=2, color='#34D399')),
+        fill='tozeroy',
+        fillcolor='rgba(52, 211, 153, 0.1)'
+    ))
+    
+    fig_nw.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)', 
+        plot_bgcolor='rgba(0,0,0,0)', 
+        height=250, 
+        margin=dict(t=10, b=10, l=10, r=10), 
+        xaxis=dict(showgrid=False, color="#94A3B8"), 
+        yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8", tickprefix="CHF "), 
+        showlegend=False
+    )
+    st.plotly_chart(fig_nw, use_container_width=True, config={'displayModeBar': False})
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px; margin-bottom: 20px;'><h2 style='font-size: 32px;'>📈 PORTFOLIO TRACKING</h2></div>", unsafe_allow_html=True)
