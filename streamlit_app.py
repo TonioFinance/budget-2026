@@ -201,6 +201,26 @@ st.markdown("""
     .text-green { color: #34D399; }
     .text-red { color: #FB7185; }
 
+    /* --- NET WORTH SECTION --- */
+    .networth-container {
+        display: flex;
+        gap: 15px;
+        margin-top: 20px;
+    }
+    .nw-card {
+        flex: 1;
+        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 20px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .nw-title { font-size: 13px; color: #94A3B8; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px;}
+    .nw-value { font-size: 26px; font-weight: 900; color: #FFFFFF; }
+    .nw-net { background: linear-gradient(160deg, rgba(16, 185, 129, 0.2) 0%, rgba(3, 7, 18, 0.8) 100%); border-color: rgba(16, 185, 129, 0.4); }
+    .nw-net .nw-value { color: #34D399; text-shadow: 0 0 15px rgba(52, 211, 153, 0.4); }
+
     /* --- EXPANDER & FORM PREMIUM --- */
     .stExpander {
         background: rgba(15, 23, 42, 0.2) !important;
@@ -266,6 +286,7 @@ st.markdown("""
         .stTabs [data-baseweb="tab"] { padding: 0 15px !important; font-size: 13px !important; }
         .stExpander details summary { font-size: 14px !important; }
         .chart-container { padding: 15px 5px; } 
+        .networth-container { flex-direction: column; gap: 10px; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -379,16 +400,138 @@ if row_history_start != -1:
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# EXCTRACTION STRICTE DU TABLEAU JOURNALIER (À PARTIR DE LA LIGNE 150 -> Index 149)
+# EXCTRACTION STRICTE DU TABLEAU JOURNALIER
 daily_summary_data = []
 if len(all_rows) > 149:
-    trend_rows = all_rows[149:250] # On scanne large au cas où le tableau s'agrandisse
+    trend_rows = all_rows[149:250]
     for row in trend_rows:
         if len(row) >= 2:
             date_val = str(row[0]).strip()
             amt_val = parse_amount(row[1])
             if date_val and date_val.lower() != "date" and "total" not in date_val.lower() and "dépense" not in date_val.lower() and "depense" not in date_val.lower():
                 daily_summary_data.append({"Date": date_val, "Amount": amt_val})
+
+# --- NET WORTH EXTRACTION ---
+total_liquidity = 0.0
+total_debts = 0.0
+
+# 1. Extraction des Liquidités ("Répartition du Patrimoine")
+patrimoine_start = -1
+col_prevu_patrimoine = -1
+for i, row in enumerate(all_rows):
+    row_str = " ".join([str(x).lower() for x in row])
+    if "répartition du patrimoine" in row_str or "repartition du patrimoine" in row_str:
+        patrimoine_start = i
+        break
+
+if patrimoine_start != -1:
+    for j, cell in enumerate(all_rows[patrimoine_start+1] if len(all_rows) > patrimoine_start+1 else []):
+        if "prévu" in str(cell).lower() or "prevu" in str(cell).lower() or "fin mois" in str(cell).lower():
+            col_prevu_patrimoine = j
+            break
+    if col_prevu_patrimoine == -1: col_prevu_patrimoine = 2 # Fallback
+    
+    for i in range(patrimoine_start + 2, min(patrimoine_start + 15, len(all_rows))):
+        col_name = str(all_rows[i][0]).strip().lower()
+        if "total" in col_name:
+            total_liquidity = parse_amount(all_rows[i][col_prevu_patrimoine])
+            break
+
+# 2. Extraction des Dettes ("Remboursement")
+dettes_start = -1
+col_reste_dettes = -1
+for i, row in enumerate(all_rows):
+    if len(row) > 0 and str(row[0]).strip().lower() == "remboursement":
+        dettes_start = i
+        break
+
+if dettes_start != -1:
+    for j, cell in enumerate(all_rows[dettes_start]):
+        if "reste" in str(cell).lower():
+            col_reste_dettes = j
+            break
+    if col_reste_dettes == -1: col_reste_dettes = 3 # Fallback
+
+    for i in range(dettes_start + 1, min(dettes_start + 15, len(all_rows))):
+        col_name = str(all_rows[i][0]).strip().lower()
+        if "total" in col_name:
+            total_debts = parse_amount(all_rows[i][col_reste_dettes])
+            break
+
+# --- PORTFOLIO GLOBAL EXTRACTION (Hoist pour le Net Worth) ---
+total_portfolio_value = 0.0
+total_cost_basis = 0.0
+total_fees = 0.0
+enriched_portfolio_data = []
+
+try:
+    ws_inv = sh.worksheet("Portfolio")
+    all_inv_rows = ws_inv.get_all_values()
+    
+    header_row_idx = -1
+    for i, row in enumerate(all_inv_rows):
+        row_str_lower = " ".join([str(c).lower() for c in row])
+        if "ticker" in row_str_lower or "isin" in row_str_lower:
+            header_row_idx = i
+            break
+            
+    if header_row_idx != -1:
+        headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
+        df_inv = pd.DataFrame(all_inv_rows[header_row_idx+1:], columns=headers)
+        
+        for index, row in df_inv.iterrows():
+            ticker = str(row.get("Ticker / ISIN", "")).strip()
+            asset_name = str(row.get("Nom", ticker))
+            currency = str(row.get("Currency", "")).strip()
+            
+            qty_str = str(row.get("Units", "0")).replace(',', '.')
+            inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
+            fees_str = str(row.get("Fees", "0")).replace(',', '.')
+            entry_price_str = str(row.get("Entry Price", row.get("Amount", "0"))).replace(',', '.')
+            
+            try: qty = float(qty_str)
+            except ValueError: qty = 0.0
+            try: invested = float(inv_str)
+            except ValueError: invested = 0.0
+            try: fees = float(fees_str)
+            except ValueError: fees = 0.0
+            try: entry_price = float(entry_price_str)
+            except ValueError: entry_price = 0.0
+            
+            if ticker and qty > 0:
+                try:
+                    stock = yf.Ticker(ticker)
+                    current_price = 0.0
+                    try: current_price = float(stock.fast_info.get('last_price', 0.0))
+                    except: pass
+                        
+                    if current_price <= 0.0:
+                        hist = stock.history(period="5d")
+                        if not hist.empty: current_price = float(hist['Close'].iloc[-1])
+                            
+                    if current_price <= 0.0: continue 
+                    
+                    value = current_price * qty
+                    cost_basis = invested + fees
+                    
+                    total_portfolio_value += value
+                    total_cost_basis += cost_basis
+                    total_fees += fees
+                    pnl_chf = value - cost_basis
+                    
+                    if entry_price > 0: unit_perf = ((current_price - entry_price) / entry_price) * 100
+                    else: unit_perf = 0.0
+                        
+                    # Stocker les données calculées pour générer l'UI plus bas sans refaire l'appel API
+                    enriched_portfolio_data.append({
+                        "asset_name": asset_name, "ticker": ticker, "currency": currency,
+                        "qty": qty, "current_price": current_price, "value": value, 
+                        "entry_price": entry_price, "pnl_chf": pnl_chf, "unit_perf": unit_perf
+                    })
+                except Exception:
+                    pass
+except Exception:
+    pass
 
 # --- TABS SYSTEM ---
 tab_dashboard, tab_investments = st.tabs(["Dashboard", "Investments"])
@@ -551,6 +694,30 @@ with tab_dashboard:
             st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # --- NET WORTH SNAPSHOT RENDER ---
+    st.markdown("<h3 style='font-size: 22px; color: #FFF; margin-top: 40px; margin-bottom: 10px; text-align: center;'><i class='ph ph-scales'></i> Net Worth Snapshot</h3>", unsafe_allow_html=True)
+    
+    total_assets = total_liquidity + total_portfolio_value
+    net_worth = total_assets - total_debts
+
+    nw_html = f"""
+    <div class="networth-container">
+        <div class="nw-card">
+            <div class="nw-title">Assets (Cash + Inv)</div>
+            <div class="nw-value" style="color:#60A5FA;">{format_chf(total_assets)} <span style="font-size:16px;">CHF</span></div>
+        </div>
+        <div class="nw-card">
+            <div class="nw-title">Liabilities (Debts)</div>
+            <div class="nw-value" style="color:#FB7185;">{format_chf(total_debts)} <span style="font-size:16px;">CHF</span></div>
+        </div>
+        <div class="nw-card nw-net">
+            <div class="nw-title">Total Equity</div>
+            <div class="nw-value">{format_chf(net_worth)} <span style="font-size:16px;">CHF</span></div>
+        </div>
+    </div>
+    """
+    st.markdown(nw_html, unsafe_allow_html=True)
+
 with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px; margin-bottom: 20px;'><h2 style='font-size: 32px;'>📈 PORTFOLIO TRACKING</h2></div>", unsafe_allow_html=True)
     
@@ -562,155 +729,67 @@ with tab_investments:
         show_amounts = st.checkbox("Show Real Amounts", value=False)
     
     with main_inv_container:
-        try:
-            ws_inv = sh.worksheet("Portfolio")
-            all_inv_rows = ws_inv.get_all_values()
-            
-            header_row_idx = -1
-            for i, row in enumerate(all_inv_rows):
-                row_str_lower = " ".join([str(c).lower() for c in row])
-                if "ticker" in row_str_lower or "isin" in row_str_lower:
-                    header_row_idx = i
-                    break
-                    
-            if header_row_idx != -1:
-                headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
-                data_rows = all_inv_rows[header_row_idx+1:]
-                df_inv = pd.DataFrame(data_rows, columns=headers)
-            else:
-                df_inv = pd.DataFrame()
+        cards_html = ""
+        # UI Generation from pre-calculated data
+        if enriched_portfolio_data:
+            for item in enriched_portfolio_data:
+                unit_perf_class = "text-green" if item['unit_perf'] >= 0 else "text-red"
+                unit_perf_sign = "+" if item['unit_perf'] >= 0 else ""
                 
-        except Exception as e:
-            df_inv = pd.DataFrame()
-
-        if not df_inv.empty and "Ticker / ISIN" in df_inv.columns:
-            total_value = 0.0
-            total_cost_basis = 0.0
-            total_fees = 0.0
-            cards_html = ""
-            
-            with st.spinner("Syncing live market data..."):
-                for index, row in df_inv.iterrows():
-                    ticker = str(row.get("Ticker / ISIN", "")).strip()
-                    asset_name = str(row.get("Nom", ticker))
-                    currency = str(row.get("Currency", "")).strip()
-                    
-                    qty_str = str(row.get("Units", "0")).replace(',', '.')
-                    inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
-                    fees_str = str(row.get("Fees", "0")).replace(',', '.')
-                    entry_price_str = str(row.get("Entry Price", row.get("Amount", "0"))).replace(',', '.')
-                    
-                    try: qty = float(qty_str)
-                    except ValueError: qty = 0.0
-                    
-                    try: invested = float(inv_str)
-                    except ValueError: invested = 0.0
-                    
-                    try: fees = float(fees_str)
-                    except ValueError: fees = 0.0
-                    
-                    try: entry_price = float(entry_price_str)
-                    except ValueError: entry_price = 0.0
-                    
-                    if ticker and qty > 0:
-                        try:
-                            # 1. Reliable Data Fetching
-                            stock = yf.Ticker(ticker)
-                            current_price = 0.0
-                            
-                            try:
-                                current_price = float(stock.fast_info.get('last_price', 0.0))
-                            except:
-                                pass
-                                
-                            if current_price <= 0.0:
-                                hist = stock.history(period="5d")
-                                if not hist.empty:
-                                    current_price = float(hist['Close'].iloc[-1])
-                                    
-                            if current_price <= 0.0:
-                                continue 
-                            
-                            # 2. Portfolio Calculations
-                            value = current_price * qty
-                            cost_basis = invested + fees
-                            
-                            total_value += value
-                            total_cost_basis += cost_basis
-                            total_fees += fees
-                            pnl_chf = value - cost_basis
-                            
-                            if entry_price > 0:
-                                unit_perf = ((current_price - entry_price) / entry_price) * 100
-                            else:
-                                unit_perf = 0.0
-                                
-                            unit_perf_class = "text-green" if unit_perf >= 0 else "text-red"
-                            unit_perf_sign = "+" if unit_perf >= 0 else ""
-                            
-                            # 3. Simple UI Avatars (Initials Only)
-                            clean_fb_name = asset_name.replace("'", "").replace('"', '').replace(' ', '+')
-                            logo_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true&font-size=0.4"
-                            img_tag = f'<img src="{logo_url}" class="inv-logo">'
-                            
-                            curr_disp = f" {currency}" if currency else ""
-                            
-                            if show_amounts:
-                                qty_formatted = f"{qty:.6f}".rstrip('0').rstrip('.') if qty < 1 else f"{qty:.4f}".rstrip('0').rstrip('.')
-                                price_display = f"{format_chf(value)} CHF"
-                                sub_price_display = f"Avg: {format_chf(entry_price)}{curr_disp}"
-                                pnl_sign = "+" if pnl_chf >= 0 else ""
-                                pnl_class = "text-green" if pnl_chf >= 0 else "text-red"
-                                perf_display = f"{unit_perf_sign}{unit_perf:.2f}%<br>{pnl_sign}{format_chf(pnl_chf)} CHF"
-                                ticker_display = f"{ticker} • {qty_formatted} Units"
-                            else:
-                                price_display = f"{format_chf(current_price)}{curr_disp}"
-                                sub_price_display = "Current Price"
-                                perf_display = f"{unit_perf_sign}{unit_perf:.2f}%"
-                                ticker_display = f"{ticker}"
-
-                            # Card UI Generation (Liste Classique Centrée)
-                            cards_html += f"""
-                            <div class="inv-card">
-                                <div class="inv-left">
-                                    {img_tag}
-                                    <div style="text-align: left;">
-                                        <div class="inv-name">{asset_name}</div>
-                                        <div class="inv-ticker">{ticker_display}</div>
-                                    </div>
-                                </div>
-                                <div class="inv-right">
-                                    <div class="inv-top-val">{price_display}</div>
-                                    <div class="inv-bottom-val" style="margin-top: 4px;"><span class='{unit_perf_class}'>{perf_display}</span></div>
-                                </div>
-                            </div>
-                            """
-                            
-                        except Exception:
-                            pass
-            
-            perf_total = ((total_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
-            perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
-            perf_sign = "+" if perf_total >= 0 else ""
-
-            if show_amounts:
-                main_metric_label = "TOTAL PORTFOLIO"
-                main_metric_value = f"{format_chf(total_value)} <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
-                fees_label = f"Total Fees: {format_chf(total_fees)} CHF"
-            else:
-                main_metric_label = "TOTAL PORTFOLIO"
-                main_metric_value = f"*** <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
-                fees_label = "Total Fees: *** CHF"
+                clean_fb_name = item['asset_name'].replace("'", "").replace('"', '').replace(' ', '+')
+                logo_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true&font-size=0.4"
+                img_tag = f'<img src="{logo_url}" class="inv-logo">'
                 
-            sub_metric_html = f"<span style='color:{perf_color}; font-weight:700;'>{perf_sign}{perf_total:.2f}%</span><br><span style='font-size: 11px; color: #94A3B8; text-transform: uppercase;'>{fees_label}</span>"
+                curr_disp = f" {item['currency']}" if item['currency'] else ""
+                
+                if show_amounts:
+                    qty_formatted = f"{item['qty']:.6f}".rstrip('0').rstrip('.') if item['qty'] < 1 else f"{item['qty']:.4f}".rstrip('0').rstrip('.')
+                    price_display = f"{format_chf(item['value'])} CHF"
+                    pnl_sign = "+" if item['pnl_chf'] >= 0 else ""
+                    perf_display = f"{unit_perf_sign}{item['unit_perf']:.2f}%<br>{pnl_sign}{format_chf(item['pnl_chf'])} CHF"
+                    ticker_display = f"{item['ticker']} • {qty_formatted} Units"
+                else:
+                    price_display = f"{format_chf(item['current_price'])}{curr_disp}"
+                    perf_display = f"{unit_perf_sign}{item['unit_perf']:.2f}%"
+                    ticker_display = f"{item['ticker']}"
 
-            st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>{main_metric_label}</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br>{sub_metric_html}</div></div><div class="hero-main-value">{main_metric_value}</div></div>""", unsafe_allow_html=True)
-            
-            if cards_html:
-                st.markdown(cards_html, unsafe_allow_html=True)
+                cards_html += f"""
+                <div class="inv-card">
+                    <div class="inv-left">
+                        {img_tag}
+                        <div style="text-align: left;">
+                            <div class="inv-name">{item['asset_name']}</div>
+                            <div class="inv-ticker">{ticker_display}</div>
+                        </div>
+                    </div>
+                    <div class="inv-right">
+                        <div class="inv-top-val">{price_display}</div>
+                        <div class="inv-bottom-val" style="margin-top: 4px;"><span class='{unit_perf_class}'>{perf_display}</span></div>
+                    </div>
+                </div>
+                """
+                
+        # Main Metrics UI
+        perf_total = ((total_portfolio_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
+        perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
+        perf_sign = "+" if perf_total >= 0 else ""
 
+        if show_amounts:
+            main_metric_label = "TOTAL PORTFOLIO"
+            main_metric_value = f"{format_chf(total_portfolio_value)} <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
+            fees_label = f"Total Fees: {format_chf(total_fees)} CHF"
         else:
-            st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>TOTAL PORTFOLIO</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br><span style="color:#34D399; font-weight:700;">+0.00%</span></div></div><div class="hero-main-value">0.00 <span style="font-size:24px; color:#60A5FA;">CHF</span></div></div>""", unsafe_allow_html=True)
+            main_metric_label = "TOTAL PORTFOLIO"
+            main_metric_value = f"*** <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
+            fees_label = "Total Fees: *** CHF"
+            
+        sub_metric_html = f"<span style='color:{perf_color}; font-weight:700;'>{perf_sign}{perf_total:.2f}%</span><br><span style='font-size: 11px; color: #94A3B8; text-transform: uppercase;'>{fees_label}</span>"
+
+        st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>{main_metric_label}</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br>{sub_metric_html}</div></div><div class="hero-main-value">{main_metric_value}</div></div>""", unsafe_allow_html=True)
+        
+        if cards_html:
+            st.markdown(cards_html, unsafe_allow_html=True)
+        elif not enriched_portfolio_data:
             st.info("💡 The 'Portfolio' tab is missing or empty. Make sure columns 'Nom', 'Ticker / ISIN', 'Amount' (or 'Entry Price'), 'Units', 'Fees', and 'Total Invested' are present.")
 
 st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
