@@ -668,35 +668,32 @@ with tab_dashboard:
     # --- NET WORTH SNAPSHOT RENDER ---
     st.markdown("<h3 style='font-size: 22px; color: #FFF; margin-top: 50px; margin-bottom: 20px; text-align: center;'><i class='ph ph-scales'></i> Net Worth Snapshot</h3>", unsafe_allow_html=True)
     
-    nw_html = f"""
-    <div class="hero-card" style="margin-bottom: 10px; border-color: rgba(16, 185, 129, 0.4); background: linear-gradient(160deg, rgba(16, 185, 129, 0.1) 0%, rgba(3, 7, 18, 0.8) 100%);">
-        <div class="hero-top-metrics" style="justify-content: center; margin-bottom: 15px;">
-            <span style="color:#34D399; letter-spacing: 2px;">TOTAL NET WORTH</span>
-        </div>
-        <div class="hero-main-value" style="color:#FFFFFF; margin-bottom: 30px;">
-            {format_chf(total_net_worth)} <span style="font-size:20px; color:#34D399;">CHF</span>
-        </div>
-        
-        <div class="networth-container">
-            <div class="nw-card">
-                <div class="nw-title">Cash (Rem.)</div>
-                <div class="nw-value" style="color:#38BDF8;">{format_chf(cash_remaining)}</div>
-            </div>
-            <div class="nw-card">
-                <div class="nw-title">Emergency</div>
-                <div class="nw-value" style="color:#818CF8;">{format_chf(emergency_fund)}</div>
-            </div>
-            <div class="nw-card">
-                <div class="nw-title">Investments</div>
-                <div class="nw-value" style="color:#A78BFA;">{format_chf(total_portfolio_value)}</div>
-            </div>
-            <div class="nw-card">
-                <div class="nw-title">Debts</div>
-                <div class="nw-value" style="color:#FB7185;">{format_chf(total_debts)}</div>
-            </div>
-        </div>
-    </div>
-    """
+    nw_html = f"""<div class="hero-card" style="margin-bottom: 10px; border-color: rgba(16, 185, 129, 0.4); background: linear-gradient(160deg, rgba(16, 185, 129, 0.1) 0%, rgba(3, 7, 18, 0.8) 100%);">
+<div class="hero-top-metrics" style="justify-content: center; margin-bottom: 15px;">
+<span style="color:#34D399; letter-spacing: 2px;">TOTAL NET WORTH</span>
+</div>
+<div class="hero-main-value" style="color:#FFFFFF; margin-bottom: 30px;">
+{format_chf(total_net_worth)} <span style="font-size:20px; color:#34D399;">CHF</span>
+</div>
+<div class="networth-container">
+<div class="nw-card">
+<div class="nw-title">Cash (Rem.)</div>
+<div class="nw-value" style="color:#38BDF8;">{format_chf(cash_remaining)}</div>
+</div>
+<div class="nw-card">
+<div class="nw-title">Emergency</div>
+<div class="nw-value" style="color:#818CF8;">{format_chf(emergency_fund)}</div>
+</div>
+<div class="nw-card">
+<div class="nw-title">Investments</div>
+<div class="nw-value" style="color:#A78BFA;">{format_chf(total_portfolio_value)}</div>
+</div>
+<div class="nw-card">
+<div class="nw-title">Debts</div>
+<div class="nw-value" style="color:#FB7185;">{format_chf(total_debts)}</div>
+</div>
+</div>
+</div>"""
     st.markdown(nw_html, unsafe_allow_html=True)
 
     # --- EVOLUTION TRACKER (Mock Data for Visual Demonstration) ---
@@ -767,21 +764,19 @@ with tab_investments:
                     perf_display = f"{unit_perf_sign}{item['unit_perf']:.2f}%"
                     ticker_display = f"{item['ticker']}"
 
-                cards_html += f"""
-                <div class="inv-card">
-                    <div class="inv-left">
-                        {img_tag}
-                        <div style="text-align: left;">
-                            <div class="inv-name">{item['asset_name']}</div>
-                            <div class="inv-ticker">{ticker_display}</div>
-                        </div>
-                    </div>
-                    <div class="inv-right">
-                        <div class="inv-top-val">{price_display}</div>
-                        <div class="inv-bottom-val" style="margin-top: 4px;"><span class='{unit_perf_class}'>{perf_display}</span></div>
-                    </div>
-                </div>
-                """
+                cards_html += f"""<div class="inv-card">
+<div class="inv-left">
+{img_tag}
+<div style="text-align: left;">
+<div class="inv-name">{item['asset_name']}</div>
+<div class="inv-ticker">{ticker_display}</div>
+</div>
+</div>
+<div class="inv-right">
+<div class="inv-top-val">{price_display}</div>
+<div class="inv-bottom-val" style="margin-top: 4px;"><span class='{unit_perf_class}'>{perf_display}</span></div>
+</div>
+</div>"""
                 
         # Main Metrics UI
         perf_total = ((total_portfolio_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
