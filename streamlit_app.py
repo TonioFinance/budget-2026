@@ -299,14 +299,20 @@ def parse_amount(val):
 def format_chf(value):
     return f"{value:,.2f}".replace(",", "'")
 
+# Convertit intelligemment les dates JJ/MM ou JJ.MM avec ou sans année
 def parse_trend_date(d_str, year):
     d_str = str(d_str).strip().replace('.', '/')
     if not d_str: return pd.NaT
+    
+    # S'il y a déjà un format complet (ex: 2026-03-13 ou 13/03/2026)
     if '-' in d_str or d_str.count('/') == 2:
         return pd.to_datetime(d_str, dayfirst=True, errors='coerce')
+        
+    # Format "Jour/Mois" (ex: 14/03) -> on ajoute l'année dynamiquement
     parts = d_str.split('/')
     if len(parts) == 2:
         return pd.to_datetime(f"{parts[0]}/{parts[1]}/{year}", format='%d/%m/%Y', errors='coerce')
+        
     return pd.to_datetime(d_str, errors='coerce')
 
 def get_progress_html(name, reel, prevu):
@@ -374,6 +380,7 @@ if col_var != -1:
 
 prevu_var, reel_var = sum(c["prevu"] for c in category_progress), sum(c["reel"] for c in category_progress)
 
+# Dynamic Extraction for Recent Transactions
 row_history_start = -1
 for i, row in enumerate(all_rows):
     if len(row) > 1 and str(row[0]).strip().lower() == "date":
@@ -391,6 +398,7 @@ if row_history_start != -1:
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
+# EXCTRACTION STRICTE DU TABLEAU JOURNALIER
 daily_summary_data = []
 if len(all_rows) > 149:
     trend_rows = all_rows[149:250]
@@ -401,6 +409,7 @@ if len(all_rows) > 149:
             if date_val and date_val.lower() != "date" and "total" not in date_val.lower() and "dépense" not in date_val.lower() and "depense" not in date_val.lower():
                 daily_summary_data.append({"Date": date_val, "Amount": amt_val})
 
+
 # --- PORTFOLIO GLOBAL EXTRACTION ---
 total_portfolio_value = 0.0
 total_cost_basis = 0.0
@@ -410,6 +419,7 @@ enriched_portfolio_data = []
 try:
     ws_inv = sh.worksheet("Portfolio")
     all_inv_rows = ws_inv.get_all_values()
+    
     header_row_idx = -1
     for i, row in enumerate(all_inv_rows):
         row_str_lower = " ".join([str(c).lower() for c in row])
@@ -420,14 +430,17 @@ try:
     if header_row_idx != -1:
         headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
         df_inv = pd.DataFrame(all_inv_rows[header_row_idx+1:], columns=headers)
+        
         for index, row in df_inv.iterrows():
             ticker = str(row.get("Ticker / ISIN", "")).strip()
             asset_name = str(row.get("Nom", ticker))
             currency = str(row.get("Currency", "")).strip()
+            
             qty_str = str(row.get("Units", "0")).replace(',', '.')
             inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
             fees_str = str(row.get("Fees", "0")).replace(',', '.')
             entry_price_str = str(row.get("Entry Price", row.get("Amount", "0"))).replace(',', '.')
+            
             try: qty = float(qty_str)
             except ValueError: qty = 0.0
             try: invested = float(inv_str)
@@ -436,45 +449,66 @@ try:
             except ValueError: fees = 0.0
             try: entry_price = float(entry_price_str)
             except ValueError: entry_price = 0.0
+            
             if ticker and qty > 0:
                 try:
                     stock = yf.Ticker(ticker)
                     current_price = 0.0
                     try: current_price = float(stock.fast_info.get('last_price', 0.0))
                     except: pass
+                        
                     if current_price <= 0.0:
                         hist = stock.history(period="5d")
                         if not hist.empty: current_price = float(hist['Close'].iloc[-1])
+                            
                     if current_price <= 0.0: continue 
+                    
                     value = current_price * qty
                     cost_basis = invested + fees
+                    
                     total_portfolio_value += value
                     total_cost_basis += cost_basis
                     total_fees += fees
                     pnl_chf = value - cost_basis
+                    
                     if entry_price > 0: unit_perf = ((current_price - entry_price) / entry_price) * 100
                     else: unit_perf = 0.0
+                        
                     enriched_portfolio_data.append({
                         "asset_name": asset_name, "ticker": ticker, "currency": currency,
                         "qty": qty, "current_price": current_price, "value": value, 
                         "entry_price": entry_price, "pnl_chf": pnl_chf, "unit_perf": unit_perf
                     })
-                except Exception: pass
-except Exception: pass
+                except Exception:
+                    pass
+except Exception:
+    pass
 
-# --- NET WORTH EXTRACTION ---
+# --- NET WORTH EXTRACTION (DIRECT TARGETING) ---
+# 1. Cash Remaining (J42) -> Row 41, Col 9
 cash_remaining = 0.0
-if len(all_rows) > 41 and len(all_rows[41]) > 9: cash_remaining = parse_amount(all_rows[41][9])
+if len(all_rows) > 41 and len(all_rows[41]) > 9:
+    cash_remaining = parse_amount(all_rows[41][9])
+
+# 2. Emergency Fund (C10) -> Row 9, Col 2
 emergency_fund = 0.0
-if len(all_rows) > 9 and len(all_rows[9]) > 2: emergency_fund = parse_amount(all_rows[9][2])
+if len(all_rows) > 9 and len(all_rows[9]) > 2:
+    emergency_fund = parse_amount(all_rows[9][2])
+
+# 3. Debts (J59) -> Row 58, Col 9
 total_debts = 0.0
-if len(all_rows) > 58 and len(all_rows[58]) > 9: total_debts = parse_amount(all_rows[58][9])
+if len(all_rows) > 58 and len(all_rows[58]) > 9:
+    total_debts = parse_amount(all_rows[58][9])
+
+# 4. Total Net Worth
 total_net_worth = cash_remaining + emergency_fund + total_portfolio_value - total_debts
+
 
 # --- TABS SYSTEM ---
 tab_dashboard, tab_investments = st.tabs(["Dashboard", "Investments"])
 
 with tab_dashboard:
+    # --- DASHBOARD LOGIC ---
     restant = prevu_var - reel_var
     percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% consumed</div>" if percent >= 0.80 else f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% consumed</div>" if percent >= 0.66 else f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> On track</div>"
@@ -482,32 +516,26 @@ with tab_dashboard:
     st.markdown(f"""<div style="text-align: center; margin-bottom: 30px;"><div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">OVERVIEW</div><div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div></div>""", unsafe_allow_html=True)
     bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)' if percent >= 0.8 else 'linear-gradient(90deg, #B45309, #F59E0B)' if percent >= 0.66 else 'linear-gradient(90deg, #059669, #10B981)'
 
-    # --- INVERSION : REMAINING EN GRAND ---
-    st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>SPENT</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(reel_var)} CHF</span></div><div><span>PLANNED</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(prevu_var)} CHF</span></div></div><div class="hero-main-value">{format_chf(restant)} <span style="font-size:24px; color:#60A5FA;">CHF REMAINING</span></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;"><div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div></div>{insight_html}</div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>REMAINING</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(restant)} CHF</span></div><div><span>PLANNED</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(prevu_var)} CHF</span></div></div><div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;"><div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div></div>{insight_html}</div>""", unsafe_allow_html=True)
 
     form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
     
     with st.expander("ADD NEW EXPENSE", expanded=False):
         with st.form("add_expense_form", clear_on_submit=True):
-            # Ajout du champ Date
-            expense_date = st.date_input("Date", value=datetime.now())
             lib = st.text_input("Merchant", placeholder="Apple, Migros...")
-            # Montant vide par défaut (None)
-            amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f", value=None)
+            amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
             cat_en = st.selectbox("Category", list(form_cat_map.keys()))
             note = st.text_input("Note")
             
             submitted = st.form_submit_button("CONFIRM TRANSACTION", use_container_width=True)
             if submitted:
-                if lib and amt is not None and amt > 0:
+                if lib and amt > 0:
                     col_b = ws.col_values(2)
                     target = 60
+                    # Ne jamais dépasser la ligne 149 pour ne pas écraser ton tableau journalier
                     for r in range(60, 149):
                         if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
-                    
-                    # Utilisation de la date saisie
-                    formatted_date = expense_date.strftime("%d/%m/%Y")
-                    new_data = [[formatted_date, lib, amt, note, form_cat_map[cat_en]]]
+                    new_data = [[datetime.now().strftime("%d/%m/%Y"), lib, amt, note, form_cat_map[cat_en]]]
                     ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
                     
                     st.toast("Expenses added! ✅")
@@ -526,75 +554,205 @@ with tab_dashboard:
                 for exp in raw_expenses[::-1]: st.markdown(get_transaction_html(exp["Date"], exp["Merchant"], format_chf(exp["Amount"]) + " CHF", exp["Category"]), unsafe_allow_html=True)
 
     st.divider()
+    
     st.markdown("<div class='chart-container'><h3 style='color:#FFF; font-size:22px; margin-bottom:15px;'><i class='ph ph-trend-up'></i> Spending Trend</h3>", unsafe_allow_html=True)
+    
     fig = go.Figure()
+    
     if daily_summary_data:
         df_trends = pd.DataFrame(daily_summary_data)
         curr_y = now.year
+        
+        # Application du nouveau Parseur robuste (Gère les formats JJ/MM et YYYY-MM-DD natifs)
         df_trends['DateObj'] = df_trends['Date'].apply(lambda x: parse_trend_date(x, curr_y))
         df_trends = df_trends.dropna(subset=['DateObj']).sort_values('DateObj')
+        
         if not df_trends.empty:
             curr_m = list(months_map.values()).index(selected_month) + 1
-            start_d = datetime(curr_y, curr_m, 1)
+            start_d = datetime(curr_y, curr_m, 15)
             end_m = curr_m + 1 if curr_m < 12 else 1
             end_y = curr_y if curr_m < 12 else curr_y + 1
-            end_d = (datetime(end_y, end_m, 1) - timedelta(days=1))
+            end_d = datetime(end_y, end_m, 15)
+            
+            # CUMUL DES DEPENSES
             df_trends['Cumulative'] = df_trends['Amount'].cumsum()
+            
             ideal_daily = prevu_var / 30 if prevu_var > 0 else 0
             df_trends['Days_Passed'] = (df_trends['DateObj'] - start_d).dt.days + 1
             df_trends['Days_Passed'] = df_trends['Days_Passed'].clip(lower=0) 
             df_trends['Ideal'] = df_trends['Days_Passed'] * ideal_daily
+            
             df_trends['Safe'] = df_trends.apply(lambda row: min(row['Cumulative'], row['Ideal']), axis=1)
             df_trends['Over'] = df_trends.apply(lambda row: max(row['Cumulative'] - row['Ideal'], 0), axis=1)
-            last_valid_idx = df_trends[df_trends['Amount'] > 0].index.max()
-            df_plot = df_trends.loc[:last_valid_idx] if pd.notna(last_valid_idx) else df_trends
-            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Budget', line=dict(color='#64748B', width=2, dash='dash')))
-            fig.add_trace(go.Scatter(x=df_plot['DateObj'], y=df_plot['Safe'], mode='lines', stackgroup='one', name='On Track', line=dict(color='#10B981', width=0), fillcolor='rgba(16, 185, 129, 0.3)'))
-            fig.add_trace(go.Scatter(x=df_plot['DateObj'], y=df_plot['Over'], mode='lines', stackgroup='one', name='Overbudget', line=dict(color='#E11D48', width=0), fillcolor='rgba(225, 29, 72, 0.4)'))
-            fig.add_trace(go.Scatter(x=df_plot['DateObj'], y=df_plot['Cumulative'], mode='lines', name='Actual', line=dict(color='#F8FAFC', width=2), showlegend=False))
             
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=300, margin=dict(t=10, b=10, l=10, r=10), xaxis=dict(showgrid=False, color="#94A3B8"), yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#F8FAFC")))
+            last_valid_idx = df_trends[df_trends['Amount'] > 0].index.max()
+            if pd.notna(last_valid_idx):
+                df_plot = df_trends.loc[:last_valid_idx]
+            else:
+                df_plot = df_trends
+
+            # 1. Ligne Idéale
+            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Budget Limit', line=dict(color='#64748B', width=2, dash='dash')))
+            
+            # 2. Zone Verte
+            fig.add_trace(go.Scatter(
+                x=df_plot['DateObj'], 
+                y=df_plot['Safe'], 
+                mode='lines', 
+                stackgroup='one',
+                name='On Track', 
+                line=dict(color='#10B981', width=0), 
+                fillcolor='rgba(16, 185, 129, 0.3)' 
+            ))
+            
+            # 3. Zone Rouge
+            fig.add_trace(go.Scatter(
+                x=df_plot['DateObj'], 
+                y=df_plot['Over'], 
+                mode='lines', 
+                stackgroup='one',
+                name='Overbudget', 
+                line=dict(color='#E11D48', width=0), 
+                fillcolor='rgba(225, 29, 72, 0.4)' 
+            ))
+            
+            # 4. Ligne de contour blanche
+            fig.add_trace(go.Scatter(
+                x=df_plot['DateObj'], 
+                y=df_plot['Cumulative'], 
+                mode='lines', 
+                name='Actual Spend', 
+                line=dict(color='#F8FAFC', width=2), 
+                showlegend=False
+            ))
+            
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)', 
+        plot_bgcolor='rgba(0,0,0,0)', 
+        height=300, 
+        margin=dict(t=10, b=10, l=10, r=10), 
+        xaxis=dict(showgrid=False, color="#94A3B8"), 
+        yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8"), 
+        showlegend=True, 
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#F8FAFC"))
+    )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
     
-    st.markdown("<div class='chart-container'><h3 style='color:#FFF; font-size:22px; margin-bottom:15px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
+    st.markdown("<div class='chart-container'><h3 style='color:#FFF; font-size:22px; margin-bottom:5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
     if category_progress:
         labels = [c["name"] for c in category_progress if c["reel"] > 0]
         values = [c["reel"] for c in category_progress if c["reel"] > 0]
         if values:
-            fig_pie = go.Figure(data=[go.Pie(labels=labels, values=values, hole=.75, marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']), textinfo='label+percent', textfont=dict(color='#FFFFFF', size=12), hoverinfo='label+value')])
-            fig_pie.update_layout(showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', height=350, margin=dict(t=20, b=20, l=20, r=20), annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font=dict(color="#FFFFFF"))])
+            # Donut chart avec labels attachés directement aux parts
+            fig_pie = go.Figure(data=[go.Pie(
+                labels=labels, 
+                values=values, 
+                hole=.75, 
+                marker=dict(colors=['#3B82F6', '#60A5FA', '#93C5FD', '#1D4ED8', '#2563EB', '#1E3A8A']),
+                textinfo='label+percent',
+                textfont=dict(color='#FFFFFF', size=12),
+                hoverinfo='label+value'
+            )])
+            fig_pie.update_layout(
+                showlegend=False, # Désactive la légende séparée en bas (plus de texte coupé !)
+                paper_bgcolor='rgba(0,0,0,0)', 
+                plot_bgcolor='rgba(0,0,0,0)', 
+                height=350, 
+                margin=dict(t=20, b=20, l=20, r=20), 
+                annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font=dict(color="#FFFFFF"))]
+            )
             st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # --- NET WORTH SNAPSHOT RENDER ---
     st.markdown("<h3 style='font-size: 22px; color: #FFF; margin-top: 50px; margin-bottom: 20px; text-align: center;'><i class='ph ph-scales'></i> Net Worth Snapshot</h3>", unsafe_allow_html=True)
+    
     nw_html = f"""<div class="hero-card" style="margin-bottom: 10px; border-color: rgba(16, 185, 129, 0.4); background: linear-gradient(160deg, rgba(16, 185, 129, 0.1) 0%, rgba(3, 7, 18, 0.8) 100%);">
-<div class="hero-top-metrics" style="justify-content: center; margin-bottom: 15px;"><span style="color:#34D399; letter-spacing: 2px;">TOTAL NET WORTH</span></div>
-<div class="hero-main-value" style="color:#FFFFFF; margin-bottom: 30px;">{format_chf(total_net_worth)} <span style="font-size:20px; color:#34D399;">CHF</span></div>
+<div class="hero-top-metrics" style="justify-content: center; margin-bottom: 15px;">
+<span style="color:#34D399; letter-spacing: 2px;">TOTAL NET WORTH</span>
+</div>
+<div class="hero-main-value" style="color:#FFFFFF; margin-bottom: 30px;">
+{format_chf(total_net_worth)} <span style="font-size:20px; color:#34D399;">CHF</span>
+</div>
 <div class="networth-container">
-<div class="nw-card"><div class="nw-title">Cash (Rem.)</div><div class="nw-value" style="color:#38BDF8;">{format_chf(cash_remaining)}</div></div>
-<div class="nw-card"><div class="nw-title">Emergency</div><div class="nw-value" style="color:#818CF8;">{format_chf(emergency_fund)}</div></div>
-<div class="nw-card"><div class="nw-title">Investments</div><div class="nw-value" style="color:#A78BFA;">{format_chf(total_portfolio_value)}</div></div>
-<div class="nw-card"><div class="nw-title">Debts</div><div class="nw-value" style="color:#FB7185;">{format_chf(total_debts)}</div></div>
-</div></div>"""
+<div class="nw-card">
+<div class="nw-title">Cash (Rem.)</div>
+<div class="nw-value" style="color:#38BDF8;">{format_chf(cash_remaining)}</div>
+</div>
+<div class="nw-card">
+<div class="nw-title">Emergency</div>
+<div class="nw-value" style="color:#818CF8;">{format_chf(emergency_fund)}</div>
+</div>
+<div class="nw-card">
+<div class="nw-title">Investments</div>
+<div class="nw-value" style="color:#A78BFA;">{format_chf(total_portfolio_value)}</div>
+</div>
+<div class="nw-card">
+<div class="nw-title">Debts</div>
+<div class="nw-value" style="color:#FB7185;">{format_chf(total_debts)}</div>
+</div>
+</div>
+</div>"""
     st.markdown(nw_html, unsafe_allow_html=True)
+
+    # --- EVOLUTION TRACKER (Mock Data for Visual Demonstration) ---
+    st.markdown("<div class='chart-container' style='margin-top: 15px;'><h3 style='color:#FFF; font-size:18px; margin-bottom:5px;'><i class='ph ph-chart-line-up'></i> Evolution Tracker</h3><p style='font-size: 12px; color: #64748B;'>Simulated data based on current net worth. Connect to a history tab later.</p>", unsafe_allow_html=True)
+    
+    # Generate 6 months of mock dates ending today
+    mock_dates = [(now.replace(day=1) - timedelta(days=30 * i)).strftime('%b %Y') for i in range(5, -1, -1)]
+    # Create a nice looking upward curve ending at the current real net worth
+    mock_values = [total_net_worth * 0.75, total_net_worth * 0.78, total_net_worth * 0.85, total_net_worth * 0.82, total_net_worth * 0.93, total_net_worth]
+    
+    fig_nw = go.Figure()
+    fig_nw.add_trace(go.Scatter(
+        x=mock_dates, 
+        y=mock_values, 
+        mode='lines+markers',
+        name='Net Worth',
+        line=dict(color='#34D399', width=3, shape='spline'),
+        marker=dict(size=8, color='#FFFFFF', line=dict(width=2, color='#34D399')),
+        fill='tozeroy',
+        fillcolor='rgba(52, 211, 153, 0.1)'
+    ))
+    
+    fig_nw.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)', 
+        plot_bgcolor='rgba(0,0,0,0)', 
+        height=250, 
+        margin=dict(t=10, b=10, l=10, r=10), 
+        xaxis=dict(showgrid=False, color="#94A3B8"), 
+        yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8", tickprefix="CHF "), 
+        showlegend=False
+    )
+    st.plotly_chart(fig_nw, use_container_width=True, config={'displayModeBar': False})
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 with tab_investments:
     st.markdown("<div style='text-align: center; margin-top: 20px; margin-bottom: 20px;'><h2 style='font-size: 32px;'>📈 PORTFOLIO TRACKING</h2></div>", unsafe_allow_html=True)
+    
     main_inv_container = st.container()
+    
     st.write("<br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
-    with col1: show_amounts = st.checkbox("Show Real Amounts", value=False)
+    with col1:
+        show_amounts = st.checkbox("Show Real Amounts", value=False)
+    
     with main_inv_container:
         cards_html = ""
+        # UI Generation from pre-calculated data
         if enriched_portfolio_data:
             for item in enriched_portfolio_data:
                 unit_perf_class = "text-green" if item['unit_perf'] >= 0 else "text-red"
                 unit_perf_sign = "+" if item['unit_perf'] >= 0 else ""
+                
                 clean_fb_name = item['asset_name'].replace("'", "").replace('"', '').replace(' ', '+')
                 logo_url = f"https://ui-avatars.com/api/?name={clean_fb_name}&background=0F172A&color=60A5FA&rounded=true&bold=true&font-size=0.4"
                 img_tag = f'<img src="{logo_url}" class="inv-logo">'
+                
                 curr_disp = f" {item['currency']}" if item['currency'] else ""
+                
                 if show_amounts:
                     qty_formatted = f"{item['qty']:.6f}".rstrip('0').rstrip('.') if item['qty'] < 1 else f"{item['qty']:.4f}".rstrip('0').rstrip('.')
                     price_display = f"{format_chf(item['value'])} CHF"
@@ -605,11 +763,26 @@ with tab_investments:
                     price_display = f"{format_chf(item['current_price'])}{curr_disp}"
                     perf_display = f"{unit_perf_sign}{item['unit_perf']:.2f}%"
                     ticker_display = f"{item['ticker']}"
-                cards_html += f"""<div class="inv-card"><div class="inv-left">{img_tag}<div style="text-align: left;"><div class="inv-name">{item['asset_name']}</div><div class="inv-ticker">{ticker_display}</div></div></div><div class="inv-right"><div class="inv-top-val">{price_display}</div><div class="inv-bottom-val" style="margin-top: 4px;"><span class='{unit_perf_class}'>{perf_display}</span></div></div></div>"""
-        
+
+                cards_html += f"""<div class="inv-card">
+<div class="inv-left">
+{img_tag}
+<div style="text-align: left;">
+<div class="inv-name">{item['asset_name']}</div>
+<div class="inv-ticker">{ticker_display}</div>
+</div>
+</div>
+<div class="inv-right">
+<div class="inv-top-val">{price_display}</div>
+<div class="inv-bottom-val" style="margin-top: 4px;"><span class='{unit_perf_class}'>{perf_display}</span></div>
+</div>
+</div>"""
+                
+        # Main Metrics UI
         perf_total = ((total_portfolio_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
         perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
         perf_sign = "+" if perf_total >= 0 else ""
+
         if show_amounts:
             main_metric_label = "TOTAL PORTFOLIO"
             main_metric_value = f"{format_chf(total_portfolio_value)} <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
@@ -618,8 +791,14 @@ with tab_investments:
             main_metric_label = "TOTAL PORTFOLIO"
             main_metric_value = f"*** <span style='font-size:24px; color:#60A5FA;'>CHF</span>"
             fees_label = "Total Fees: *** CHF"
+            
         sub_metric_html = f"<span style='color:{perf_color}; font-weight:700;'>{perf_sign}{perf_total:.2f}%</span><br><span style='font-size: 11px; color: #94A3B8; text-transform: uppercase;'>{fees_label}</span>"
+
         st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>{main_metric_label}</span></div><div style="text-align: right;"><span>PERFORMANCE</span><br>{sub_metric_html}</div></div><div class="hero-main-value">{main_metric_value}</div></div>""", unsafe_allow_html=True)
-        if cards_html: st.markdown(cards_html, unsafe_allow_html=True)
+        
+        if cards_html:
+            st.markdown(cards_html, unsafe_allow_html=True)
+        elif not enriched_portfolio_data:
+            st.info("💡 The 'Portfolio' tab is missing or empty. Make sure columns 'Nom', 'Ticker / ISIN', 'Amount' (or 'Entry Price'), 'Units', 'Fees', and 'Total Invested' are present.")
 
 st.sidebar.caption(f"Network Secure • Last sync: {datetime.now().strftime('%H:%M')}")
