@@ -291,28 +291,25 @@ st.markdown("""
 
 # --- FORMATTING HELPERS ---
 def parse_amount(val):
-    if not val: return 0.0
+    if not val or str(val).lower() in ["nan", "none", ""]: return 0.0
     cleaned = str(val).upper().replace("CHF", "").replace(" ", "").replace(" ", "").replace("'", "").replace(",", ".").strip()
     try: return float(cleaned)
     except ValueError: return 0.0
 
 def format_chf(value):
-    return f"{value:,.2f}".replace(",", "'")
+    try:
+        return f"{float(value):,.2f}".replace(",", "'")
+    except ValueError:
+        return "0.00"
 
-# Convertit intelligemment les dates JJ/MM ou JJ.MM avec ou sans année
 def parse_trend_date(d_str, year):
     d_str = str(d_str).strip().replace('.', '/')
     if not d_str: return pd.NaT
-    
-    # S'il y a déjà un format complet (ex: 2026-03-13 ou 13/03/2026)
     if '-' in d_str or d_str.count('/') == 2:
         return pd.to_datetime(d_str, dayfirst=True, errors='coerce')
-        
-    # Format "Jour/Mois" (ex: 14/03) -> on ajoute l'année dynamiquement
     parts = d_str.split('/')
     if len(parts) == 2:
         return pd.to_datetime(f"{parts[0]}/{parts[1]}/{year}", format='%d/%m/%Y', errors='coerce')
-        
     return pd.to_datetime(d_str, errors='coerce')
 
 def get_progress_html(name, reel, prevu):
@@ -410,7 +407,7 @@ if len(all_rows) > 149:
                 daily_summary_data.append({"Date": date_val, "Amount": amt_val})
 
 
-# --- PORTFOLIO GLOBAL EXTRACTION ---
+# --- PORTFOLIO GLOBAL EXTRACTION (WITH ANTI-NAN SAFEGUARDS) ---
 total_portfolio_value = 0.0
 total_cost_basis = 0.0
 total_fees = 0.0
@@ -433,35 +430,39 @@ try:
         
         for index, row in df_inv.iterrows():
             ticker = str(row.get("Ticker / ISIN", "")).strip()
+            
+            # Skip empty tickers or NaN strings
+            if not ticker or ticker.lower() in ["nan", "none"]:
+                continue
+                
             asset_name = str(row.get("Nom", ticker))
             currency = str(row.get("Currency", "")).strip()
             
-            qty_str = str(row.get("Units", "0")).replace(',', '.')
-            inv_str = str(row.get("Total Invested", "0")).replace(',', '.')
-            fees_str = str(row.get("Fees", "0")).replace(',', '.')
-            entry_price_str = str(row.get("Entry Price", row.get("Amount", "0"))).replace(',', '.')
+            qty = parse_amount(row.get("Units", "0"))
+            invested = parse_amount(row.get("Total Invested", "0"))
+            fees = parse_amount(row.get("Fees", "0"))
+            entry_price = parse_amount(row.get("Entry Price", row.get("Amount", "0")))
             
-            try: qty = float(qty_str)
-            except ValueError: qty = 0.0
-            try: invested = float(inv_str)
-            except ValueError: invested = 0.0
-            try: fees = float(fees_str)
-            except ValueError: fees = 0.0
-            try: entry_price = float(entry_price_str)
-            except ValueError: entry_price = 0.0
-            
-            if ticker and qty > 0:
+            if qty > 0:
                 try:
                     stock = yf.Ticker(ticker)
                     current_price = 0.0
-                    try: current_price = float(stock.fast_info.get('last_price', 0.0))
+                    
+                    # 1. Attempt fast_info
+                    try: 
+                        fast_price = stock.fast_info.get('last_price', 0.0)
+                        if pd.notna(fast_price): current_price = float(fast_price)
                     except: pass
                         
-                    if current_price <= 0.0:
+                    # 2. Attempt history if fast_info fails or returns 0
+                    if current_price <= 0.0 or pd.isna(current_price):
                         hist = stock.history(period="5d")
-                        if not hist.empty: current_price = float(hist['Close'].iloc[-1])
+                        if not hist.empty: 
+                            hist_price = float(hist['Close'].iloc[-1])
+                            if pd.notna(hist_price): current_price = hist_price
                             
-                    if current_price <= 0.0: continue 
+                    # 3. Final NaN Check
+                    if pd.isna(current_price): current_price = 0.0
                     
                     value = current_price * qty
                     cost_basis = invested + fees
@@ -479,7 +480,7 @@ try:
                         "qty": qty, "current_price": current_price, "value": value, 
                         "entry_price": entry_price, "pnl_chf": pnl_chf, "unit_perf": unit_perf
                     })
-                except Exception:
+                except Exception as e:
                     pass
 except Exception:
     pass
@@ -516,26 +517,30 @@ with tab_dashboard:
     st.markdown(f"""<div style="text-align: center; margin-bottom: 30px;"><div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">OVERVIEW</div><div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div></div>""", unsafe_allow_html=True)
     bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)' if percent >= 0.8 else 'linear-gradient(90deg, #B45309, #F59E0B)' if percent >= 0.66 else 'linear-gradient(90deg, #059669, #10B981)'
 
-    st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>REMAINING</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(restant)} CHF</span></div><div><span>PLANNED</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(prevu_var)} CHF</span></div></div><div class="hero-main-value">{format_chf(reel_var)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;"><div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div></div>{insight_html}</div>""", unsafe_allow_html=True)
+    # Modification: Remaining est la valeur principale, Spent est en haut à gauche
+    st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>SPENT</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(reel_var)} CHF</span></div><div><span>PLANNED</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(prevu_var)} CHF</span></div></div><div class="hero-main-value">{format_chf(restant)} <span style="font-size:24px; color:#60A5FA;">CHF REMAINING</span></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;"><div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div></div>{insight_html}</div>""", unsafe_allow_html=True)
 
     form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
     
     with st.expander("ADD NEW EXPENSE", expanded=False):
         with st.form("add_expense_form", clear_on_submit=True):
+            expense_date = st.date_input("Date", value=datetime.now())
             lib = st.text_input("Merchant", placeholder="Apple, Migros...")
-            amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f")
+            amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f", value=None)
             cat_en = st.selectbox("Category", list(form_cat_map.keys()))
             note = st.text_input("Note")
             
             submitted = st.form_submit_button("CONFIRM TRANSACTION", use_container_width=True)
             if submitted:
-                if lib and amt > 0:
+                if lib and amt is not None and amt > 0:
                     col_b = ws.col_values(2)
                     target = 60
                     # Ne jamais dépasser la ligne 149 pour ne pas écraser ton tableau journalier
                     for r in range(60, 149):
                         if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
-                    new_data = [[datetime.now().strftime("%d/%m/%Y"), lib, amt, note, form_cat_map[cat_en]]]
+                    
+                    formatted_date = expense_date.strftime("%d/%m/%Y")
+                    new_data = [[formatted_date, lib, amt, note, form_cat_map[cat_en]]]
                     ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
                     
                     st.toast("Expenses added! ✅")
@@ -563,7 +568,6 @@ with tab_dashboard:
         df_trends = pd.DataFrame(daily_summary_data)
         curr_y = now.year
         
-        # Application du nouveau Parseur robuste (Gère les formats JJ/MM et YYYY-MM-DD natifs)
         df_trends['DateObj'] = df_trends['Date'].apply(lambda x: parse_trend_date(x, curr_y))
         df_trends = df_trends.dropna(subset=['DateObj']).sort_values('DateObj')
         
@@ -644,7 +648,6 @@ with tab_dashboard:
         labels = [c["name"] for c in category_progress if c["reel"] > 0]
         values = [c["reel"] for c in category_progress if c["reel"] > 0]
         if values:
-            # Donut chart avec labels attachés directement aux parts
             fig_pie = go.Figure(data=[go.Pie(
                 labels=labels, 
                 values=values, 
@@ -655,7 +658,7 @@ with tab_dashboard:
                 hoverinfo='label+value'
             )])
             fig_pie.update_layout(
-                showlegend=False, # Désactive la légende séparée en bas (plus de texte coupé !)
+                showlegend=False,
                 paper_bgcolor='rgba(0,0,0,0)', 
                 plot_bgcolor='rgba(0,0,0,0)', 
                 height=350, 
@@ -696,12 +699,10 @@ with tab_dashboard:
 </div>"""
     st.markdown(nw_html, unsafe_allow_html=True)
 
-    # --- EVOLUTION TRACKER (Mock Data for Visual Demonstration) ---
+    # --- EVOLUTION TRACKER ---
     st.markdown("<div class='chart-container' style='margin-top: 15px;'><h3 style='color:#FFF; font-size:18px; margin-bottom:5px;'><i class='ph ph-chart-line-up'></i> Evolution Tracker</h3><p style='font-size: 12px; color: #64748B;'>Simulated data based on current net worth. Connect to a history tab later.</p>", unsafe_allow_html=True)
     
-    # Generate 6 months of mock dates ending today
     mock_dates = [(now.replace(day=1) - timedelta(days=30 * i)).strftime('%b %Y') for i in range(5, -1, -1)]
-    # Create a nice looking upward curve ending at the current real net worth
     mock_values = [total_net_worth * 0.75, total_net_worth * 0.78, total_net_worth * 0.85, total_net_worth * 0.82, total_net_worth * 0.93, total_net_worth]
     
     fig_nw = go.Figure()
@@ -760,7 +761,11 @@ with tab_investments:
                     perf_display = f"{unit_perf_sign}{item['unit_perf']:.2f}%<br>{pnl_sign}{format_chf(item['pnl_chf'])} CHF"
                     ticker_display = f"{item['ticker']} • {qty_formatted} Units"
                 else:
-                    price_display = f"{format_chf(item['current_price'])}{curr_disp}"
+                    # Protection affichage si le prix Yahoo est à 0.0 malgré les fallbacks
+                    if item['current_price'] > 0:
+                        price_display = f"{format_chf(item['current_price'])}{curr_disp}"
+                    else:
+                        price_display = "Market Down"
                     perf_display = f"{unit_perf_sign}{item['unit_perf']:.2f}%"
                     ticker_display = f"{item['ticker']}"
 
