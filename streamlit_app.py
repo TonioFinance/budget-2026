@@ -543,7 +543,7 @@ with tab_dashboard:
             cat_en = st.selectbox("Category", list(form_cat_map.keys()))
             note = st.text_input("Note")
             
-            submitted = st.form_submit_button("CONFIRM TRANSACTION", use_container_width=True)
+            submitted = st.form_submit_button("CONFIRM TRANSACTION", width='stretch')
             if submitted:
                 if lib and amt is not None and amt > 0:
                     col_b = ws.col_values(2)
@@ -654,7 +654,7 @@ with tab_dashboard:
         showlegend=True, 
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(color="#F8FAFC"))
     )
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig, width='stretch', config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
     
     st.markdown("<div class='chart-container'><h3 style='color:#FFF; font-size:22px; margin-bottom:5px;'><i class='ph ph-chart-donut'></i> Distribution</h3>", unsafe_allow_html=True)
@@ -679,7 +679,7 @@ with tab_dashboard:
                 margin=dict(t=20, b=20, l=20, r=20), 
                 annotations=[dict(text=f"<b>{format_chf(reel_var)}</b><br>CHF", x=0.5, y=0.5, font_size=24, showarrow=False, font=dict(color="#FFFFFF"))]
             )
-            st.plotly_chart(fig_pie, use_container_width=True, config={'displayModeBar': False})
+            st.plotly_chart(fig_pie, width='stretch', config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
 
     # --- NET WORTH SNAPSHOT RENDER ---
@@ -740,7 +740,7 @@ with tab_dashboard:
         yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.05)", color="#94A3B8", tickprefix="CHF "), 
         showlegend=False
     )
-    st.plotly_chart(fig_nw, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig_nw, width='stretch', config={'displayModeBar': False})
     st.markdown("</div>", unsafe_allow_html=True)
 
 
