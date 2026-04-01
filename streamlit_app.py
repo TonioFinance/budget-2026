@@ -344,7 +344,20 @@ except Exception: st.error("Access Denied"); st.stop()
 # --- NAVIGATION ---
 months_map = {"January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril", "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août", "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"}
 now = datetime.now()
-selected_month_en = st.sidebar.selectbox("Select Month", list(months_map.keys()), index=now.month - 1)
+
+# Logique de la période comptable : du 14 du mois courant au 13 du mois suivant
+if now.day < 14:
+    # Si nous sommes avant le 14, nous comptons encore pour le mois précédent
+    default_month_idx = now.month - 2
+else:
+    # À partir du 14, nous sommes dans le mois actuel
+    default_month_idx = now.month - 1
+
+# Gestion du passage de la nouvelle année (janvier -> décembre)
+if default_month_idx < 0:
+    default_month_idx = 11
+
+selected_month_en = st.sidebar.selectbox("Select Month", list(months_map.keys()), index=default_month_idx)
 selected_month = months_map[selected_month_en]
 ws = sh.worksheet(next((s for s in [s.title for s in sh.worksheets()] if selected_month.lower() in s.lower()), None))
 
@@ -573,10 +586,11 @@ with tab_dashboard:
         
         if not df_trends.empty:
             curr_m = list(months_map.values()).index(selected_month) + 1
-            start_d = datetime(curr_y, curr_m, 15)
+            # Mise à jour du graphique pour démarrer le 14 du mois courant
+            start_d = datetime(curr_y, curr_m, 14)
             end_m = curr_m + 1 if curr_m < 12 else 1
             end_y = curr_y if curr_m < 12 else curr_y + 1
-            end_d = datetime(end_y, end_m, 15)
+            end_d = datetime(end_y, end_m, 14)
             
             # CUMUL DES DEPENSES
             df_trends['Cumulative'] = df_trends['Amount'].cumsum()
