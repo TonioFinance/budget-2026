@@ -525,6 +525,10 @@ if default_month_idx < 0:
 
 if "active_month_en" not in st.session_state:
     st.session_state.active_month_en = months_list_en[default_month_idx]
+if "sidebar_month_picker" not in st.session_state:
+    st.session_state.sidebar_month_picker = st.session_state.active_month_en
+if "header_month_picker" not in st.session_state:
+    st.session_state.header_month_picker = st.session_state.active_month_en
 
 # CALLBACK : Change le mois ET vide automatiquement le cache pour forcer la synchro des datas
 def sync_on_month_change():
@@ -540,7 +544,6 @@ def sync_on_sidebar_change():
 selected_month_en = st.sidebar.selectbox(
     "Select Month",
     months_list_en,
-    index=months_list_en.index(st.session_state.active_month_en),
     key="sidebar_month_picker",
     on_change=sync_on_sidebar_change
 )
@@ -676,7 +679,6 @@ with tab_dashboard:
         st.selectbox(
             "Accounting Period",
             months_list_en,
-            index=months_list_en.index(st.session_state.active_month_en),
             key="header_month_picker",
             on_change=sync_on_month_change,
             label_visibility="collapsed"
