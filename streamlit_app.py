@@ -246,30 +246,23 @@ st.markdown("""
         border: 1px solid rgba(59, 130, 246, 0.2) !important;
     }
 
-    /* --- STYLING SELECTBOX TO MATCH SYNC BUTTON EXACTLY --- */
-    div[data-baseweb="select"] > div {
-        background: linear-gradient(90deg, #1E3A8A 0% , #2563EB 100%) !important;
+       /* --- MONTH PICKER (dégradé bleu, identique au bouton) --- */
+    /* Racine du select : porte le dégradé */
+    [class*="st-key-header_month_picker"] [data-baseweb="select"] {
+        background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255,255,255,0.2) !important;
+        overflow: hidden !important;
+    }
+    /* Contrôle (premier enfant) : même dégradé + bordure */
+    [class*="st-key-header_month_picker"] [data-baseweb="select"] > div {
+        background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
         border: 1px solid rgba(59, 130, 246, 0.5) !important;
         border-radius: 16px !important;
         min-height: 3.8rem !important;
-        box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255,255,255,0.2) !important;
-        color: white !important;
-        font-weight: 900 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 1.5px !important;
     }
-    div[data-baseweb="select"] span {
-        color: white !important;
-        font-weight: 900 !important;
-    }
-    div[data-baseweb="select"] svg {
-        fill: white !important;
-    }
-
-        /* --- HEADER MONTH PICKER : même couleurs que le bouton (dégradé bleu) --- */
-    /* 1) Les éléments internes deviennent transparents pour laisser voir le dégradé */
-    .st-key-header_month_picker div[data-baseweb="select"] div,
-    .st-key-header_month_picker div[data-baseweb="select"] input {
+    /* Tout ce qui est à l'intérieur : transparent, texte blanc */
+    [class*="st-key-header_month_picker"] [data-baseweb="select"] * {
         background: transparent !important;
         color: #FFFFFF !important;
         -webkit-text-fill-color: #FFFFFF !important;
@@ -277,16 +270,11 @@ st.markdown("""
         text-transform: uppercase !important;
         letter-spacing: 1.5px !important;
     }
-    /* 2) Le conteneur principal porte le dégradé (doit venir APRÈS la règle 1) */
-    .st-key-header_month_picker div[data-baseweb="select"] > div {
-        background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
-        border: 1px solid rgba(59, 130, 246, 0.5) !important;
-        border-radius: 16px !important;
-        box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255,255,255,0.2) !important;
+    [class*="st-key-header_month_picker"] [data-baseweb="select"] svg {
+        fill: #FFFFFF !important;
     }
-    .st-key-header_month_picker div[data-baseweb="select"] svg { fill: #FFFFFF !important; }
 
-    /* 3) Liste déroulante assortie */
+    /* Liste déroulante assortie */
     div[data-baseweb="popover"] ul {
         background: #0F172A !important;
         border: 1px solid rgba(59, 130, 246, 0.3) !important;
