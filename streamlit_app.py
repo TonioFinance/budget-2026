@@ -339,6 +339,55 @@ div[role="dialog"] h2 { color: #FFFFFF !important; font-weight: 900 !important; 
     box-shadow: var(--glow-blue) !important;
 }
 
+/* ---------- SLIDE TO ADD (slider "glisser pour ajouter") ----------
+   Le conteneur du widget (st-key-slide_add) fait office de piste : même dégradé que l'ancien
+   bouton ADD NEW EXPENSE, pleine largeur, texte qui scintille et halo qui pulse. */
+@keyframes shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 6px 15px rgba(37, 99, 235, 0.25), inset 0 1px 2px rgba(255,255,255,0.2); }
+    50%      { box-shadow: 0 0 30px rgba(96, 165, 250, 0.70), inset 0 1px 2px rgba(255,255,255,0.35); }
+}
+.st-key-slide_add {
+    position: relative; display: flex; align-items: center;
+    width: 100%; min-height: 3.8rem; margin-bottom: 15px; overflow: hidden;
+    background: var(--grad-blue) !important;
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    border-radius: var(--radius-md);
+    animation: pulse-glow 2.4s ease-in-out infinite;
+}
+.st-key-slide_add::before {
+    content: "ADD NEW EXPENSE   ›››";
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    display: flex; align-items: center; justify-content: center; padding-left: 3rem;
+    font-weight: 900; font-size: 15px; letter-spacing: 3px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.35) 0%, #FFFFFF 50%, rgba(255,255,255,0.35) 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shine 2.2s linear infinite;
+}
+.st-key-slide_add [data-testid="stSlider"] { width: 100%; padding: 0 1.9rem !important; margin: 0 !important; }
+.st-key-slide_add * { background: transparent !important; box-shadow: none !important; }
+.st-key-slide_add [data-testid="stSliderThumbValue"],
+.st-key-slide_add [data-testid="stSliderTickBar"],
+.st-key-slide_add [data-testid="stSliderTickBarMin"],
+.st-key-slide_add [data-testid="stSliderTickBarMax"] { display: none !important; }
+.st-key-slide_add [role="slider"] {
+    width: 3rem !important; height: 2.9rem !important; z-index: 3;
+    border: none !important; outline: none !important; border-radius: 12px !important; cursor: grab;
+    background: linear-gradient(135deg, #FFFFFF 0%, #BFDBFE 100%) !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 18px rgba(147,197,253,0.6) !important;
+}
+.st-key-slide_add [role="slider"]:active { cursor: grabbing; }
+.st-key-slide_add [role="slider"]::after {
+    content: "»"; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.9rem; font-weight: 900; color: var(--blue-900); line-height: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+    .st-key-slide_add, .st-key-slide_add::before, div[role="dialog"] { animation: none !important; }
+}
+
 /* ---------- EXPANDER ---------- */
 [data-testid="stExpander"] {
     background: rgba(15,23,42,0.2) !important;
@@ -792,6 +841,7 @@ if default_idx < 0:
 st.session_state.setdefault("active_month_en", months_list_en[default_idx])
 st.session_state.setdefault("sidebar_month_picker", st.session_state.active_month_en)
 st.session_state.setdefault("header_month_picker", st.session_state.active_month_en)
+st.session_state.setdefault("slide_add", 0)
 
 
 def sync_month(source_key):
@@ -872,6 +922,13 @@ def add_expense_dialog():
         st.rerun()
 
 
+def on_slide_add():
+    """Slider 'slide to add' : si on a glissé jusqu'au bout -> ouvre le pop-up. Dans tous les cas, la poignée revient à 0."""
+    if st.session_state.slide_add >= 90:
+        st.session_state.open_add_dialog = True
+    st.session_state.slide_add = 0
+
+
 tab_dashboard, tab_investments = st.tabs(["📊 Dashboard", "📈 Investments"])
 
 # ---------------------------------- DASHBOARD --------------------------------
@@ -902,7 +959,9 @@ with tab_dashboard:
         extra_html=progress_bar_html(percent, hero_lvl) + banner_html(percent),
     ), unsafe_allow_html=True)
 
-    if st.button("＋ ADD NEW EXPENSE", key="btn_add_expense"):
+    # Slide to add : on fait glisser la poignée vers la droite pour ouvrir le pop-up de saisie
+    st.slider("Slide to add an expense", 0, 100, key="slide_add", label_visibility="collapsed", on_change=on_slide_add)
+    if st.session_state.pop("open_add_dialog", False):
         add_expense_dialog()
 
     col_left, col_right = st.columns(2, gap="large")
