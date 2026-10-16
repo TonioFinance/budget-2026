@@ -49,6 +49,7 @@ TOKENS = {
     "grad-blue": "linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%)",
     "grad-blue-hover": "linear-gradient(90deg, #2A4CAE 0%, #3B82F6 100%)",
     "grad-blue-glass": "linear-gradient(90deg, rgba(30, 58, 138, 0.62) 0%, rgba(37, 99, 235, 0.62) 100%)",
+    "grad-blue-glass-50": "linear-gradient(90deg, rgba(30, 58, 138, 0.50) 0%, rgba(37, 99, 235, 0.50) 100%)",
     "grad-blue-glass-hover": "linear-gradient(90deg, rgba(42, 76, 174, 0.78) 0%, rgba(59, 130, 246, 0.78) 100%)",
     "glow-blue-hover": "0 10px 30px rgba(59, 130, 246, 0.40), inset 0 1px 1px rgba(255, 255, 255, 0.40)",
     "grad-ok": "linear-gradient(90deg, #059669, #10B981)",
@@ -340,52 +341,80 @@ div[role="dialog"] h2 { color: #FFFFFF !important; font-weight: 900 !important; 
 }
 
 /* ---------- SLIDE TO ADD (slider "glisser pour ajouter") ----------
-   Le conteneur du widget (st-key-slide_add) fait office de piste : même dégradé que l'ancien
-   bouton ADD NEW EXPENSE, pleine largeur, texte qui scintille et halo qui pulse. */
+   Le conteneur du widget (st-key-slide_add) fait office de piste : dégradé bleu 50 % transparent,
+   pleine largeur, texte qui scintille lentement et halo qui pulse doucement. */
 @keyframes shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 6px 15px rgba(37, 99, 235, 0.25), inset 0 1px 2px rgba(255,255,255,0.2); }
-    50%      { box-shadow: 0 0 30px rgba(96, 165, 250, 0.70), inset 0 1px 2px rgba(255,255,255,0.35); }
+    0%, 100% { box-shadow: 0 6px 15px rgba(37, 99, 235, 0.20), inset 0 1px 2px rgba(255,255,255,0.20); }
+    50%      { box-shadow: 0 0 26px rgba(96, 165, 250, 0.50), inset 0 1px 2px rgba(255,255,255,0.30); }
 }
+@keyframes arrow-nudge { 0%, 100% { transform: translateX(-3px); } 50% { transform: translateX(4px); } }
+
 .st-key-slide_add {
     position: relative; display: flex; align-items: center;
     width: 100%; min-height: 3.8rem; margin-bottom: 15px; overflow: hidden;
-    background: var(--grad-blue) !important;
-    border: 1px solid rgba(59, 130, 246, 0.5);
+    background: var(--grad-blue-glass-50) !important;
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    border: 1px solid rgba(96, 165, 250, 0.45);
     border-radius: var(--radius-md);
-    animation: pulse-glow 2.4s ease-in-out infinite;
+    animation: pulse-glow 5s ease-in-out infinite;
 }
 .st-key-slide_add::before {
     content: "ADD NEW EXPENSE   ›››";
     position: absolute; inset: 0; z-index: 1; pointer-events: none;
     display: flex; align-items: center; justify-content: center; padding-left: 3rem;
     font-weight: 900; font-size: 15px; letter-spacing: 3px;
-    background: linear-gradient(90deg, rgba(255,255,255,0.35) 0%, #FFFFFF 50%, rgba(255,255,255,0.35) 100%);
+    background: linear-gradient(90deg, rgba(255,255,255,0.40) 0%, #FFFFFF 50%, rgba(255,255,255,0.40) 100%);
     background-size: 200% 100%;
     -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent;
-    animation: shine 2.2s linear infinite;
+    animation: shine 4.5s linear infinite;
+    opacity: 1; transition: opacity 0.25s ease !important;
 }
+/* Pendant le glissement : le texte s'efface pour laisser la place à la poignée */
+.st-key-slide_add:has([role="slider"]:active)::before { opacity: 0.25; }
+
 .st-key-slide_add [data-testid="stSlider"] { width: 100%; padding: 0 1.9rem !important; margin: 0 !important; }
 .st-key-slide_add * { background: transparent !important; box-shadow: none !important; }
 .st-key-slide_add [data-testid="stSliderThumbValue"],
 .st-key-slide_add [data-testid="stSliderTickBar"],
 .st-key-slide_add [data-testid="stSliderTickBarMin"],
 .st-key-slide_add [data-testid="stSliderTickBarMax"] { display: none !important; }
+
+/* Poignée : bouton fléché glissable */
 .st-key-slide_add [role="slider"] {
     width: 3rem !important; height: 2.9rem !important; z-index: 3;
     border: none !important; outline: none !important; border-radius: 12px !important; cursor: grab;
     background: linear-gradient(135deg, #FFFFFF 0%, #BFDBFE 100%) !important;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 18px rgba(147,197,253,0.6) !important;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35), 0 0 18px rgba(147,197,253,0.55) !important;
+    transition: all 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) !important;   /* retour fluide quand on relâche */
 }
-.st-key-slide_add [role="slider"]:active { cursor: grabbing; }
+/* Flèche : petit va-et-vient vers la droite au repos */
 .st-key-slide_add [role="slider"]::after {
-    content: "»"; position: absolute; inset: 0;
+    content: "→"; position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.9rem; font-weight: 900; color: var(--blue-900); line-height: 1;
+    font-size: 1.8rem; font-weight: 900; color: var(--blue-900); line-height: 1;
+    animation: arrow-nudge 1.8s ease-in-out infinite;
 }
+/* Traînée lumineuse derrière la poignée (visible seulement pendant le glissement) */
+.st-key-slide_add [role="slider"]::before {
+    content: ""; position: absolute; right: 100%; top: 0; bottom: 0; width: 6rem;
+    background: linear-gradient(90deg, transparent 0%, rgba(147, 197, 253, 0.55) 100%) !important;
+    border-radius: 12px; opacity: 0; transition: opacity 0.2s ease !important; pointer-events: none;
+}
+/* Pendant le glissement : pas de retard, poignée agrandie + halo fort, flèche étirée */
+.st-key-slide_add [role="slider"]:active {
+    cursor: grabbing; transition: none !important; transform-origin: center;
+    box-shadow: 0 6px 22px rgba(0,0,0,0.4), 0 0 32px rgba(147,197,253,0.95) !important;
+    scale: 1.1;
+}
+.st-key-slide_add [role="slider"]:active::before { opacity: 1; }
+.st-key-slide_add [role="slider"]:active::after { animation: none; font-size: 2.1rem; letter-spacing: -2px; content: "→→"; }
+
 @media (prefers-reduced-motion: reduce) {
-    .st-key-slide_add, .st-key-slide_add::before, div[role="dialog"] { animation: none !important; }
+    .st-key-slide_add, .st-key-slide_add::before,
+    .st-key-slide_add [role="slider"]::after, div[role="dialog"] { animation: none !important; }
 }
 
 /* ---------- EXPANDER ---------- */
