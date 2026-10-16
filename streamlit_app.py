@@ -307,14 +307,22 @@ def format_chf(value):
     except ValueError:
         return "0.00"
 
-def parse_trend_date(d_str, year):
+def parse_trend_date(d_str, year, start_month=None):
     d_str = str(d_str).strip().replace('.', '/')
     if not d_str: return pd.NaT
     if '-' in d_str or d_str.count('/') == 2:
         return pd.to_datetime(d_str, dayfirst=True, errors='coerce')
     parts = d_str.split('/')
     if len(parts) == 2:
-        return pd.to_datetime(f"{parts[0]}/{parts[1]}/{year}", format='%d/%m/%Y', errors='coerce')
+        # Gestion du passage d'année (cycle Décembre : 15/12/YYYY -> 15/01/YYYY+1)
+        inferred_year = year
+        try:
+            m_val = int(parts[1])
+            if start_month == 12 and m_val == 1:
+                inferred_year = year + 1
+        except ValueError:
+            pass
+        return pd.to_datetime(f"{parts[0]}/{parts[1]}/{inferred_year}", format='%d/%m/%Y', errors='coerce')
     return pd.to_datetime(d_str, errors='coerce')
 
 # POINT 5 : Cartes de catégories enrichies (Réel / Prévu + Badge Restant / Dépassement + %)
@@ -470,17 +478,24 @@ def fetch_portfolio_data(sheet_id):
         pass
     return _total_val, _total_cost, _total_fees, _enriched
 
-# --- NAVIGATION & SESSION SYNC (POINT 4) ---
+# --- NAVIGATION & SESSION SYNC (POINT 4 + CYCLE COMPTABLE DU 15 AU 15) ---
 months_map = {"January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril", "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août", "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"}
 months_list_en = list(months_map.keys())
 now = datetime.now()
 
-# Logique de la période comptable : du 14 du mois courant au 13 du mois suivant
-if now.day < 14:
-    # Si nous sommes avant le 14, nous comptons encore pour le mois précédent
+# Ancienne logique conservée en commentaire :
+# if now.day < 14:
+#     default_month_idx = now.month - 2
+# else:
+#     default_month_idx = now.month - 1
+
+# NOUVELLE LOGIQUE : Période comptable du 15 du mois courant au 15 du mois suivant (versement salaire)
+CYCLE_START_DAY = 15
+if now.day < CYCLE_START_DAY:
+    # Avant le 15, nous sommes encore sur le mois comptable précédent
     default_month_idx = now.month - 2
 else:
-    # À partir du 14, nous sommes dans le mois actuel
+    # À partir du 15, nous basculons sur le mois comptable actuel
     default_month_idx = now.month - 1
 
 # Gestion du passage de la nouvelle année (janvier -> décembre)
@@ -504,6 +519,14 @@ selected_month_en = st.sidebar.selectbox(
     on_change=sync_from_sidebar
 )
 selected_month = months_map[st.session_state.active_month_en]
+
+# Calcul des bornes exactes de la période comptable sélectionnée (15/M -> 15/M+1)
+curr_m_num = list(months_map.values()).index(selected_month) + 1
+curr_y_num = now.year - 1 if (now.month == 1 and now.day < CYCLE_START_DAY and curr_m_num == 12) else now.year
+period_start_dt = datetime(curr_y_num, curr_m_num, CYCLE_START_DAY)
+next_m_num = curr_m_num + 1 if curr_m_num < 12 else 1
+next_y_num = curr_y_num if curr_m_num < 12 else curr_y_num + 1
+period_end_dt = datetime(next_y_num, next_m_num, CYCLE_START_DAY)
 
 # MODIFICATION 2 : Sécurité si l'onglet du mois sélectionné n'existe pas encore (ex: seuls Octobre, Novembre, Décembre existent)
 available_titles = fetch_sheet_titles(SHEET_ID)
@@ -631,7 +654,8 @@ with tab_dashboard:
     percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% consumed</div>" if percent >= 0.80 else f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% consumed</div>" if percent >= 0.66 else f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> On track</div>"
 
-    st.markdown(f"""<div style="text-align: center; margin-bottom: 15px;"><div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">OVERVIEW</div><div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{st.session_state.active_month_en} {now.year} • <span style="color:#60A5FA; font-weight:700;">{matched_title}</span></div></div>""", unsafe_allow_html=True)
+    period_badge = f"{period_start_dt.strftime('%d/%m/%Y')} → {period_end_dt.strftime('%d/%m/%Y')}"
+    st.markdown(f"""<div style="text-align: center; margin-bottom: 15px;"><div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">OVERVIEW</div><div style="color: #94A3B8; font-size: 18px; font-weight: 400; margin-top: 5px;">{st.session_state.active_month_en} {curr_y_num} • <span style="color:#60A5FA; font-weight:700;">{matched_title}</span></div><div style="color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-top: 4px; text-transform: uppercase;">Cycle: {period_badge}</div></div>""", unsafe_allow_html=True)
 
     # POINT 4 : Sélecteur de période intégré au Header + Bouton Sync rapide
     hdr_col1, hdr_col2, hdr_col3 = st.columns([1.2, 2.2, 1.2])
@@ -748,27 +772,32 @@ with tab_dashboard:
     
     if daily_summary_data:
         df_trends = pd.DataFrame(daily_summary_data)
-        curr_y = now.year
+        curr_y = curr_y_num
+        curr_m = curr_m_num
         
-        df_trends['DateObj'] = df_trends['Date'].apply(lambda x: parse_trend_date(x, curr_y))
+        df_trends['DateObj'] = df_trends['Date'].apply(lambda x: parse_trend_date(x, curr_y, start_month=curr_m))
         df_trends = df_trends.dropna(subset=['DateObj']).sort_values('DateObj')
         # Regroupement par jour au cas où plusieurs transactions ont lieu à la même date
         df_trends = df_trends.groupby('DateObj', as_index=False)['Amount'].sum().sort_values('DateObj')
         
         if not df_trends.empty:
-            curr_m = list(months_map.values()).index(selected_month) + 1
-            # Mise à jour du graphique pour démarrer le 14 du mois courant
-            start_d = datetime(curr_y, curr_m, 14)
-            end_m = curr_m + 1 if curr_m < 12 else 1
-            end_y = curr_y if curr_m < 12 else curr_y + 1
-            end_d = datetime(end_y, end_m, 14)
+            # Ancienne logique conservée en commentaire :
+            # start_d = datetime(curr_y, curr_m, 14)
+            # end_m = curr_m + 1 if curr_m < 12 else 1
+            # end_y = curr_y if curr_m < 12 else curr_y + 1
+            # end_d = datetime(end_y, end_m, 14)
+            
+            # Mise à jour du graphique pour le cycle comptable du 15 au 15
+            start_d = period_start_dt
+            end_d = period_end_dt
+            period_days = max((end_d - start_d).days, 1)
             
             # CUMUL DES DEPENSES
             df_trends['Cumulative'] = df_trends['Amount'].cumsum()
             
-            ideal_daily = prevu_var / 30 if prevu_var > 0 else 0
+            ideal_daily = prevu_var / period_days if prevu_var > 0 else 0
             df_trends['Days_Passed'] = (df_trends['DateObj'] - start_d).dt.days + 1
-            df_trends['Days_Passed'] = df_trends['Days_Passed'].clip(lower=0) 
+            df_trends['Days_Passed'] = df_trends['Days_Passed'].clip(lower=0, upper=period_days) 
             df_trends['Ideal'] = df_trends['Days_Passed'] * ideal_daily
             
             df_trends['Safe'] = df_trends.apply(lambda row: min(row['Cumulative'], row['Ideal']), axis=1)
@@ -780,8 +809,8 @@ with tab_dashboard:
             else:
                 df_plot = df_trends
 
-            # 1. Ligne Idéale
-            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Budget Limit', line=dict(color='#64748B', width=2, dash='dash')))
+            # 1. Ligne Idéale (du 15 du mois M au 15 du mois M+1)
+            fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Budget Limit (15 → 15)', line=dict(color='#64748B', width=2, dash='dash')))
             
             # 2. Zone Verte
             fig.add_trace(go.Scatter(
