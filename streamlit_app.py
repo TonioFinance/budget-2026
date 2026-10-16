@@ -297,6 +297,48 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
 .nw-title { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 5px; }
 .nw-value { font-size: 18px; font-weight: 900; }
 
+/* ---------- HOVER DES BOUTONS (même effet que l'expander et le sélecteur de mois) ---------- */
+[data-testid="stButton"] button:hover,
+[data-testid="stFormSubmitButton"] button:hover {
+    background: var(--grad-blue-hover) !important;
+    border-color: rgba(147, 197, 253, 0.60) !important;
+    box-shadow: var(--glow-blue-hover) !important;
+}
+
+/* ---------- POP-UP (st.dialog) : verre sombre + glissement depuis le bas ---------- */
+@keyframes slide-up {
+    from { opacity: 0; transform: translateY(60px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+div[role="dialog"] {
+    background: rgba(10, 18, 40, 0.92) !important;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(59, 130, 246, 0.35) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), inset 0 1px 20px rgba(59, 130, 246, 0.10) !important;
+    animation: slide-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+div[role="dialog"] h2 { color: #FFFFFF !important; font-weight: 900 !important; letter-spacing: 1.5px; text-transform: uppercase; }
+
+/* ---------- PASTILLES DE CATÉGORIE (st.pills) ---------- */
+[data-testid="stPills"] button {
+    border-radius: 999px !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    border: 1px solid rgba(59, 130, 246, 0.25) !important;
+    color: var(--text-muted) !important;
+    font-weight: 700 !important;
+}
+[data-testid="stPills"] button:hover { border-color: rgba(147, 197, 253, 0.6) !important; color: #FFFFFF !important; }
+[data-testid="stPills"] button[aria-checked="true"],
+[data-testid="stPills"] button[aria-pressed="true"],
+[data-testid="stPills"] [data-testid="stBaseButton-pillsActive"] {
+    background: var(--grad-blue) !important;
+    border-color: rgba(59, 130, 246, 0.6) !important;
+    color: #FFFFFF !important;
+    box-shadow: var(--glow-blue) !important;
+}
+
 /* ---------- EXPANDER ---------- */
 [data-testid="stExpander"] {
     background: rgba(15,23,42,0.2) !important;
@@ -797,6 +839,39 @@ total_net_worth = cash_remaining + emergency_fund + total_portfolio_value - tota
 # =============================================================================
 # 6. PAGES
 # =============================================================================
+@st.dialog("New expense")
+def add_expense_dialog():
+    """Pop-up de saisie rapide : montant -> commerçant -> catégorie (pastilles) -> confirmer."""
+    with st.form("add_expense_form", clear_on_submit=True, border=False):
+        amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f", value=None, placeholder="0.00")
+        lib = st.text_input("Merchant", placeholder="Apple, Migros...")
+        cat_en = st.pills("Category", list(FORM_CATS.keys()), selection_mode="single", default="Groceries")
+        d_col, n_col = st.columns([1, 1.4])
+        with d_col:
+            expense_date = st.date_input("Date", value=datetime.now())
+        with n_col:
+            note = st.text_input("Note", placeholder="Optional")
+        submitted = st.form_submit_button("CONFIRM TRANSACTION", width="stretch")
+
+    if submitted:
+        if not lib or amt is None or amt <= 0:
+            st.warning("Add an amount and a merchant.")
+            return
+        col_b = ws.col_values(2)
+        start_row = (row_history_start + 1) if row_history_start != -1 else 60
+        target = start_row
+        for r in range(start_row, 149):
+            if r > len(col_b) or not str(col_b[r - 1]).strip():
+                target = r
+                break
+        ws.update(values=[[expense_date.strftime("%d/%m/%Y"), lib, amt, note, FORM_CATS[cat_en or "Groceries"]]],
+                  range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
+        st.toast("Expense added! ✅")
+        st.cache_data.clear()
+        time.sleep(1.0)
+        st.rerun()
+
+
 tab_dashboard, tab_investments = st.tabs(["📊 Dashboard", "📈 Investments"])
 
 # ---------------------------------- DASHBOARD --------------------------------
@@ -827,29 +902,8 @@ with tab_dashboard:
         extra_html=progress_bar_html(percent, hero_lvl) + banner_html(percent),
     ), unsafe_allow_html=True)
 
-    with st.expander("ADD NEW EXPENSE", expanded=False):
-        with st.form("add_expense_form", clear_on_submit=True):
-            expense_date = st.date_input("Date", value=datetime.now())
-            lib = st.text_input("Merchant", placeholder="Apple, Migros...")
-            amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f", value=None)
-            cat_en = st.selectbox("Category", list(FORM_CATS.keys()))
-            note = st.text_input("Note")
-
-            if st.form_submit_button("CONFIRM TRANSACTION", width="stretch"):
-                if lib and amt is not None and amt > 0:
-                    col_b = ws.col_values(2)
-                    start_row = (row_history_start + 1) if row_history_start != -1 else 60
-                    target = start_row
-                    for r in range(start_row, 149):
-                        if r > len(col_b) or not str(col_b[r - 1]).strip():
-                            target = r
-                            break
-                    ws.update(values=[[expense_date.strftime("%d/%m/%Y"), lib, amt, note, FORM_CATS[cat_en]]],
-                              range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
-                    st.toast("Expenses added! ✅")
-                    st.cache_data.clear()
-                    time.sleep(1.0)
-                    st.rerun()
+    if st.button("＋ ADD NEW EXPENSE", key="btn_add_expense"):
+        add_expense_dialog()
 
     col_left, col_right = st.columns(2, gap="large")
     with col_left:
