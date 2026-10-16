@@ -7,7 +7,8 @@ import plotly.graph_objects as go
 import time
 import yfinance as yf
 import streamlit.components.v1 as components
-from streamlit.errors import StreamlitAPIException
+import tempfile
+from pathlib import Path
 
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
@@ -307,43 +308,6 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
     border-color: rgba(147, 197, 253, 0.60) !important;
     box-shadow: var(--glow-blue-hover) !important;
 }
-
-/* ---------- POP-UP (st.dialog) : verre sombre + glissement depuis le bas ---------- */
-@keyframes slide-up {
-    from { opacity: 0; transform: translateY(60px) scale(0.98); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-div[role="dialog"] {
-    background: rgba(10, 18, 40, 0.92) !important;
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(59, 130, 246, 0.35) !important;
-    border-radius: var(--radius-lg) !important;
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), inset 0 1px 20px rgba(59, 130, 246, 0.10) !important;
-    animation: slide-up 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-div[role="dialog"] h2 { color: #FFFFFF !important; font-weight: 900 !important; letter-spacing: 1.5px; text-transform: uppercase; }
-
-/* ---------- PASTILLES DE CATÉGORIE (st.pills) ---------- */
-[data-testid="stPills"] button {
-    border-radius: 999px !important;
-    background: rgba(15, 23, 42, 0.6) !important;
-    border: 1px solid rgba(59, 130, 246, 0.25) !important;
-    color: var(--text-muted) !important;
-    font-weight: 700 !important;
-}
-[data-testid="stPills"] button:hover { border-color: rgba(147, 197, 253, 0.6) !important; color: #FFFFFF !important; }
-[data-testid="stPills"] button[aria-checked="true"],
-[data-testid="stPills"] button[aria-pressed="true"],
-[data-testid="stPills"] [data-testid="stBaseButton-pillsActive"] {
-    background: var(--grad-blue) !important;
-    border-color: rgba(59, 130, 246, 0.6) !important;
-    color: #FFFFFF !important;
-    box-shadow: var(--glow-blue) !important;
-}
-
-/* ---------- SLIDE TO ADD : bouton Streamlit caché, cliqué par le slider HTML (voir render_slide_to_add) ---------- */
-.st-key-slide_trigger { display: none !important; }
 
 /* ---------- EXPANDER ---------- */
 [data-testid="stExpander"] {
@@ -857,40 +821,7 @@ total_net_worth = cash_remaining + emergency_fund + total_portfolio_value - tota
 # =============================================================================
 # 6. PAGES
 # =============================================================================
-@st.dialog("New expense")
-def add_expense_dialog():
-    """Pop-up de saisie rapide : montant -> commerçant -> catégorie (pastilles) -> confirmer."""
-    with st.form("add_expense_form", clear_on_submit=True, border=False):
-        amt = st.number_input("Amount (CHF)", min_value=0.0, step=0.1, format="%.2f", value=None, placeholder="0.00")
-        lib = st.text_input("Merchant", placeholder="Apple, Migros...")
-        cat_en = st.pills("Category", list(FORM_CATS.keys()), selection_mode="single", default="Groceries")
-        d_col, n_col = st.columns([1, 1.4])
-        with d_col:
-            expense_date = st.date_input("Date", value=datetime.now())
-        with n_col:
-            note = st.text_input("Note", placeholder="Optional")
-        submitted = st.form_submit_button("CONFIRM TRANSACTION", width="stretch")
-
-    if submitted:
-        if not lib or amt is None or amt <= 0:
-            st.warning("Add an amount and a merchant.")
-            return
-        col_b = ws.col_values(2)
-        start_row = (row_history_start + 1) if row_history_start != -1 else 60
-        target = start_row
-        for r in range(start_row, 149):
-            if r > len(col_b) or not str(col_b[r - 1]).strip():
-                target = r
-                break
-        ws.update(values=[[expense_date.strftime("%d/%m/%Y"), lib, amt, note, FORM_CATS[cat_en or "Groceries"]]],
-                  range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
-        st.toast("Expense added! ✅")
-        st.cache_data.clear()
-        time.sleep(1.0)
-        st.rerun()
-
-
-SLIDER_HTML = """
+COMPONENT_HTML = r"""
 <!DOCTYPE html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Lato:wght@700;900&display=swap" rel="stylesheet">
 <style>
@@ -908,8 +839,7 @@ SLIDER_HTML = """
     font-weight:900;font-size:15px;letter-spacing:3px;pointer-events:none;
     background:linear-gradient(90deg,rgba(255,255,255,.40) 0%,#fff 50%,rgba(255,255,255,.40) 100%);
     background-size:200% 100%;-webkit-background-clip:text;background-clip:text;
-    -webkit-text-fill-color:transparent;animation:shine 4.5s linear infinite;
-    transition:opacity .25s ease}
+    -webkit-text-fill-color:transparent;animation:shine 4.5s linear infinite;transition:opacity .25s ease}
   .thumb{position:absolute;left:5px;top:5px;width:52px;height:52px;border-radius:50%;
     background:linear-gradient(135deg,#FFFFFF 0%,#DBEAFE 100%);
     display:grid;place-items:center;cursor:grab;outline:none;
@@ -934,6 +864,114 @@ SLIDER_HTML = """
 </div></div>
 <script>
 (function(){
+  var PD = window.parent.document;
+  var cats = [], ready = false, pendingId = null, overlay = null, els = {}, curCat = null, saveTimer = null;
+
+  /* ---------- protocole Streamlit (composant bidirectionnel) ---------- */
+  function send(type, data){ window.parent.postMessage(Object.assign({isStreamlitMessage:true, type:type}, data||{}), '*'); }
+  window.addEventListener('message', function(e){
+    var d = e.data; if(!d || d.type !== 'streamlit:render') return;
+    var a = d.args || {};
+    if(!ready){ cats = a.categories || []; buildPopup(); ready = true; }
+    if(pendingId){
+      if(a.ack === pendingId){ clearTimeout(saveTimer); pendingId = null; closePopup(); }
+      else if(a.error && a.error.id === pendingId){ clearTimeout(saveTimer); pendingId = null; showErr(a.error.msg); setBusy(false); }
+    }
+  });
+  send('streamlit:componentReady', {apiVersion:1});
+  send('streamlit:setFrameHeight', {height:92});
+
+  /* ---------- POP-UP (construit une fois, dans la page parente : s'ouvre instantanément) ---------- */
+  var POPUP_CSS = '' +
+  '.sta-overlay{position:fixed;inset:0;z-index:999999;background:rgba(3,7,18,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:16px;opacity:0;transition:opacity .18s ease}' +
+  '.sta-overlay.show{opacity:1}' +
+  '.sta-modal{position:relative;width:100%;max-width:480px;max-height:92vh;overflow:auto;background:rgba(10,18,40,.95);border:1px solid rgba(59,130,246,.35);border-radius:24px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.7),inset 0 1px 20px rgba(59,130,246,.10);transform:translateY(50px) scale(.98);transition:transform .32s cubic-bezier(.2,.8,.2,1);font-family:Lato,sans-serif;color:#F8FAFC}' +
+  '.sta-overlay.show .sta-modal{transform:none}' +
+  '.sta-title{font-weight:900;font-size:20px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px}' +
+  '.sta-x{position:absolute;top:14px;right:16px;width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.06);color:#94A3B8;font-size:18px;cursor:pointer}' +
+  '.sta-x:hover{background:rgba(255,255,255,.14);color:#fff}' +
+  '.sta-field{margin-bottom:12px}' +
+  '.sta-field label{display:block;font-size:12px;font-weight:700;color:#94A3B8;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}' +
+  '.sta-field input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(59,130,246,.25);background:rgba(15,23,42,.6);color:#fff;font-size:16px;font-family:inherit;outline:none;color-scheme:dark}' +
+  '.sta-field input:focus{border-color:rgba(147,197,253,.7)}' +
+  '.sta-field input.sta-amount{font-size:30px;font-weight:900;text-align:center;padding:14px}' +
+  '.sta-pills{display:flex;flex-wrap:wrap;gap:8px}' +
+  '.sta-pill{padding:8px 14px;border-radius:999px;border:1px solid rgba(59,130,246,.25);background:rgba(15,23,42,.6);color:#94A3B8;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}' +
+  '.sta-pill:hover{border-color:rgba(147,197,253,.6);color:#fff}' +
+  '.sta-pill.on{background:linear-gradient(90deg,#1E3A8A,#2563EB);border-color:rgba(59,130,246,.6);color:#fff;box-shadow:0 6px 15px rgba(37,99,235,.2)}' +
+  '.sta-row{display:flex;gap:10px}.sta-row>div{flex:1;min-width:0}' +
+  '.sta-btn{width:100%;height:3.4rem;margin-top:6px;border-radius:16px;border:1px solid rgba(59,130,246,.5);background:linear-gradient(90deg,#1E3A8A,#2563EB);color:#fff;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;font-size:15px;cursor:pointer;font-family:inherit;box-shadow:0 6px 15px rgba(37,99,235,.2),inset 0 1px 2px rgba(255,255,255,.2)}' +
+  '.sta-btn:hover{background:linear-gradient(90deg,#2A4CAE,#3B82F6);border-color:rgba(147,197,253,.6)}' +
+  '.sta-btn[disabled]{opacity:.7;cursor:wait}' +
+  '.sta-err{color:#FB7185;font-size:13px;font-weight:700;min-height:18px;margin-top:8px;text-align:center}';
+
+  function isoToday(){ var t=new Date(),p=function(n){return (n<10?'0':'')+n;}; return t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate()); }
+
+  function buildPopup(){
+    var old = PD.getElementById('sta-overlay'); if(old) old.remove();
+    var oldS = PD.getElementById('sta-style'); if(oldS) oldS.remove();
+    var st = PD.createElement('style'); st.id = 'sta-style'; st.textContent = POPUP_CSS; PD.head.appendChild(st);
+
+    overlay = PD.createElement('div'); overlay.id = 'sta-overlay'; overlay.className = 'sta-overlay';
+    overlay.innerHTML =
+      '<div class="sta-modal" role="dialog" aria-modal="true">' +
+        '<button class="sta-x" id="sta-x" aria-label="Close">&#10005;</button>' +
+        '<div class="sta-title">New expense</div>' +
+        '<div class="sta-field"><label>Amount (CHF)</label><input id="sta-amt" class="sta-amount" type="number" inputmode="decimal" step="0.05" min="0" placeholder="0.00"></div>' +
+        '<div class="sta-field"><label>Merchant</label><input id="sta-lib" type="text" placeholder="Apple, Migros..." autocomplete="off"></div>' +
+        '<div class="sta-field"><label>Category</label><div class="sta-pills" id="sta-pills"></div></div>' +
+        '<div class="sta-row"><div class="sta-field"><label>Date</label><input id="sta-date" type="date"></div>' +
+        '<div class="sta-field"><label>Note</label><input id="sta-note" type="text" placeholder="Optional" autocomplete="off"></div></div>' +
+        '<button class="sta-btn" id="sta-ok">Confirm transaction</button>' +
+        '<div class="sta-err" id="sta-err"></div>' +
+      '</div>';
+    PD.body.appendChild(overlay);
+
+    els = {amt:PD.getElementById('sta-amt'), lib:PD.getElementById('sta-lib'), date:PD.getElementById('sta-date'),
+           note:PD.getElementById('sta-note'), ok:PD.getElementById('sta-ok'), err:PD.getElementById('sta-err'),
+           pills:PD.getElementById('sta-pills')};
+    cats.forEach(function(c, i){
+      var b = PD.createElement('button'); b.type='button'; b.className='sta-pill'; b.textContent=c;
+      b.addEventListener('click', function(){ selectCat(c); });
+      els.pills.appendChild(b);
+    });
+    PD.getElementById('sta-x').addEventListener('click', closePopup);
+    overlay.addEventListener('mousedown', function(e){ if(e.target === overlay) closePopup(); });
+    els.ok.addEventListener('click', submit);
+    [els.amt, els.lib, els.note].forEach(function(i){ i.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); submit(); } }); });
+    PD.addEventListener('keydown', function(e){ if(e.key==='Escape' && overlay && overlay.style.display==='flex') closePopup(); });
+  }
+
+  function selectCat(c){
+    curCat = c;
+    Array.prototype.forEach.call(els.pills.children, function(b){ b.classList.toggle('on', b.textContent === c); });
+  }
+  function showErr(m){ els.err.textContent = m || ''; }
+  function setBusy(b){ els.ok.disabled = b; els.ok.textContent = b ? 'Saving...' : 'Confirm transaction'; }
+
+  function openPopup(){
+    if(!overlay) return;
+    els.amt.value=''; els.lib.value=''; els.note.value=''; els.date.value=isoToday();
+    selectCat(cats[0]); showErr(''); setBusy(false);
+    overlay.style.display='flex';
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){ overlay.classList.add('show'); els.amt.focus(); }); });
+  }
+  function closePopup(){
+    if(!overlay) return;
+    overlay.classList.remove('show');
+    setTimeout(function(){ if(!overlay.classList.contains('show')) overlay.style.display='none'; }, 200);
+  }
+  function submit(){
+    if(pendingId) return;
+    var amt = parseFloat(els.amt.value), lib = els.lib.value.trim();
+    if(!(amt > 0) || !lib){ showErr('Add an amount and a merchant.'); return; }
+    showErr(''); setBusy(true);
+    pendingId = String(Date.now()) + Math.random().toString(36).slice(2,7);
+    send('streamlit:setComponentValue', {dataType:'json', value:{id:pendingId, amount:amt, merchant:lib, category:curCat, date:els.date.value, note:els.note.value.trim()}});
+    saveTimer = setTimeout(function(){ pendingId=null; setBusy(false); showErr('No response from the server. Check your connection and retry.'); }, 20000);
+  }
+
+  /* ---------- SLIDER ---------- */
   var track=document.getElementById('track'),thumb=document.getElementById('thumb'),
       fill=document.getElementById('fill'),label=document.getElementById('label');
   var PAD=5,x=0,maxX=0,startX=0,startLeft=0,dragging=false,busy=false;
@@ -944,17 +982,10 @@ SLIDER_HTML = """
     fill.style.width=(x+thumb.offsetWidth+PAD*2)+'px';
     label.style.opacity=Math.max(0,1-(maxX?x/maxX:0)*1.4);
   }
-  function openDialog(){
-    try{
-      var d=window.parent.document,b=d.querySelector('.st-key-slide_trigger button');
-      if(!b){b=Array.prototype.slice.call(d.querySelectorAll('button')).filter(function(e){return e.textContent.trim()==='open add expense';})[0];}
-      if(b)b.click();
-    }catch(e){}
-  }
   function complete(){
     if(busy)return;busy=true;measure();setX(maxX);track.classList.add('done');
-    openDialog();
-    setTimeout(function(){track.classList.remove('done');setX(0);busy=false;},900);
+    openPopup();
+    setTimeout(function(){track.classList.remove('done');setX(0);busy=false;},600);
   }
   thumb.addEventListener('pointerdown',function(e){
     if(busy)return;measure();dragging=true;thumb.setPointerCapture(e.pointerId);
@@ -979,26 +1010,60 @@ SLIDER_HTML = """
 """
 
 
-@st.fragment
-def add_expense_trigger():
-    """Bouton caché cliqué par le slider. Comme c'est un fragment, seul ce petit bout est relancé
-    (pas toute la page, ses graphiques et ses appels Google) : le pop-up apparaît quasi instantanément."""
-    if st.button("open add expense", key="btn_slide_trigger"):
-        try:
-            add_expense_dialog()
-        except StreamlitAPIException:
-            # Repli si cette version de Streamlit refuse d'ouvrir un pop-up depuis un fragment
-            st.session_state.open_add_dialog = True
-            st.rerun(scope="app")
+@st.cache_resource
+def get_slide_component():
+    """Écrit le composant dans un dossier temporaire puis le déclare (aucun fichier supplémentaire à déployer)."""
+    folder = Path(tempfile.gettempdir()) / "budget_slide_component"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "index.html").write_text(COMPONENT_HTML.replace("__ARROW__", TOKENS["blue-600"]), encoding="utf-8")
+    return components.declare_component("slide_to_add", path=str(folder))
+
+
+def save_expense(payload):
+    """Écrit la dépense dans le Sheet. Retourne None si OK, sinon un message d'erreur."""
+    try:
+        amt = float(payload.get("amount", 0))
+        lib = str(payload.get("merchant", "")).strip()
+        if amt <= 0 or not lib:
+            return "Add an amount and a merchant."
+        d = datetime.strptime(payload.get("date") or datetime.now().strftime("%Y-%m-%d"), "%Y-%m-%d")
+        category = FORM_CATS.get(payload.get("category"), "Courses")
+        col_b = ws.col_values(2)
+        start_row = (row_history_start + 1) if row_history_start != -1 else 60
+        target = start_row
+        for r in range(start_row, 149):
+            if r > len(col_b) or not str(col_b[r - 1]).strip():
+                target = r
+                break
+        ws.update(values=[[d.strftime("%d/%m/%Y"), lib, amt, str(payload.get("note", "")), category]],
+                  range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
+        return None
+    except Exception as exc:
+        return f"Could not save: {exc}"
 
 
 def render_slide_to_add():
-    """Slider 'glisser pour ajouter' (HTML/JS) + déclencheur caché."""
-    with st.container(key="slide_trigger"):
-        add_expense_trigger()
-    components.html(SLIDER_HTML.replace("__ARROW__", TOKENS["blue-600"]), height=92)
-    if st.session_state.pop("open_add_dialog", False):
-        add_expense_dialog()
+    """Slider 'glisser pour ajouter' + pop-up de saisie, entièrement côté navigateur (ouverture instantanée).
+    Le serveur n'intervient qu'à la confirmation, puis renvoie un 'ack' qui ferme le pop-up."""
+    if st.session_state.pop("flash_toast", False):
+        st.toast("Expense added! ✅")
+    result = get_slide_component()(
+        categories=list(FORM_CATS.keys()),
+        ack=st.session_state.get("slide_ack"),
+        error=st.session_state.get("slide_err"),
+        key="slide_cmp", default=None,
+    )
+    if result and result.get("id") != st.session_state.get("slide_seen"):
+        st.session_state.slide_seen = result["id"]
+        err = save_expense(result)
+        if err:
+            st.session_state.slide_err = {"id": result["id"], "msg": err}
+        else:
+            st.session_state.slide_err = None
+            st.session_state.slide_ack = result["id"]
+            st.session_state.flash_toast = True
+            st.cache_data.clear()
+        st.rerun()
 
 
 tab_dashboard, tab_investments = st.tabs(["📊 Dashboard", "📈 Investments"])
