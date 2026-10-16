@@ -126,7 +126,7 @@ st.markdown("""
     .insight-orange { background: rgba(245, 158, 11, 0.1); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); }
     .insight-red { background: rgba(225, 29, 72, 0.1); color: #FB7185; border: 1px solid rgba(225, 29, 72, 0.3); }
 
-    /* --- CATEGORY CARD SYSTEM (ENRICHED POINT 5) --- */
+    /* --- CATEGORY CARD SYSTEM --- */
     .cat-card {
         background: rgba(255,255,255,0.02);
         padding: 16px 20px;
@@ -168,7 +168,7 @@ st.markdown("""
     }
     .trans-amount { color: #FFFFFF !important; font-weight: 800; font-size: 15px; }
 
-    /* --- INVESTMENT CARDS (CLASSIC CENTERED DESIGN) --- */
+    /* --- INVESTMENT CARDS --- */
     .inv-card {
         background: rgba(255, 255, 255, 0.02); 
         border-radius: 18px; 
@@ -187,7 +187,6 @@ st.markdown("""
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
     }
     .inv-left { display: flex; align-items: center; gap: 16px; }
-    
     .inv-logo { 
         width: 48px; height: 48px; 
         border-radius: 50%; 
@@ -197,7 +196,6 @@ st.markdown("""
         box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         flex-shrink: 0;
     }
-    
     .inv-name { color: #FFFFFF; font-weight: 800; font-size: 17px; letter-spacing: -0.2px; }
     .inv-ticker { color: #94A3B8; font-size: 13px; margin-top:3px; font-weight: 600; }
     .inv-right { text-align: right; }
@@ -241,14 +239,34 @@ st.markdown("""
         text-align: center;
     }
     
-    /* Input Styling */
+    /* Input & Number Styling */
     .stTextInput>div>div>input, .stNumberInput>div>div>input {
         background-color: rgba(15, 23, 42, 0.6) !important;
         color: #FFFFFF !important;
         border: 1px solid rgba(59, 130, 246, 0.2) !important;
     }
 
-    /* --- BLUE GLOW BUTTON (CONFIRM) --- */
+    /* --- STYLING SELECTBOX TO MATCH SYNC BUTTON EXACTLY --- */
+    div[data-baseweb="select"] > div {
+        background: linear-gradient(90deg, #1E3A8A 0% , #2563EB 100%) !important;
+        border: 1px solid rgba(59, 130, 246, 0.5) !important;
+        border-radius: 16px !important;
+        min-height: 3.8rem !important;
+        box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255,255,255,0.2) !important;
+        color: white !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1.5px !important;
+    }
+    div[data-baseweb="select"] span {
+        color: white !important;
+        font-weight: 900 !important;
+    }
+    div[data-baseweb="select"] svg {
+        fill: white !important;
+    }
+
+    /* --- BLUE GLOW BUTTON (CONFIRM / SYNC) --- */
     div[data-testid="stButton"] > button, div[data-testid="stFormSubmitButton"] > button {
         background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
         border: 1px solid rgba(59, 130, 246, 0.5) !important;
@@ -273,14 +291,12 @@ st.markdown("""
         text-align: center;
     }
     
-    /* Make dataframe look better in dark mode */
     [data-testid="stDataFrame"] {
         border-radius: 12px;
         overflow: hidden;
         border: 1px solid rgba(59, 130, 246, 0.2);
     }
     
-    /* --- MOBILE OPTIMIZATIONS --- */
     @media (max-width: 768px) {
         .hero-main-value { font-size: 42px !important; }
         .hero-card { padding: 25px 20px !important; }
@@ -314,7 +330,6 @@ def parse_trend_date(d_str, year, start_month=None):
         return pd.to_datetime(d_str, dayfirst=True, errors='coerce')
     parts = d_str.split('/')
     if len(parts) == 2:
-        # Gestion du passage d'année (cycle Décembre : 15/12/YYYY -> 15/01/YYYY+1)
         inferred_year = year
         try:
             m_val = int(parts[1])
@@ -325,13 +340,11 @@ def parse_trend_date(d_str, year, start_month=None):
         return pd.to_datetime(f"{parts[0]}/{parts[1]}/{inferred_year}", format='%d/%m/%Y', errors='coerce')
     return pd.to_datetime(d_str, errors='coerce')
 
-# POINT 5 : Cartes de catégories enrichies (Réel / Prévu + Badge Restant / Dépassement + %)
 def get_progress_html(name, reel, prevu):
     if prevu > 0: percent = reel / prevu
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" if percent >= 1.0 else "linear-gradient(90deg, #B45309, #F59E0B)" if percent >= 0.66 else "linear-gradient(90deg, #059669, #10B981)" 
-    # AJOUT : Support de "Hygiène/Entretien" présent dans le nouveau Sheet
     cat_ui_map = {
         "Courses": ("Groceries", "ph-shopping-cart"),
         "Sorties/Restos": ("Dining", "ph-fork-knife"),
@@ -384,15 +397,13 @@ def get_gsheet_client():
         return gspread.authorize(creds)
     except Exception: return None
 
-# MODIFICATION 1 : Nouvel ID du Google Sheet (Budget 26/27 REMAKE)
-# Ancien ID conservé : # SHEET_ID = "1HXd22qMTATg__4U1Os0ktUMnhK1vflKlRU9b5yoxFHU"
 SHEET_ID = "1RIue5DT0RyOWlXTdMXYqRrffHogMOH8lkRyX_z-We_c"
 client = get_gsheet_client()
 if not client: st.stop()
 try: sh = client.open_by_key(SHEET_ID)
 except Exception: st.error("Access Denied"); st.stop()
 
-# --- POINT 4 : SMART CACHING FUNCTIONS (5 MINUTES TTL) ---
+# --- SMART CACHING FUNCTIONS (5 MINUTES TTL) ---
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_sheet_titles(sheet_id):
     _sh = get_gsheet_client().open_by_key(sheet_id)
@@ -478,45 +489,40 @@ def fetch_portfolio_data(sheet_id):
         pass
     return _total_val, _total_cost, _total_fees, _enriched
 
-# --- NAVIGATION & SESSION SYNC (POINT 4 + CYCLE COMPTABLE DU 15 AU 15) ---
+# --- NAVIGATION & SESSION SYNC (CYCLE COMPTABLE DU 15 AU 15) ---
 months_map = {"January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril", "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août", "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"}
 months_list_en = list(months_map.keys())
 now = datetime.now()
 
-# Ancienne logique conservée en commentaire :
-# if now.day < 14:
-#     default_month_idx = now.month - 2
-# else:
-#     default_month_idx = now.month - 1
-
-# NOUVELLE LOGIQUE : Période comptable du 15 du mois courant au 15 du mois suivant (versement salaire)
 CYCLE_START_DAY = 15
 if now.day < CYCLE_START_DAY:
-    # Avant le 15, nous sommes encore sur le mois comptable précédent
     default_month_idx = now.month - 2
 else:
-    # À partir du 15, nous basculons sur le mois comptable actuel
     default_month_idx = now.month - 1
 
-# Gestion du passage de la nouvelle année (janvier -> décembre)
 if default_month_idx < 0:
     default_month_idx = 11
 
 if "active_month_en" not in st.session_state:
     st.session_state.active_month_en = months_list_en[default_month_idx]
 
-def sync_from_sidebar():
-    st.session_state.active_month_en = st.session_state.sidebar_month_picker
-
-def sync_from_header():
+# CALLBACK : Change le mois ET vide automatiquement le cache pour forcer la synchro des datas
+def sync_on_month_change():
     st.session_state.active_month_en = st.session_state.header_month_picker
+    st.session_state.sidebar_month_picker = st.session_state.header_month_picker
+    st.cache_data.clear()
+
+def sync_on_sidebar_change():
+    st.session_state.active_month_en = st.session_state.sidebar_month_picker
+    st.session_state.header_month_picker = st.session_state.sidebar_month_picker
+    st.cache_data.clear()
 
 selected_month_en = st.sidebar.selectbox(
     "Select Month",
     months_list_en,
     index=months_list_en.index(st.session_state.active_month_en),
     key="sidebar_month_picker",
-    on_change=sync_from_sidebar
+    on_change=sync_on_sidebar_change
 )
 selected_month = months_map[st.session_state.active_month_en]
 
@@ -528,7 +534,6 @@ next_m_num = curr_m_num + 1 if curr_m_num < 12 else 1
 next_y_num = curr_y_num if curr_m_num < 12 else curr_y_num + 1
 period_end_dt = datetime(next_y_num, next_m_num, CYCLE_START_DAY)
 
-# MODIFICATION 2 : Sécurité si l'onglet du mois sélectionné n'existe pas encore (ex: seuls Octobre, Novembre, Décembre existent)
 available_titles = fetch_sheet_titles(SHEET_ID)
 matched_title = next((s for s in available_titles if selected_month.lower() in s.lower()), None)
 if not matched_title:
@@ -565,7 +570,6 @@ if col_var != -1:
 
 prevu_var, reel_var = sum(c["prevu"] for c in category_progress), sum(c["reel"] for c in category_progress)
 
-# Dynamic Extraction for Recent Transactions (with exact Sheet row index for Undo feature)
 row_history_start = -1
 for i, row in enumerate(all_rows):
     if len(row) > 1 and str(row[0]).strip().lower() == "date":
@@ -590,7 +594,6 @@ if row_history_start != -1:
                 "sheet_row": i + 1
             })
 
-# EXCTRACTION STRICTE DU TABLEAU JOURNALIER (+ Fallback sur raw_expenses si les lignes 150+ n'existent pas encore)
 daily_summary_data = []
 if len(all_rows) > 149:
     trend_rows = all_rows[149:250]
@@ -603,19 +606,14 @@ if len(all_rows) > 149:
 elif raw_expenses:
     daily_summary_data = [{"Date": exp["Date"], "Amount": exp["Amount"]} for exp in raw_expenses]
 
-
-# --- PORTFOLIO GLOBAL EXTRACTION (WITH SMART CACHE & ANTI-NAN SAFEGUARDS) ---
 total_portfolio_value, total_cost_basis, total_fees, enriched_portfolio_data = fetch_portfolio_data(SHEET_ID)
 
-# --- NET WORTH EXTRACTION (DIRECT TARGETING + DYNAMIC FALLBACK FOR NEW SHEET) ---
-# 1. Cash Remaining (J42) -> Row 41, Col 9 (ou recherche dynamique dans Récapitulatif / Charges Variables)
 cash_remaining = 0.0
 if len(all_rows) > 41 and len(all_rows[41]) > 9:
     cash_remaining = parse_amount(all_rows[41][9])
 if cash_remaining == 0.0:
     cash_remaining = prevu_var - reel_var
 
-# 2. Emergency Fund (C10 / Ligne "R - Emergency Fund" dans Répartition du Patrimoine)
 emergency_fund = 0.0
 if len(all_rows) > 9 and len(all_rows[9]) > 2:
     emergency_fund = parse_amount(all_rows[9][2])
@@ -627,29 +625,24 @@ for r in all_rows[:15]:
         emergency_fund = val_reel_ef if val_reel_ef > 0 else (val_prevu_ef if val_prevu_ef > 0 else val_debut_ef)
         break
 
-# 3. Debts (J59) -> Row 58, Col 9 + Fallback sur l'onglet "Data" (plage B4:B7) du nouveau Sheet
 total_debts = 0.0
 if len(all_rows) > 58 and len(all_rows[58]) > 9:
     total_debts = parse_amount(all_rows[58][9])
 if total_debts == 0.0:
     try:
         data_rows = fetch_worksheet_data(SHEET_ID, "Data")
-        # Dans l'onglet Data de Budget 26/27 REMAKE, les dettes (Mac, Jess, Leo, Maman) sont aux lignes 4 à 7 (index 3 à 6), colonne B (index 1)
         for r in data_rows[3:7]:
             if len(r) > 1:
                 total_debts += parse_amount(r[1])
     except Exception:
         pass
 
-# 4. Total Net Worth
 total_net_worth = cash_remaining + emergency_fund + total_portfolio_value - total_debts
-
 
 # --- TABS SYSTEM ---
 tab_dashboard, tab_investments = st.tabs(["Dashboard", "Investments"])
 
 with tab_dashboard:
-    # --- DASHBOARD LOGIC ---
     restant = prevu_var - reel_var
     percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% consumed</div>" if percent >= 0.80 else f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% consumed</div>" if percent >= 0.66 else f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> On track</div>"
@@ -657,7 +650,7 @@ with tab_dashboard:
     period_badge = f"{period_start_dt.strftime('%d/%m/%Y')} → {period_end_dt.strftime('%d/%m/%Y')}"
     st.markdown(f"""<div style="text-align: center; margin-bottom: 15px;"><div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">OVERVIEW</div><div style="color: #94A3B8; font-size: 18px; font-weight: 400; margin-top: 5px;">{st.session_state.active_month_en} {curr_y_num} • <span style="color:#60A5FA; font-weight:700;">{matched_title}</span></div><div style="color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-top: 4px; text-transform: uppercase;">Cycle: {period_badge}</div></div>""", unsafe_allow_html=True)
 
-    # POINT 4 : Sélecteur de période intégré au Header + Bouton Sync rapide
+    # Sélecteur de mois stylisé comme le bouton SYNC DATA (même gabarit visuel)
     hdr_col1, hdr_col2, hdr_col3 = st.columns([1.2, 2.2, 1.2])
     with hdr_col2:
         st.selectbox(
@@ -665,7 +658,7 @@ with tab_dashboard:
             months_list_en,
             index=months_list_en.index(st.session_state.active_month_en),
             key="header_month_picker",
-            on_change=sync_from_header,
+            on_change=sync_on_month_change,
             label_visibility="collapsed"
         )
     with hdr_col3:
@@ -676,10 +669,8 @@ with tab_dashboard:
 
     bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)' if percent >= 0.8 else 'linear-gradient(90deg, #B45309, #F59E0B)' if percent >= 0.66 else 'linear-gradient(90deg, #059669, #10B981)'
 
-    # Modification: Remaining est la valeur principale, Spent est en haut à gauche
     st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>SPENT</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(reel_var)} CHF</span></div><div><span>PLANNED</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(prevu_var)} CHF</span></div></div><div class="hero-main-value">{format_chf(restant)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;"><div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div></div>{insight_html}</div>""", unsafe_allow_html=True)
 
-    # MODIFICATION 3 : Alignement exact avec "Hygiène/Entretien" du nouveau Sheet pour que les SUMIF fonctionnent
     form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène/Entretien"}
     
     with st.expander("ADD NEW EXPENSE", expanded=False):
@@ -694,10 +685,8 @@ with tab_dashboard:
             if submitted:
                 if lib and amt is not None and amt > 0:
                     col_b = ws.col_values(2)
-                    # MODIFICATION 4 : Détection dynamique du début du journal (ou ligne 60 par défaut)
                     start_search_row = (row_history_start + 1) if row_history_start != -1 else 60
                     target = start_search_row
-                    # Ne jamais dépasser la ligne 149 pour ne pas écraser ton tableau journalier
                     for r in range(start_search_row, 149):
                         if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
                     
@@ -718,7 +707,6 @@ with tab_dashboard:
     with c2:
         st.markdown("<h3 style='font-size: 20px; margin-bottom: 12px; text-align: center;'>Recent Activity</h3>", unsafe_allow_html=True)
         
-        # POINT 5 : Recherche rapide, filtre par catégorie et bouton Undo Last Transaction
         flt_col1, flt_col2 = st.columns([1.4, 1])
         with flt_col1:
             search_query = st.text_input("Search", placeholder="🔍 Filter merchant, note...", label_visibility="collapsed", key="act_search")
@@ -777,22 +765,13 @@ with tab_dashboard:
         
         df_trends['DateObj'] = df_trends['Date'].apply(lambda x: parse_trend_date(x, curr_y, start_month=curr_m))
         df_trends = df_trends.dropna(subset=['DateObj']).sort_values('DateObj')
-        # Regroupement par jour au cas où plusieurs transactions ont lieu à la même date
         df_trends = df_trends.groupby('DateObj', as_index=False)['Amount'].sum().sort_values('DateObj')
         
         if not df_trends.empty:
-            # Ancienne logique conservée en commentaire :
-            # start_d = datetime(curr_y, curr_m, 14)
-            # end_m = curr_m + 1 if curr_m < 12 else 1
-            # end_y = curr_y if curr_m < 12 else curr_y + 1
-            # end_d = datetime(end_y, end_m, 14)
-            
-            # Mise à jour du graphique pour le cycle comptable du 15 au 15
             start_d = period_start_dt
             end_d = period_end_dt
             period_days = max((end_d - start_d).days, 1)
             
-            # CUMUL DES DEPENSES
             df_trends['Cumulative'] = df_trends['Amount'].cumsum()
             
             ideal_daily = prevu_var / period_days if prevu_var > 0 else 0
@@ -809,10 +788,8 @@ with tab_dashboard:
             else:
                 df_plot = df_trends
 
-            # 1. Ligne Idéale (du 15 du mois M au 15 du mois M+1)
             fig.add_trace(go.Scatter(x=[start_d, end_d], y=[0, prevu_var], mode='lines', name='Ideal Budget Limit (15 → 15)', line=dict(color='#64748B', width=2, dash='dash')))
             
-            # 2. Zone Verte
             fig.add_trace(go.Scatter(
                 x=df_plot['DateObj'], 
                 y=df_plot['Safe'], 
@@ -823,7 +800,6 @@ with tab_dashboard:
                 fillcolor='rgba(16, 185, 129, 0.3)' 
             ))
             
-            # 3. Zone Rouge
             fig.add_trace(go.Scatter(
                 x=df_plot['DateObj'], 
                 y=df_plot['Over'], 
@@ -834,7 +810,6 @@ with tab_dashboard:
                 fillcolor='rgba(225, 29, 72, 0.4)' 
             ))
             
-            # 4. Ligne de contour blanche
             fig.add_trace(go.Scatter(
                 x=df_plot['DateObj'], 
                 y=df_plot['Cumulative'], 
@@ -956,7 +931,6 @@ with tab_investments:
     
     with main_inv_container:
         cards_html = ""
-        # UI Generation from pre-calculated data
         if enriched_portfolio_data:
             for item in enriched_portfolio_data:
                 unit_perf_class = "text-green" if item['unit_perf'] >= 0 else "text-red"
@@ -975,7 +949,6 @@ with tab_investments:
                     perf_display = f"{unit_perf_sign}{item['unit_perf']:.2f}%<br>{pnl_sign}{format_chf(item['pnl_chf'])} CHF"
                     ticker_display = f"{item['ticker']} • {qty_formatted} Units"
                 else:
-                    # Protection affichage si le prix Yahoo est à 0.0 malgré les fallbacks
                     if item['current_price'] > 0:
                         price_display = f"{format_chf(item['current_price'])}{curr_disp}"
                     else:
@@ -997,7 +970,6 @@ with tab_investments:
 </div>
 </div>"""
                 
-        # Main Metrics UI
         perf_total = ((total_portfolio_value - total_cost_basis) / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
         perf_color = "#34D399" if perf_total >= 0 else "#FB7185"
         perf_sign = "+" if perf_total >= 0 else ""
