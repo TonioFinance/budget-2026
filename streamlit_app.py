@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 import time
 import yfinance as yf
 import streamlit.components.v1 as components
+from streamlit.errors import StreamlitAPIException
 
 st.set_page_config(page_title="Budget 2026 Pro", page_icon="⚡", layout="centered", initial_sidebar_state="collapsed")
 
@@ -612,8 +613,20 @@ SHEET_ID = "1RIue5DT0RyOWlXTdMXYqRrffHogMOH8lkRyX_z-We_c"
 client = get_gsheet_client()
 if not client:
     st.stop()
+
+
+@st.cache_resource
+def get_spreadsheet(sheet_id):
+    return get_gsheet_client().open_by_key(sheet_id)
+
+
+@st.cache_resource
+def get_worksheet(sheet_id, title):
+    return get_spreadsheet(sheet_id).worksheet(title)
+
+
 try:
-    sh = client.open_by_key(SHEET_ID)
+    sh = get_spreadsheet(SHEET_ID)
 except Exception:
     st.error("Access Denied")
     st.stop()
@@ -825,7 +838,7 @@ matched_title = next((s for s in available_titles if selected_month.lower() in s
 if not matched_title:
     matched_title = next((s for s in available_titles if s.lower() not in ["data", "portfolio", "investment", "old factures"]), available_titles[0])
     st.sidebar.warning(f"Onglet '{selected_month}' introuvable. Affichage de '{matched_title}'.")
-ws = sh.worksheet(matched_title)
+ws = get_worksheet(SHEET_ID, matched_title)
 
 # =============================================================================
 # 5. CALCULS
@@ -966,13 +979,25 @@ SLIDER_HTML = """
 """
 
 
+@st.fragment
+def add_expense_trigger():
+    """Bouton caché cliqué par le slider. Comme c'est un fragment, seul ce petit bout est relancé
+    (pas toute la page, ses graphiques et ses appels Google) : le pop-up apparaît quasi instantanément."""
+    if st.button("open add expense", key="btn_slide_trigger"):
+        try:
+            add_expense_dialog()
+        except StreamlitAPIException:
+            # Repli si cette version de Streamlit refuse d'ouvrir un pop-up depuis un fragment
+            st.session_state.open_add_dialog = True
+            st.rerun(scope="app")
+
+
 def render_slide_to_add():
-    """Slider 'glisser pour ajouter' (HTML/JS). Au bout de la course, il clique le bouton caché
-    'slide_trigger' de Streamlit, ce qui relance le script et ouvre le pop-up de saisie."""
+    """Slider 'glisser pour ajouter' (HTML/JS) + déclencheur caché."""
     with st.container(key="slide_trigger"):
-        clicked = st.button("open add expense", key="btn_slide_trigger")
+        add_expense_trigger()
     components.html(SLIDER_HTML.replace("__ARROW__", TOKENS["blue-600"]), height=92)
-    if clicked:
+    if st.session_state.pop("open_add_dialog", False):
         add_expense_dialog()
 
 
