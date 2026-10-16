@@ -77,8 +77,7 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
    Pour ajouter un élément au style, ajoute simplement son sélecteur à cette liste. */
 [data-testid="stButton"] button,
 [data-testid="stFormSubmitButton"] button,
-[data-testid="stExpander"] summary,
-[class*="month_picker"] [data-baseweb="select"] > div {
+[data-testid="stExpander"] summary {
     background: var(--grad-blue) !important;
     border: 1px solid rgba(59, 130, 246, 0.5) !important;
     border-radius: var(--radius-md) !important;
@@ -93,18 +92,39 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
 [data-testid="stButton"] button p,
 [data-testid="stFormSubmitButton"] button p { color: #FFFFFF !important; font-weight: 900 !important; }
 
-/* ---------- MONTH PICKER (selectbox bleu) ----------
-   Cible les widgets dont la key contient "month_picker" (header + sidebar). */
-[class*="month_picker"] [data-baseweb="select"] > div { min-height: 3.8rem !important; }
-[class*="month_picker"] [data-baseweb="select"] * {
+/* ---------- MONTH PICKER : bouton translucide (verre), dégradé bleu clair -> bleu marine ----------
+   Le "bouton" est le conteneur du widget (classe st-key-<key>), donc ça ne dépend pas
+   de la structure interne du selectbox : tout l'intérieur est rendu transparent. */
+.st-key-header_month_picker,
+.st-key-sidebar_month_picker {
+    background: linear-gradient(135deg, rgba(125, 190, 255, 0.38) 0%, rgba(30, 58, 138, 0.62) 100%) !important;
+    border: 1px solid rgba(147, 197, 253, 0.40) !important;
+    border-radius: var(--radius-md) !important;
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    box-shadow: 0 8px 24px rgba(37, 99, 235, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.30) !important;
+    padding: 0.35rem 0.5rem !important;
+    cursor: pointer;
+}
+.st-key-header_month_picker:hover,
+.st-key-sidebar_month_picker:hover {
+    background: linear-gradient(135deg, rgba(147, 205, 255, 0.50) 0%, rgba(37, 80, 180, 0.72) 100%) !important;
+    border-color: rgba(191, 219, 254, 0.60) !important;
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.40), inset 0 1px 1px rgba(255, 255, 255, 0.40) !important;
+}
+.st-key-header_month_picker *,
+.st-key-sidebar_month_picker * {
     background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
     color: #FFFFFF !important;
     -webkit-text-fill-color: #FFFFFF !important;
-    font-weight: 900 !important;
+    font-weight: 800 !important;
     text-transform: uppercase !important;
     letter-spacing: 1.5px !important;
 }
-[class*="month_picker"] [data-baseweb="select"] svg { fill: #FFFFFF !important; }
+.st-key-header_month_picker svg,
+.st-key-sidebar_month_picker svg { fill: #FFFFFF !important; }
 
 /* ---------- SELECTBOX / INPUTS "NORMAUX" (formulaire, filtres) ---------- */
 [data-testid="stSelectbox"] [data-baseweb="select"] > div,
@@ -121,17 +141,21 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
 
 /* ---------- LISTE DÉROULANTE (popover, commun à tous les selectbox) ---------- */
 [data-baseweb="popover"] ul,
-[data-baseweb="popover"] [data-baseweb="menu"] {
-    background: #0F172A !important;
-    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+[data-baseweb="popover"] [data-baseweb="menu"],
+[role="listbox"] {
+    background: rgba(15, 23, 42, 0.92) !important;
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(147, 197, 253, 0.30) !important;
     border-radius: 14px !important;
 }
-[data-baseweb="popover"] li { color: #FFFFFF !important; background: transparent !important; }
-[data-baseweb="popover"] li:hover,
-[data-baseweb="popover"] li[aria-selected="true"] { background: var(--grad-blue) !important; }
+[role="option"] { color: #FFFFFF !important; background: transparent !important; }
+[role="option"]:hover,
+[role="option"][aria-selected="true"] {
+    background: linear-gradient(135deg, rgba(125, 190, 255, 0.35), rgba(30, 58, 138, 0.60)) !important;
+}
 
-/* ---------- ONGLETS ---------- */
-[data-baseweb="tab-list"] {
+/* ---------- ONGLETS (sélecteurs ARIA, indépendants de BaseWeb) ---------- */
+[role="tablist"] {
     gap: 24px;
     background-color: rgba(15, 23, 42, 0.7);
     padding: 10px 20px;
@@ -142,22 +166,23 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
     justify-content: center;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
+[role="tablist"] > div[aria-hidden="true"],
 [data-baseweb="tab-highlight"], [data-baseweb="tab-border"] { display: none !important; }
-[data-baseweb="tab"] {
+[role="tab"] {
     height: 55px;
     background-color: transparent !important;
     border-radius: var(--radius-md) !important;
     padding: 0 35px !important;
 }
-[data-baseweb="tab"] p {
+[role="tab"] p, [role="tab"] span {
     color: var(--text-dim) !important;
     font-weight: 700 !important;
     font-size: 15px !important;
     text-transform: uppercase;
     letter-spacing: 1.2px;
 }
-[data-baseweb="tab"][aria-selected="true"] { background-color: rgba(37, 99, 235, 0.15) !important; }
-[data-baseweb="tab"][aria-selected="true"] p {
+[role="tab"][aria-selected="true"] { background-color: rgba(37, 99, 235, 0.15) !important; }
+[role="tab"][aria-selected="true"] p, [role="tab"][aria-selected="true"] span {
     color: #FFFFFF !important;
     font-weight: 900 !important;
     text-shadow: 0 0 15px rgba(255,255,255,0.4);
@@ -301,9 +326,9 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
 @media (max-width: 768px) {
     .hero-value { font-size: 42px !important; }
     .hero-card { padding: 25px 20px !important; }
-    [data-baseweb="tab-list"] { gap: 10px; padding: 5px 10px; }
-    [data-baseweb="tab"] { padding: 0 15px !important; }
-    [data-baseweb="tab"] p { font-size: 13px !important; }
+    [role="tablist"] { gap: 10px; padding: 5px 10px; }
+    [role="tab"] { padding: 0 15px !important; }
+    [role="tab"] p, [role="tab"] span { font-size: 13px !important; }
     [class*="st-key-glass_"] { padding: 15px 5px; }
     .nw-grid { flex-wrap: wrap; }
     .nw-card { flex-basis: 40%; }
