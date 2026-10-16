@@ -266,6 +266,38 @@ st.markdown("""
         fill: white !important;
     }
 
+        /* --- HEADER MONTH PICKER : même couleurs que le bouton (dégradé bleu) --- */
+    /* 1) Les éléments internes deviennent transparents pour laisser voir le dégradé */
+    .st-key-header_month_picker div[data-baseweb="select"] div,
+    .st-key-header_month_picker div[data-baseweb="select"] input {
+        background: transparent !important;
+        color: #FFFFFF !important;
+        -webkit-text-fill-color: #FFFFFF !important;
+        font-weight: 900 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1.5px !important;
+    }
+    /* 2) Le conteneur principal porte le dégradé (doit venir APRÈS la règle 1) */
+    .st-key-header_month_picker div[data-baseweb="select"] > div {
+        background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
+        border: 1px solid rgba(59, 130, 246, 0.5) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 6px 15px rgba(37, 99, 235, 0.2), inset 0 1px 2px rgba(255,255,255,0.2) !important;
+    }
+    .st-key-header_month_picker div[data-baseweb="select"] svg { fill: #FFFFFF !important; }
+
+    /* 3) Liste déroulante assortie */
+    div[data-baseweb="popover"] ul {
+        background: #0F172A !important;
+        border: 1px solid rgba(59, 130, 246, 0.3) !important;
+        border-radius: 14px !important;
+    }
+    div[data-baseweb="popover"] li { color: #FFFFFF !important; background: transparent !important; }
+    div[data-baseweb="popover"] li:hover,
+    div[data-baseweb="popover"] li[aria-selected="true"] {
+        background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
+    }
+
     /* --- BLUE GLOW BUTTON (CONFIRM / SYNC) --- */
     div[data-testid="stButton"] > button, div[data-testid="stFormSubmitButton"] > button {
         background: linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%) !important;
@@ -650,7 +682,7 @@ with tab_dashboard:
     period_badge = f"{period_start_dt.strftime('%d/%m/%Y')} → {period_end_dt.strftime('%d/%m/%Y')}"
     st.markdown(f"""<div style="text-align: center; margin-bottom: 15px;"><div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">OVERVIEW</div><div style="color: #94A3B8; font-size: 18px; font-weight: 400; margin-top: 5px;">{st.session_state.active_month_en} {curr_y_num} • <span style="color:#60A5FA; font-weight:700;">{matched_title}</span></div><div style="color: #64748B; font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-top: 4px; text-transform: uppercase;">Cycle: {period_badge}</div></div>""", unsafe_allow_html=True)
 
-    # Sélecteur de mois stylisé comme le bouton SYNC DATA (même gabarit visuel)
+        # Sélecteur de mois : la synchro des données se fait automatiquement au changement (cf. sync_on_month_change)
     hdr_col1, hdr_col2, hdr_col3 = st.columns([1.2, 2.2, 1.2])
     with hdr_col2:
         st.selectbox(
@@ -661,11 +693,6 @@ with tab_dashboard:
             on_change=sync_on_month_change,
             label_visibility="collapsed"
         )
-    with hdr_col3:
-        if st.button("↻ SYNC DATA", key="btn_sync_top"):
-            st.cache_data.clear()
-            st.toast("Data synchronized with Google Sheets! ⚡")
-            st.rerun()
 
     bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)' if percent >= 0.8 else 'linear-gradient(90deg, #B45309, #F59E0B)' if percent >= 0.66 else 'linear-gradient(90deg, #059669, #10B981)'
 
