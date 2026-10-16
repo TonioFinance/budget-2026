@@ -292,7 +292,7 @@ st.markdown("""
 # --- FORMATTING HELPERS ---
 def parse_amount(val):
     if not val or str(val).lower() in ["nan", "none", ""]: return 0.0
-    cleaned = str(val).upper().replace("CHF", "").replace(" ", "").replace(" ", "").replace("'", "").replace(",", ".").strip()
+    cleaned = str(val).upper().replace("CHF", "").replace(" ", "").replace(" ", "").replace("'", "").replace(",", ".").strip()
     try: return float(cleaned)
     except ValueError: return 0.0
 
@@ -317,12 +317,31 @@ def get_progress_html(name, reel, prevu):
     else: percent = 1.0 if reel > 0 else 0.0
     pct_str = f"{min(percent*100, 100):.1f}%"
     bar_color = "linear-gradient(90deg, #9F1239, #E11D48)" if percent >= 1.0 else "linear-gradient(90deg, #B45309, #F59E0B)" if percent >= 0.66 else "linear-gradient(90deg, #059669, #10B981)" 
-    cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
+    # AJOUT : Support de "Hygiène/Entretien" présent dans le nouveau Sheet
+    cat_ui_map = {
+        "Courses": ("Groceries", "ph-shopping-cart"),
+        "Sorties/Restos": ("Dining", "ph-fork-knife"),
+        "Transport": ("Transport", "ph-car"),
+        "Loisirs": ("Leisure", "ph-game-controller"),
+        "Imprévus": ("Unexpected", "ph-warning-circle"),
+        "Shopping": ("Shopping", "ph-tote"),
+        "Hygiène": ("Hygiene", "ph-drop"),
+        "Hygiène/Entretien": ("Hygiene", "ph-drop")
+    }
     ui_name, icon = cat_ui_map.get(name.strip(), (name, "ph-wallet"))
     return f"""<div class="cat-card"><div class="cat-container"><div style="display:flex; align-items:center; gap:10px;"><i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i><span class="cat-label">{ui_name}</span></div><span class="cat-amount">{format_chf(reel)} CHF</span></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;"><div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div></div></div>"""
 
 def get_transaction_html(date, merchant, amount, category):
-    cat_ui_map = {"Courses": ("Groceries", "ph-shopping-cart"), "Sorties/Restos": ("Dining", "ph-fork-knife"), "Transport": ("Transport", "ph-car"), "Loisirs": ("Leisure", "ph-game-controller"), "Imprévus": ("Unexpected", "ph-warning-circle"), "Shopping": ("Shopping", "ph-tote"), "Hygiène": ("Hygiene", "ph-drop")}
+    cat_ui_map = {
+        "Courses": ("Groceries", "ph-shopping-cart"),
+        "Sorties/Restos": ("Dining", "ph-fork-knife"),
+        "Transport": ("Transport", "ph-car"),
+        "Loisirs": ("Leisure", "ph-game-controller"),
+        "Imprévus": ("Unexpected", "ph-warning-circle"),
+        "Shopping": ("Shopping", "ph-tote"),
+        "Hygiène": ("Hygiene", "ph-drop"),
+        "Hygiène/Entretien": ("Hygiene", "ph-drop")
+    }
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
     return f"""<div class="transaction-card"><div style="display:flex; align-items:center; gap:15px;"><div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i></div><div style="text-align: left;"><div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div><div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div></div></div><div class="trans-amount">{amount}</div></div>"""
 
@@ -335,7 +354,9 @@ def get_gsheet_client():
         return gspread.authorize(creds)
     except Exception: return None
 
-SHEET_ID = "1HXd22qMTATg__4U1Os0ktUMnhK1vflKlRU9b5yoxFHU"
+# MODIFICATION 1 : Nouvel ID du Google Sheet (Budget 26/27 REMAKE)
+# Ancien ID conservé : # SHEET_ID = "1HXd22qMTATg__4U1Os0ktUMnhK1vflKlRU9b5yoxFHU"
+SHEET_ID = "1RIue5DT0RyOWlXTdMXYqRrffHogMOH8lkRyX_z-We_c"
 client = get_gsheet_client()
 if not client: st.stop()
 try: sh = client.open_by_key(SHEET_ID)
@@ -359,7 +380,14 @@ if default_month_idx < 0:
 
 selected_month_en = st.sidebar.selectbox("Select Month", list(months_map.keys()), index=default_month_idx)
 selected_month = months_map[selected_month_en]
-ws = sh.worksheet(next((s for s in [s.title for s in sh.worksheets()] if selected_month.lower() in s.lower()), None))
+
+# MODIFICATION 2 : Sécurité si l'onglet du mois sélectionné n'existe pas encore (ex: seuls Octobre, Novembre, Décembre existent)
+available_titles = [s.title for s in sh.worksheets()]
+matched_title = next((s for s in available_titles if selected_month.lower() in s.lower()), None)
+if not matched_title:
+    matched_title = next((s for s in available_titles if s.lower() not in ["data", "portfolio", "investment", "old factures"]), available_titles[0])
+    st.sidebar.warning(f"Onglet '{selected_month}' introuvable. Affichage de '{matched_title}'.")
+ws = sh.worksheet(matched_title)
 
 # --- DATA EXTRACTION ---
 all_rows = ws.get_all_values()
@@ -400,7 +428,7 @@ for i, row in enumerate(all_rows):
             break
 
 if row_history_start != -1:
-    for i in range(row_history_start, min(row_history_start + 50, len(all_rows))):
+    for i in range(row_history_start, min(row_history_start + 90, len(all_rows))):
         row = all_rows[i]
         if len(row) > 0 and str(row[0]).strip().lower() == "date": break 
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
@@ -408,7 +436,7 @@ if row_history_start != -1:
             amt_val = parse_amount(row[2])
             raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
 
-# EXCTRACTION STRICTE DU TABLEAU JOURNALIER
+# EXCTRACTION STRICTE DU TABLEAU JOURNALIER (+ Fallback sur raw_expenses si les lignes 150+ n'existent pas encore)
 daily_summary_data = []
 if len(all_rows) > 149:
     trend_rows = all_rows[149:250]
@@ -418,6 +446,8 @@ if len(all_rows) > 149:
             amt_val = parse_amount(row[1])
             if date_val and date_val.lower() != "date" and "total" not in date_val.lower() and "dépense" not in date_val.lower() and "depense" not in date_val.lower():
                 daily_summary_data.append({"Date": date_val, "Amount": amt_val})
+elif raw_expenses:
+    daily_summary_data = [{"Date": exp["Date"], "Amount": exp["Amount"]} for exp in raw_expenses]
 
 
 # --- PORTFOLIO GLOBAL EXTRACTION (WITH ANTI-NAN SAFEGUARDS) ---
@@ -498,21 +528,40 @@ try:
 except Exception:
     pass
 
-# --- NET WORTH EXTRACTION (DIRECT TARGETING) ---
-# 1. Cash Remaining (J42) -> Row 41, Col 9
+# --- NET WORTH EXTRACTION (DIRECT TARGETING + DYNAMIC FALLBACK FOR NEW SHEET) ---
+# 1. Cash Remaining (J42) -> Row 41, Col 9 (ou recherche dynamique dans Récapitulatif / Charges Variables)
 cash_remaining = 0.0
 if len(all_rows) > 41 and len(all_rows[41]) > 9:
     cash_remaining = parse_amount(all_rows[41][9])
+if cash_remaining == 0.0:
+    cash_remaining = prevu_var - reel_var
 
-# 2. Emergency Fund (C10) -> Row 9, Col 2
+# 2. Emergency Fund (C10 / Ligne "R - Emergency Fund" dans Répartition du Patrimoine)
 emergency_fund = 0.0
 if len(all_rows) > 9 and len(all_rows[9]) > 2:
     emergency_fund = parse_amount(all_rows[9][2])
+for r in all_rows[:15]:
+    if len(r) > 3 and "emergency fund" in str(r[0]).lower():
+        val_reel_ef = parse_amount(r[3])
+        val_prevu_ef = parse_amount(r[2])
+        val_debut_ef = parse_amount(r[1])
+        emergency_fund = val_reel_ef if val_reel_ef > 0 else (val_prevu_ef if val_prevu_ef > 0 else val_debut_ef)
+        break
 
-# 3. Debts (J59) -> Row 58, Col 9
+# 3. Debts (J59) -> Row 58, Col 9 + Fallback sur l'onglet "Data" (plage B4:B7) du nouveau Sheet
 total_debts = 0.0
 if len(all_rows) > 58 and len(all_rows[58]) > 9:
     total_debts = parse_amount(all_rows[58][9])
+if total_debts == 0.0:
+    try:
+        ws_data = sh.worksheet("Data")
+        data_rows = ws_data.get_all_values()
+        # Dans l'onglet Data de Budget 26/27 REMAKE, les dettes (Mac, Jess, Leo, Maman) sont aux lignes 4 à 7 (index 3 à 6), colonne B (index 1)
+        for r in data_rows[3:7]:
+            if len(r) > 1:
+                total_debts += parse_amount(r[1])
+    except Exception:
+        pass
 
 # 4. Total Net Worth
 total_net_worth = cash_remaining + emergency_fund + total_portfolio_value - total_debts
@@ -533,7 +582,8 @@ with tab_dashboard:
     # Modification: Remaining est la valeur principale, Spent est en haut à gauche
     st.markdown(f"""<div class="hero-card"><div class="hero-top-metrics"><div><span>SPENT</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(reel_var)} CHF</span></div><div><span>PLANNED</span> <span style="color:#FFFFFF; font-weight:700;">{format_chf(prevu_var)} CHF</span></div></div><div class="hero-main-value">{format_chf(restant)} <span style="font-size:24px; color:#60A5FA;">CHF</span></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.05); overflow: hidden;"><div style="background: {bar_color}; width: {percent*100}%; height: 100%; border-radius: 10px;"></div></div>{insight_html}</div>""", unsafe_allow_html=True)
 
-    form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène"}
+    # MODIFICATION 3 : Alignement exact avec "Hygiène/Entretien" du nouveau Sheet pour que les SUMIF fonctionnent
+    form_cat_map = {"Groceries": "Courses", "Dining": "Sorties/Restos", "Transport": "Transport", "Leisure": "Loisirs", "Unexpected": "Imprévus", "Shopping": "Shopping", "Hygiene": "Hygiène/Entretien"}
     
     with st.expander("ADD NEW EXPENSE", expanded=False):
         with st.form("add_expense_form", clear_on_submit=True):
@@ -547,9 +597,11 @@ with tab_dashboard:
             if submitted:
                 if lib and amt is not None and amt > 0:
                     col_b = ws.col_values(2)
-                    target = 60
+                    # MODIFICATION 4 : Détection dynamique du début du journal (ou ligne 60 par défaut)
+                    start_search_row = (row_history_start + 1) if row_history_start != -1 else 60
+                    target = start_search_row
                     # Ne jamais dépasser la ligne 149 pour ne pas écraser ton tableau journalier
-                    for r in range(60, 149):
+                    for r in range(start_search_row, 149):
                         if r > len(col_b) or not str(col_b[r-1]).strip(): target = r; break
                     
                     formatted_date = expense_date.strftime("%d/%m/%Y")
@@ -583,6 +635,8 @@ with tab_dashboard:
         
         df_trends['DateObj'] = df_trends['Date'].apply(lambda x: parse_trend_date(x, curr_y))
         df_trends = df_trends.dropna(subset=['DateObj']).sort_values('DateObj')
+        # Regroupement par jour au cas où plusieurs transactions ont lieu à la même date
+        df_trends = df_trends.groupby('DateObj', as_index=False)['Amount'].sum().sort_values('DateObj')
         
         if not df_trends.empty:
             curr_m = list(months_map.values()).index(selected_month) + 1
