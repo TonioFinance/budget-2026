@@ -47,6 +47,10 @@ TOKENS = {
     "font": "'Lato', sans-serif",
     # Dégradés (réutilisés partout)
     "grad-blue": "linear-gradient(90deg, #1E3A8A 0%, #2563EB 100%)",
+    "grad-blue-hover": "linear-gradient(90deg, #2A4CAE 0%, #3B82F6 100%)",
+    "grad-blue-glass": "linear-gradient(90deg, rgba(30, 58, 138, 0.62) 0%, rgba(37, 99, 235, 0.62) 100%)",
+    "grad-blue-glass-hover": "linear-gradient(90deg, rgba(42, 76, 174, 0.78) 0%, rgba(59, 130, 246, 0.78) 100%)",
+    "glow-blue-hover": "0 10px 30px rgba(59, 130, 246, 0.40), inset 0 1px 1px rgba(255, 255, 255, 0.40)",
     "grad-ok": "linear-gradient(90deg, #059669, #10B981)",
     "grad-warn": "linear-gradient(90deg, #B45309, #F59E0B)",
     "grad-over": "linear-gradient(90deg, #9F1239, #E11D48)",
@@ -97,8 +101,8 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
    de la structure interne du selectbox : tout l'intérieur est rendu transparent. */
 .st-key-header_month_picker,
 .st-key-sidebar_month_picker {
-    background: linear-gradient(135deg, rgba(125, 190, 255, 0.38) 0%, rgba(30, 58, 138, 0.62) 100%) !important;
-    border: 1px solid rgba(147, 197, 253, 0.40) !important;
+    background: var(--grad-blue-glass) !important;
+    border: 1px solid rgba(59, 130, 246, 0.5) !important;
     border-radius: var(--radius-md) !important;
     backdrop-filter: blur(16px) saturate(150%);
     -webkit-backdrop-filter: blur(16px) saturate(150%);
@@ -108,9 +112,9 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
 }
 .st-key-header_month_picker:hover,
 .st-key-sidebar_month_picker:hover {
-    background: linear-gradient(135deg, rgba(147, 205, 255, 0.50) 0%, rgba(37, 80, 180, 0.72) 100%) !important;
-    border-color: rgba(191, 219, 254, 0.60) !important;
-    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.40), inset 0 1px 1px rgba(255, 255, 255, 0.40) !important;
+    background: var(--grad-blue-glass-hover) !important;
+    border-color: rgba(147, 197, 253, 0.60) !important;
+    box-shadow: var(--glow-blue-hover) !important;
 }
 .st-key-header_month_picker *,
 .st-key-sidebar_month_picker * {
@@ -151,7 +155,7 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
 [role="option"] { color: #FFFFFF !important; background: transparent !important; }
 [role="option"]:hover,
 [role="option"][aria-selected="true"] {
-    background: linear-gradient(135deg, rgba(125, 190, 255, 0.35), rgba(30, 58, 138, 0.60)) !important;
+    background: var(--grad-blue-glass) !important;
 }
 
 /* ---------- ONGLETS (sélecteurs ARIA, indépendants de BaseWeb) ---------- */
@@ -301,7 +305,12 @@ h1, h2, h3, h4 { color: #FFFFFF !important; font-weight: 700 !important; letter-
     margin-bottom: 15px !important;
     overflow: hidden;
 }
-[data-testid="stExpander"] summary { padding: 14px 20px !important; }
+[data-testid="stExpander"] summary { padding: 14px 20px !important; cursor: pointer; }
+[data-testid="stExpander"] summary:hover {
+    background: var(--grad-blue-hover) !important;
+    border-color: rgba(147, 197, 253, 0.60) !important;
+    box-shadow: var(--glow-blue-hover) !important;
+}
 [data-testid="stExpander"] summary p { color: #FFFFFF !important; font-weight: 900 !important; letter-spacing: 1.5px; }
 
 /* ---------- CONTENEUR "VERRE" POUR LES GRAPHIQUES (st.container(key="glass_...")) ---------- */
