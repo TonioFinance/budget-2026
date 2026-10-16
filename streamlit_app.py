@@ -126,7 +126,7 @@ st.markdown("""
     .insight-orange { background: rgba(245, 158, 11, 0.1); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.3); }
     .insight-red { background: rgba(225, 29, 72, 0.1); color: #FB7185; border: 1px solid rgba(225, 29, 72, 0.3); }
 
-    /* --- CATEGORY CARD SYSTEM --- */
+    /* --- CATEGORY CARD SYSTEM (ENRICHED POINT 5) --- */
     .cat-card {
         background: rgba(255,255,255,0.02);
         padding: 16px 20px;
@@ -140,9 +140,14 @@ st.markdown("""
         transform: scale(1.02);
         border: 1px solid rgba(59, 130, 246, 0.3);
     }
-    .cat-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; width: 100%; }
+    .cat-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; width: 100%; }
     .cat-label { color: #FFFFFF !important; font-size: 16px !important; font-weight: 700; }
     .cat-amount { color: #FFFFFF !important; font-size: 15px; font-weight: 700; text-shadow: 0 0 10px rgba(59, 130, 246, 0.3); }
+    .cat-prevu-sub { color: #64748B; font-size: 13px; font-weight: 600; }
+    .cat-sub-row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12px; font-weight: 700; }
+    .cat-badge-ok { background: rgba(16, 185, 129, 0.12); color: #34D399; padding: 2px 8px; border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.25); }
+    .cat-badge-warn { background: rgba(245, 158, 11, 0.12); color: #FBBF24; padding: 2px 8px; border-radius: 8px; border: 1px solid rgba(245, 158, 11, 0.25); }
+    .cat-badge-over { background: rgba(225, 29, 72, 0.15); color: #FB7185; padding: 2px 8px; border-radius: 8px; border: 1px solid rgba(225, 29, 72, 0.3); }
 
     /* --- RECENT ACTIVITY CARDS --- */
     .transaction-card {
@@ -312,6 +317,7 @@ def parse_trend_date(d_str, year):
         return pd.to_datetime(f"{parts[0]}/{parts[1]}/{year}", format='%d/%m/%Y', errors='coerce')
     return pd.to_datetime(d_str, errors='coerce')
 
+# POINT 5 : Cartes de catégories enrichies (Réel / Prévu + Badge Restant / Dépassement + %)
 def get_progress_html(name, reel, prevu):
     if prevu > 0: percent = reel / prevu
     else: percent = 1.0 if reel > 0 else 0.0
@@ -329,9 +335,24 @@ def get_progress_html(name, reel, prevu):
         "Hygiène/Entretien": ("Hygiene", "ph-drop")
     }
     ui_name, icon = cat_ui_map.get(name.strip(), (name, "ph-wallet"))
-    return f"""<div class="cat-card"><div class="cat-container"><div style="display:flex; align-items:center; gap:10px;"><i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i><span class="cat-label">{ui_name}</span></div><span class="cat-amount">{format_chf(reel)} CHF</span></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;"><div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div></div></div>"""
+    
+    diff = prevu - reel
+    if prevu > 0:
+        if diff >= 0:
+            badge_cls = "cat-badge-warn" if percent >= 0.66 else "cat-badge-ok"
+            badge_txt = f"{format_chf(diff)} CHF left"
+        else:
+            badge_cls = "cat-badge-over"
+            badge_txt = f"+{format_chf(abs(diff))} CHF over"
+        pct_label = f"{percent*100:.0f}% used"
+    else:
+        badge_cls = "cat-badge-over" if reel > 0 else "cat-badge-ok"
+        badge_txt = "Unplanned" if reel > 0 else "0.00 CHF"
+        pct_label = "No limit set"
 
-def get_transaction_html(date, merchant, amount, category):
+    return f"""<div class="cat-card"><div class="cat-container"><div style="display:flex; align-items:center; gap:10px;"><i class="ph {icon}" style="font-size:22px; color:#60A5FA;"></i><span class="cat-label">{ui_name}</span></div><div><span class="cat-amount">{format_chf(reel)}</span> <span class="cat-prevu-sub">/ {format_chf(prevu)} CHF</span></div></div><div style="background: rgba(0,0,0,0.5); border-radius: 10px; width: 100%; height: 10px; border: 1px solid rgba(255,255,255,0.03); overflow: hidden;"><div style="background: {bar_color}; width: {pct_str}; height: 100%; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div></div><div class="cat-sub-row"><span style="color:#64748B;">{pct_label}</span><span class="{badge_cls}">{badge_txt}</span></div></div>"""
+
+def get_transaction_html(date, merchant, amount, category, note=""):
     cat_ui_map = {
         "Courses": ("Groceries", "ph-shopping-cart"),
         "Sorties/Restos": ("Dining", "ph-fork-knife"),
@@ -343,7 +364,8 @@ def get_transaction_html(date, merchant, amount, category):
         "Hygiène/Entretien": ("Hygiene", "ph-drop")
     }
     ui_category, icon = cat_ui_map.get(category.strip(), (category, "ph-wallet"))
-    return f"""<div class="transaction-card"><div style="display:flex; align-items:center; gap:15px;"><div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i></div><div style="text-align: left;"><div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div><div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}</div></div></div><div class="trans-amount">{amount}</div></div>"""
+    note_str = f" • <span style='color:#94A3B8; font-style:italic;'>{note}</span>" if note and str(note).strip() else ""
+    return f"""<div class="transaction-card"><div style="display:flex; align-items:center; gap:15px;"><div style="background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="ph {icon}" style="font-size:20px; color:#60A5FA;"></i></div><div style="text-align: left;"><div style="color: #FFFFFF; font-weight: 700; font-size: 15px;">{merchant}</div><div style="color: #64748B; font-size: 12px; margin-top:2px;">{date} • {ui_category}{note_str}</div></div></div><div class="trans-amount">{amount}</div></div>"""
 
 # --- CONNECTION ---
 @st.cache_resource
@@ -362,8 +384,95 @@ if not client: st.stop()
 try: sh = client.open_by_key(SHEET_ID)
 except Exception: st.error("Access Denied"); st.stop()
 
-# --- NAVIGATION ---
+# --- POINT 4 : SMART CACHING FUNCTIONS (5 MINUTES TTL) ---
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_sheet_titles(sheet_id):
+    _sh = get_gsheet_client().open_by_key(sheet_id)
+    return [s.title for s in _sh.worksheets()]
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_worksheet_data(sheet_id, worksheet_title):
+    _sh = get_gsheet_client().open_by_key(sheet_id)
+    _ws = _sh.worksheet(worksheet_title)
+    return _ws.get_all_values()
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_portfolio_data(sheet_id):
+    _total_val = 0.0
+    _total_cost = 0.0
+    _total_fees = 0.0
+    _enriched = []
+    try:
+        _sh = get_gsheet_client().open_by_key(sheet_id)
+        ws_inv = _sh.worksheet("Portfolio")
+        all_inv_rows = ws_inv.get_all_values()
+        
+        header_row_idx = -1
+        for i, row in enumerate(all_inv_rows):
+            row_str_lower = " ".join([str(c).lower() for c in row])
+            if "ticker" in row_str_lower or "isin" in row_str_lower:
+                header_row_idx = i
+                break
+                
+        if header_row_idx != -1:
+            headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
+            df_inv = pd.DataFrame(all_inv_rows[header_row_idx+1:], columns=headers)
+            
+            for index, row in df_inv.iterrows():
+                ticker = str(row.get("Ticker / ISIN", "")).strip()
+                if not ticker or ticker.lower() in ["nan", "none"]:
+                    continue
+                    
+                asset_name = str(row.get("Nom", ticker))
+                currency = str(row.get("Currency", "")).strip()
+                
+                qty = parse_amount(row.get("Units", "0"))
+                invested = parse_amount(row.get("Total Invested", "0"))
+                fees = parse_amount(row.get("Fees", "0"))
+                entry_price = parse_amount(row.get("Entry Price", row.get("Amount", "0")))
+                
+                if qty > 0:
+                    try:
+                        stock = yf.Ticker(ticker)
+                        current_price = 0.0
+                        try:
+                            fast_price = stock.fast_info.get('last_price', 0.0)
+                            if pd.notna(fast_price): current_price = float(fast_price)
+                        except: pass
+                        
+                        if current_price <= 0.0 or pd.isna(current_price):
+                            hist = stock.history(period="5d")
+                            if not hist.empty:
+                                hist_price = float(hist['Close'].iloc[-1])
+                                if pd.notna(hist_price): current_price = hist_price
+                                
+                        if pd.isna(current_price): current_price = 0.0
+                        
+                        value = current_price * qty
+                        cost_basis = invested + fees
+                        
+                        _total_val += value
+                        _total_cost += cost_basis
+                        _total_fees += fees
+                        pnl_chf = value - cost_basis
+                        
+                        if entry_price > 0: unit_perf = ((current_price - entry_price) / entry_price) * 100
+                        else: unit_perf = 0.0
+                            
+                        _enriched.append({
+                            "asset_name": asset_name, "ticker": ticker, "currency": currency,
+                            "qty": qty, "current_price": current_price, "value": value,
+                            "entry_price": entry_price, "pnl_chf": pnl_chf, "unit_perf": unit_perf
+                        })
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+    return _total_val, _total_cost, _total_fees, _enriched
+
+# --- NAVIGATION & SESSION SYNC (POINT 4) ---
 months_map = {"January": "Janvier", "February": "Février", "March": "Mars", "April": "Avril", "May": "Mai", "June": "Juin", "July": "Juillet", "August": "Août", "September": "Septembre", "October": "Octobre", "November": "Novembre", "December": "Décembre"}
+months_list_en = list(months_map.keys())
 now = datetime.now()
 
 # Logique de la période comptable : du 14 du mois courant au 13 du mois suivant
@@ -378,19 +487,34 @@ else:
 if default_month_idx < 0:
     default_month_idx = 11
 
-selected_month_en = st.sidebar.selectbox("Select Month", list(months_map.keys()), index=default_month_idx)
-selected_month = months_map[selected_month_en]
+if "active_month_en" not in st.session_state:
+    st.session_state.active_month_en = months_list_en[default_month_idx]
+
+def sync_from_sidebar():
+    st.session_state.active_month_en = st.session_state.sidebar_month_picker
+
+def sync_from_header():
+    st.session_state.active_month_en = st.session_state.header_month_picker
+
+selected_month_en = st.sidebar.selectbox(
+    "Select Month",
+    months_list_en,
+    index=months_list_en.index(st.session_state.active_month_en),
+    key="sidebar_month_picker",
+    on_change=sync_from_sidebar
+)
+selected_month = months_map[st.session_state.active_month_en]
 
 # MODIFICATION 2 : Sécurité si l'onglet du mois sélectionné n'existe pas encore (ex: seuls Octobre, Novembre, Décembre existent)
-available_titles = [s.title for s in sh.worksheets()]
+available_titles = fetch_sheet_titles(SHEET_ID)
 matched_title = next((s for s in available_titles if selected_month.lower() in s.lower()), None)
 if not matched_title:
     matched_title = next((s for s in available_titles if s.lower() not in ["data", "portfolio", "investment", "old factures"]), available_titles[0])
     st.sidebar.warning(f"Onglet '{selected_month}' introuvable. Affichage de '{matched_title}'.")
 ws = sh.worksheet(matched_title)
 
-# --- DATA EXTRACTION ---
-all_rows = ws.get_all_values()
+# --- DATA EXTRACTION (USING CACHED DATA) ---
+all_rows = fetch_worksheet_data(SHEET_ID, matched_title)
 category_progress, raw_expenses = [], []
 col_var, col_prevu, col_actuel, row_var_start = -1, -1, -1, -1
 for i, row in enumerate(all_rows):
@@ -418,7 +542,7 @@ if col_var != -1:
 
 prevu_var, reel_var = sum(c["prevu"] for c in category_progress), sum(c["reel"] for c in category_progress)
 
-# Dynamic Extraction for Recent Transactions
+# Dynamic Extraction for Recent Transactions (with exact Sheet row index for Undo feature)
 row_history_start = -1
 for i, row in enumerate(all_rows):
     if len(row) > 1 and str(row[0]).strip().lower() == "date":
@@ -434,7 +558,14 @@ if row_history_start != -1:
         if len(row) > 4 and str(row[0]).strip() not in ["", "nan"]:
             if "total" in str(row[0]).lower(): continue
             amt_val = parse_amount(row[2])
-            raw_expenses.append({"Date": row[0], "Merchant": row[1], "Amount": amt_val, "Category": row[4]})
+            raw_expenses.append({
+                "Date": row[0],
+                "Merchant": row[1],
+                "Amount": amt_val,
+                "Note": row[3] if len(row) > 3 else "",
+                "Category": row[4],
+                "sheet_row": i + 1
+            })
 
 # EXCTRACTION STRICTE DU TABLEAU JOURNALIER (+ Fallback sur raw_expenses si les lignes 150+ n'existent pas encore)
 daily_summary_data = []
@@ -450,83 +581,8 @@ elif raw_expenses:
     daily_summary_data = [{"Date": exp["Date"], "Amount": exp["Amount"]} for exp in raw_expenses]
 
 
-# --- PORTFOLIO GLOBAL EXTRACTION (WITH ANTI-NAN SAFEGUARDS) ---
-total_portfolio_value = 0.0
-total_cost_basis = 0.0
-total_fees = 0.0
-enriched_portfolio_data = []
-
-try:
-    ws_inv = sh.worksheet("Portfolio")
-    all_inv_rows = ws_inv.get_all_values()
-    
-    header_row_idx = -1
-    for i, row in enumerate(all_inv_rows):
-        row_str_lower = " ".join([str(c).lower() for c in row])
-        if "ticker" in row_str_lower or "isin" in row_str_lower:
-            header_row_idx = i
-            break
-            
-    if header_row_idx != -1:
-        headers = [str(h).strip() for h in all_inv_rows[header_row_idx]]
-        df_inv = pd.DataFrame(all_inv_rows[header_row_idx+1:], columns=headers)
-        
-        for index, row in df_inv.iterrows():
-            ticker = str(row.get("Ticker / ISIN", "")).strip()
-            
-            # Skip empty tickers or NaN strings
-            if not ticker or ticker.lower() in ["nan", "none"]:
-                continue
-                
-            asset_name = str(row.get("Nom", ticker))
-            currency = str(row.get("Currency", "")).strip()
-            
-            qty = parse_amount(row.get("Units", "0"))
-            invested = parse_amount(row.get("Total Invested", "0"))
-            fees = parse_amount(row.get("Fees", "0"))
-            entry_price = parse_amount(row.get("Entry Price", row.get("Amount", "0")))
-            
-            if qty > 0:
-                try:
-                    stock = yf.Ticker(ticker)
-                    current_price = 0.0
-                    
-                    # 1. Attempt fast_info
-                    try: 
-                        fast_price = stock.fast_info.get('last_price', 0.0)
-                        if pd.notna(fast_price): current_price = float(fast_price)
-                    except: pass
-                        
-                    # 2. Attempt history if fast_info fails or returns 0
-                    if current_price <= 0.0 or pd.isna(current_price):
-                        hist = stock.history(period="5d")
-                        if not hist.empty: 
-                            hist_price = float(hist['Close'].iloc[-1])
-                            if pd.notna(hist_price): current_price = hist_price
-                            
-                    # 3. Final NaN Check
-                    if pd.isna(current_price): current_price = 0.0
-                    
-                    value = current_price * qty
-                    cost_basis = invested + fees
-                    
-                    total_portfolio_value += value
-                    total_cost_basis += cost_basis
-                    total_fees += fees
-                    pnl_chf = value - cost_basis
-                    
-                    if entry_price > 0: unit_perf = ((current_price - entry_price) / entry_price) * 100
-                    else: unit_perf = 0.0
-                        
-                    enriched_portfolio_data.append({
-                        "asset_name": asset_name, "ticker": ticker, "currency": currency,
-                        "qty": qty, "current_price": current_price, "value": value, 
-                        "entry_price": entry_price, "pnl_chf": pnl_chf, "unit_perf": unit_perf
-                    })
-                except Exception as e:
-                    pass
-except Exception:
-    pass
+# --- PORTFOLIO GLOBAL EXTRACTION (WITH SMART CACHE & ANTI-NAN SAFEGUARDS) ---
+total_portfolio_value, total_cost_basis, total_fees, enriched_portfolio_data = fetch_portfolio_data(SHEET_ID)
 
 # --- NET WORTH EXTRACTION (DIRECT TARGETING + DYNAMIC FALLBACK FOR NEW SHEET) ---
 # 1. Cash Remaining (J42) -> Row 41, Col 9 (ou recherche dynamique dans Récapitulatif / Charges Variables)
@@ -554,8 +610,7 @@ if len(all_rows) > 58 and len(all_rows[58]) > 9:
     total_debts = parse_amount(all_rows[58][9])
 if total_debts == 0.0:
     try:
-        ws_data = sh.worksheet("Data")
-        data_rows = ws_data.get_all_values()
+        data_rows = fetch_worksheet_data(SHEET_ID, "Data")
         # Dans l'onglet Data de Budget 26/27 REMAKE, les dettes (Mac, Jess, Leo, Maman) sont aux lignes 4 à 7 (index 3 à 6), colonne B (index 1)
         for r in data_rows[3:7]:
             if len(r) > 1:
@@ -576,7 +631,25 @@ with tab_dashboard:
     percent = min(reel_var / prevu_var, 1.0) if prevu_var > 0 else 0.0
     insight_html = f"<div class='insight-banner insight-red'><i class='ph ph-warning'></i> Critical: {percent*100:.0f}% consumed</div>" if percent >= 0.80 else f"<div class='insight-banner insight-orange'><i class='ph ph-info'></i> Careful: {percent*100:.0f}% consumed</div>" if percent >= 0.66 else f"<div class='insight-banner insight-green'><i class='ph ph-check-circle'></i> On track</div>"
 
-    st.markdown(f"""<div style="text-align: center; margin-bottom: 30px;"><div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">OVERVIEW</div><div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{selected_month_en} {now.year}</div></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div style="text-align: center; margin-bottom: 15px;"><div style="color: #FFFFFF; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1.2;">OVERVIEW</div><div style="color: #94A3B8; font-size: 20px; font-weight: 400; margin-top: 5px;">{st.session_state.active_month_en} {now.year} • <span style="color:#60A5FA; font-weight:700;">{matched_title}</span></div></div>""", unsafe_allow_html=True)
+
+    # POINT 4 : Sélecteur de période intégré au Header + Bouton Sync rapide
+    hdr_col1, hdr_col2, hdr_col3 = st.columns([1.2, 2.2, 1.2])
+    with hdr_col2:
+        st.selectbox(
+            "Accounting Period",
+            months_list_en,
+            index=months_list_en.index(st.session_state.active_month_en),
+            key="header_month_picker",
+            on_change=sync_from_header,
+            label_visibility="collapsed"
+        )
+    with hdr_col3:
+        if st.button("↻ SYNC DATA", key="btn_sync_top"):
+            st.cache_data.clear()
+            st.toast("Data synchronized with Google Sheets! ⚡")
+            st.rerun()
+
     bar_color = 'linear-gradient(90deg, #9F1239, #E11D48)' if percent >= 0.8 else 'linear-gradient(90deg, #B45309, #F59E0B)' if percent >= 0.66 else 'linear-gradient(90deg, #059669, #10B981)'
 
     # Modification: Remaining est la valeur principale, Spent est en haut à gauche
@@ -609,8 +682,9 @@ with tab_dashboard:
                     ws.update(values=new_data, range_name=f"A{target}:E{target}", value_input_option="USER_ENTERED")
                     
                     st.toast("Expenses added! ✅")
+                    st.cache_data.clear()
                     st.cache_resource.clear()
-                    time.sleep(1.5)
+                    time.sleep(1.0)
                     st.rerun()
 
     c1, c2 = st.columns(2, gap="large")
@@ -618,10 +692,53 @@ with tab_dashboard:
         st.markdown("<h3 style='font-size: 20px; margin-bottom: 20px; text-align: center;'>Category Breakdown</h3>", unsafe_allow_html=True)
         for cat in sorted(category_progress, key=lambda x: (x['reel'] > 0, x['prevu']), reverse=True): st.markdown(get_progress_html(cat["name"], cat["reel"], cat["prevu"]), unsafe_allow_html=True)
     with c2:
-        st.markdown("<h3 style='font-size: 20px; margin-bottom: 20px; text-align: center;'>Recent Activity</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='font-size: 20px; margin-bottom: 12px; text-align: center;'>Recent Activity</h3>", unsafe_allow_html=True)
+        
+        # POINT 5 : Recherche rapide, filtre par catégorie et bouton Undo Last Transaction
+        flt_col1, flt_col2 = st.columns([1.4, 1])
+        with flt_col1:
+            search_query = st.text_input("Search", placeholder="🔍 Filter merchant, note...", label_visibility="collapsed", key="act_search")
+        with flt_col2:
+            filter_cat_options = ["All"] + list(form_cat_map.keys())
+            selected_filter_cat = st.selectbox("Filter Category", filter_cat_options, label_visibility="collapsed", key="act_cat_filter")
+
         if raw_expenses:
-            with st.container(height=500, border=False):
-                for exp in raw_expenses[::-1]: st.markdown(get_transaction_html(exp["Date"], exp["Merchant"], format_chf(exp["Amount"]) + " CHF", exp["Category"]), unsafe_allow_html=True)
+            filtered_expenses = raw_expenses[::-1]
+            if selected_filter_cat != "All":
+                target_fr_cat = form_cat_map[selected_filter_cat].lower()
+                filtered_expenses = [
+                    e for e in filtered_expenses
+                    if target_fr_cat in str(e["Category"]).strip().lower() or str(e["Category"]).strip().lower() in target_fr_cat
+                ]
+            if search_query:
+                q_low = search_query.strip().lower()
+                filtered_expenses = [
+                    e for e in filtered_expenses
+                    if q_low in str(e["Merchant"]).lower()
+                    or q_low in str(e.get("Note", "")).lower()
+                    or q_low in str(e["Date"]).lower()
+                    or q_low in str(e["Amount"]).lower()
+                ]
+
+            with st.container(height=420, border=False):
+                if filtered_expenses:
+                    for exp in filtered_expenses:
+                        st.markdown(get_transaction_html(exp["Date"], exp["Merchant"], format_chf(exp["Amount"]) + " CHF", exp["Category"], exp.get("Note", "")), unsafe_allow_html=True)
+                else:
+                    st.caption("No matching transactions found.")
+
+            last_exp = raw_expenses[-1]
+            with st.expander(f"🗑️ Undo last entry ({last_exp['Merchant']} • {format_chf(last_exp['Amount'])} CHF)", expanded=False):
+                st.caption(f"Row #{last_exp['sheet_row']} in '{matched_title}' ({last_exp['Date']})")
+                if st.button("CONFIRM DELETE LAST ENTRY", key="btn_undo_last"):
+                    row_idx = last_exp["sheet_row"]
+                    ws.update(values=[["", "", "", "", ""]], range_name=f"A{row_idx}:E{row_idx}", value_input_option="USER_ENTERED")
+                    st.toast("Last transaction removed! 🗑️")
+                    st.cache_data.clear()
+                    time.sleep(1.0)
+                    st.rerun()
+        else:
+            st.caption("No transactions logged for this period yet.")
 
     st.divider()
     
